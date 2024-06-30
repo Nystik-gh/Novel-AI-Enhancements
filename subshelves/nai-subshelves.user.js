@@ -6,12 +6,7 @@
 // @match        https://novelai.net/*
 // @grant        none
 // @run-at       document-start
-// @require      ./modules/state.js
-// @require      ./modules/utils.js
-// @require      ./modules/metadata.js
-// @require      ./modules/data-transform.js
-// @require      ./modules/dom-transform.js
-// @require      ./modules/xhook.js
+// @require      ./modules/*
 // ==/UserScript==
 'use strict'
 
@@ -21,6 +16,9 @@ const shelfElementKey = 'naie_element'
 
 const storyListSelector = '.story-list'
 const filterButtonSelector = 'button[aria-label="Open Sort Settings"]' // used to find the title bar
+const newShelfButtonSelector = 'button[aria-label="create a new shelf"]'
+const contextMenusSelector = 'button[aria-disabled]'
+const modalSelector = 'div[role="dialog"][aria-modal="true"]'
 const breadcrumbsBarSelector = '#breadcrumbs-bar' // created by this script
 
 // State vars
@@ -38,7 +36,6 @@ const init = () => {
         // Process story-list if it exists initially
 
         waitForElement(storyListSelector).then((storyList) => {
-            console.log('story list loaded', storyList)
             mapShelfMetadata()
             initStoryListObserver(storyList)
             createBreadcrumbBar()
