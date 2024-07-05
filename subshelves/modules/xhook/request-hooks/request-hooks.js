@@ -9,7 +9,7 @@ const preRequestHandlers = (request) => {
             case 'patch':
                 return preShelfPatch(request)
             case 'delete':
-                return getFetchOptions(request)
+                return preShelfDelete(request)
             default:
                 return getFetchOptions(request)
         }

@@ -37,13 +37,18 @@ const createBreadcrumbBar = () => {
 }
 
 const createCrumb = (title, onClick) => {
-    const crumbEl = document.createElement('span')
+    const crumbStyles = {
+        whiteSpace: 'nowrap',
+        cursor: onClick ? 'pointer' : 'default',
+    }
+
+    const crumbEl = createElement('span', crumbStyles)
     crumbEl.textContent = title
-    crumbEl.style.whiteSpace = 'nowrap'
+
     if (onClick) {
-        crumbEl.style.cursor = 'pointer'
         crumbEl.addEventListener('click', onClick)
     }
+
     return crumbEl
 }
 
@@ -68,7 +73,7 @@ const insertBreadcrumbs = (shelf_id) => {
             const crumbData = makeBreadcrumbs(shelf_id, shelfState.getMap())
 
             const homeCrumb = createCrumb('Home', () => {
-                simulateClick(homeButton)
+                navigateToHome()
             })
             breadcrumbBar.appendChild(homeCrumb)
             const separator = createCrumbSeparator()

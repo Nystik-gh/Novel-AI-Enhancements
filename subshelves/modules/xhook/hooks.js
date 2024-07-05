@@ -15,6 +15,11 @@ const beforeHook = (nativeFetch) => async (request, callback) => {
     const fetchOptions = preRequestHandlers(request)
 
     try {
+        if (fetchOptions.shouldBlock) {
+            callback(new Response('{}', { status: 418, statusText: 'Blocked by client' }))
+            return
+        }
+
         const raw_response = await nativeFetch(request.url, fetchOptions)
 
         const response = await postRequestHandler(request, raw_response)

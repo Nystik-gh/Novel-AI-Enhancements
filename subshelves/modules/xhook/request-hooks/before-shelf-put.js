@@ -2,27 +2,45 @@ const activePutShelfRequests = new Map()
 
 const preShelfPut = (request) => {
     const options = getFetchOptions(request)
-
     const body = JSON.parse(options.body)
     const data = JSON.parse(decodeBase64(body.data))
+    const shelf_id = body.meta
 
-    if (!activePutShelfRequests.has(body.meta)) {
-        newShelfProcessHandler(body.meta)
-        activePutShelfRequests.set(body.meta, 1)
-    } else {
-        activePutShelfRequests.set(body.meta, activePutShelfRequests.get(body.meta) + 1)
+    // Check if this is the first request for this meta
+    if (!activePutShelfRequests.has(shelf_id)) {
+        // Mark this request to be blocked
+
+        // Handle the new process
+        processNewShelf(shelf_id) // This will trigger a new PUT request
+        activePutShelfRequests.set(shelf_id, 1)
+
+        console.log('First request marked to be blocked. body:', body, 'data:', data)
+        options.shouldBlock = true
+
+        return options
     }
 
-    //TODO: inject parent id here, or do that via patch?
-
     const metadata = parseMetadata(data.description)
-    console.log('put', body, data, structuredClone(metadata))
+    console.log('PUT request. body:', body, 'data:', data, structuredClone(metadata))
     delete metadata.shelf_id
 
     data.description = writeMetadata(data.description, metadata)
     body.data = encodeBase64(JSON.stringify(data))
 
     options.body = JSON.stringify(body)
+
+    if (shelfState) {
+        try {
+            shelfState.upsertShelf(shelf_id, decodeShelf(body))
+        } catch (e) {
+            console.error('Error updating shelf state:', e)
+        }
+    }
+
+    // Reset the state for this entity's requests after processing the second request
+    if (activePutShelfRequests.has(shelf_id)) {
+        activePutShelfRequests.delete(shelf_id)
+    }
 
     return options
 }

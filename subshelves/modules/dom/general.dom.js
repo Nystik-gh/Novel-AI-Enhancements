@@ -1,4 +1,5 @@
 const simulateClick = (element) => {
+    console.log('simulateClick', element)
     if (element) {
         element.click()
     }
@@ -13,14 +14,22 @@ const simulateInputEvent = (element) => {
     element.dispatchEvent(new Event('input', { bubbles: true }))
 }
 
-const waitForElement = (selector) => {
+const createElement = (tag, styles = {}) => {
+    const element = document.createElement(tag)
+    Object.assign(element.style, styles)
+    return element
+}
+
+const waitForElement = (selector, timeout) => {
+    const getElement = () => document.querySelector(selector)
+
     return new Promise((resolve) => {
-        const element = document.querySelector(selector)
+        const element = getElement()
         if (element) {
             resolve(element)
         } else {
             const observer = new MutationObserver((mutationsList, observer) => {
-                const element = document.querySelector(selector)
+                const element = getElement()
                 if (element) {
                     observer.disconnect()
                     resolve(element)
@@ -28,6 +37,14 @@ const waitForElement = (selector) => {
             })
 
             observer.observe(document.body, { childList: true, subtree: true, attributes: true })
+
+            if (timeout) {
+                setTimeout(() => {
+                    observer.disconnect()
+                    const element = getElement()
+                    resolve(element || null)
+                }, timeout)
+            }
         }
     })
 }
@@ -43,6 +60,17 @@ const addEventListenerOnce = (element, event, handler) => {
 
         // Set the flag to indicate that the listener has been added
         element.dataset[flag] = 'true'
+    }
+}
+
+const removeEventListener = (element, event, handler) => {
+    // Construct a unique flag based on the event type and handler function
+    const flag = `listenerAdded_${event}_${handler.name}`
+
+    // Check if the event listener has already been added
+    if (element.dataset[flag]) {
+        // Add the event listener
+        element.dataset[flag] = false
     }
 }
 

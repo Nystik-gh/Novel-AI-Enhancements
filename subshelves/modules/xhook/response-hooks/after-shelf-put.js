@@ -11,6 +11,13 @@ const postShelfPut = async (response) => {
         }
     }
 
+    if (shelfState) {
+        try {
+            shelfState.upsertShelf(shelf.meta, decodeShelf(shelf))
+        } catch (e) {}
+    }
+    console.log('map', shelf.meta, shelfState.getMap())
+
     const modifiedData = InjectShelfMetaSingle(shelf)
 
     const modifiedText = JSON.stringify(modifiedData)

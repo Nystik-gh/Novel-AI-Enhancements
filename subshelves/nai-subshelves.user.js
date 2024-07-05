@@ -14,7 +14,7 @@
 const persistent_metadata_key = 'naie_persistent_metadata'
 const shelfElementKey = 'naie_element'
 
-const storyListSelector = '.story-list'
+const storyListSelector = '.story-list:not(#sidebar-lock .story-list)'
 const filterButtonSelector = 'button[aria-label="Open Sort Settings"]' // used to find the title bar
 const newShelfButtonSelector = 'button[aria-label="create a new shelf"]'
 const contextMenusSelector = 'button[aria-disabled]'
@@ -24,7 +24,10 @@ const breadcrumbsBarSelector = '#breadcrumbs-bar' // created by this script
 // State vars
 let activeShelf = null
 let storyListObserver = null
+let modalObserver = null
 let shelfState = null
+let updateInProgress = false
+let sidebarLock = null
 
 // elements
 let homeButton = null
@@ -36,6 +39,8 @@ const init = () => {
         // Process story-list if it exists initially
 
         waitForElement(storyListSelector).then((storyList) => {
+            preflight()
+            initModalObserver()
             mapShelfMetadata()
             initStoryListObserver(storyList)
             createBreadcrumbBar()

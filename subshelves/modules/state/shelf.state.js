@@ -3,6 +3,14 @@ const createShelfState = (shelfData) => {
 
     const getMap = () => shelfDataMap
 
+    const upsertShelf = (shelfId, shelfData) => {
+        if (shelfDataMap.has(shelfId)) {
+            updateShelf(shelfId, shelfData)
+        } else {
+            insertShelf(shelfId, shelfData)
+        }
+    }
+
     const insertShelf = (shelfId, shelfData) => {
         if (shelfDataMap.has(shelfId)) {
             throw new Error(`Shelf with ID ${shelfId} already exists.`)
@@ -17,6 +25,10 @@ const createShelfState = (shelfData) => {
         return shelfDataMap.get(shelfId)
     }
 
+    const getShelfByRemoteId = (remoteId) => {
+        return shelfDataMap.values().find((s) => s.id === remoteId)
+    }
+
     const updateShelf = (shelfId, newShelfData) => {
         if (!shelfDataMap.has(shelfId)) {
             throw new Error(`Shelf with ID ${shelfId} does not exist.`)
@@ -28,6 +40,7 @@ const createShelfState = (shelfData) => {
         if (!shelfDataMap.has(shelfId)) {
             throw new Error(`Shelf with ID ${shelfId} does not exist.`)
         }
+        console.log('deleting shelf with id', shelfId)
         shelfDataMap.delete(shelfId)
     }
 
@@ -50,14 +63,42 @@ const createShelfState = (shelfData) => {
         return shelfDataMap.values().filter((s) => getMetadataObject(s)?.parent_id === parentId)
     }
 
+    const getNonDescendants = (id) => {
+        const result = []
+        const descendants = new Set()
+        const stack = [id]
+
+        while (stack.length > 0) {
+            const currentId = stack.pop()
+            descendants.add(currentId)
+
+            for (const [key, value] of this.map.entries()) {
+                if (value.parent_id === currentId) {
+                    stack.push(key)
+                }
+            }
+        }
+
+        for (const [key, value] of this.map.entries()) {
+            if (!descendants.has(key)) {
+                result.push(value)
+            }
+        }
+
+        return result
+    }
+
     return {
         getMap,
+        upsertShelf,
         insertShelf,
         getShelf,
+        getShelfByRemoteId,
         updateShelf,
         deleteShelf,
         setShelfElement,
         getShelfElement,
         getSubShelves,
+        getNonDescendants,
     }
 }

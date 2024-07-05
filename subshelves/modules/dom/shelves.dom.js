@@ -15,12 +15,17 @@ const initStoryListObserver = (storyListEl) => {
     const observerOptions = {
         childList: true,
         subtree: true,
+        characterData: true,
     }
 
     const observerCallback = (mutationsList, observer) => {
-        // Trigger mapShelfMetadata when mutations indicate changes
         storyListObserver.disconnect()
+        const textMutationElements = mutationsList.filter((m) => m.type === 'characterData').map((m) => m.target.parentElement)
+
         mapShelfMetadata().then(() => {
+            if (textMutationElements.length > 0) {
+                cleanShelfDescriptions(textMutationElements)
+            }
             // Resume observing after mapShelfMetadata completes
             observer.observe(storyListEl, observerOptions)
             grabHomeButton()
@@ -33,6 +38,7 @@ const initStoryListObserver = (storyListEl) => {
 
 // map metadata injected into description onto data attributes on the shelf element
 const mapShelfMetadata = async () => {
+    console.log('mapShelfMetadata')
     // Find the div with class "story-list"
     const storyListDiv = getStoryListEl()
 
@@ -80,7 +86,7 @@ const mapShelfMetadata = async () => {
                     activeShelf = metadata.shelf_id
                 })
 
-                promises.push(waitForElement(`[data-metadata-shelf_id="${metadata.shelf_id}"]`))
+                promises.push(waitForElement(`[data-metadata-shelf_id="${metadata.shelf_id}"]`, 1000))
             }
         })
     })
@@ -88,12 +94,31 @@ const mapShelfMetadata = async () => {
     // Return a promise that resolves when all waitForElement promises are resolved
     let result = await Promise.all(promises)
 
-    hideSubShelves()
-    insertSubshelves()
-    insertBreadcrumbs(activeShelf)
-    toggleBreadcrumbBar()
+    processStoryList()
 
     return result
+}
+
+const processStoryList = () => {
+    if (!updateInProgress) {
+        updateInProgress = true
+        hideSubShelves()
+        clearSubshelves()
+        insertSubshelves()
+        insertBreadcrumbs(activeShelf)
+        toggleBreadcrumbBar()
+        initNewSubShelfButton()
+    }
+    updateInProgress = false
+}
+
+const cleanShelfDescriptions = (spans) => {
+    spans.forEach((span) => {
+        const metadata = parseMetadata(span.textContent)
+        if (!isObjEmpty(metadata)) {
+            span.textContent = writeMetadata(span.textContent, {})
+        }
+    })
 }
 
 const hideSubShelves = () => {
@@ -103,7 +128,17 @@ const hideSubShelves = () => {
     })
 }
 
+const clearSubshelves = () => {
+    const storyList = getStoryListEl()
+    const subshelves = storyList.querySelectorAll('div[data-metadata-subshelf="true"]')
+
+    subshelves.forEach((shelf) => {
+        storyList.removeChild(shelf)
+    })
+}
+
 const insertSubshelves = () => {
+    console.log('insertSubshelves', shelfState.getMap())
     if (activeShelf) {
         let currentShelf = activeShelf
         let subshelves = shelfState.getSubShelves(currentShelf)
@@ -153,29 +188,136 @@ const updateShelfEntry = (element, data) => {
 //TODO: break out navigation logic to own function?
 const handleSubSubshelfClick = async (subSubshelfId) => {
     try {
-        // Simulate click on home button
-        console.log('clicking home')
-        simulateClick(homeButton)
-
-        // Wait for the shelf to appear in the DOM
-        console.log('waiting for', `div[data-metadata-shelf_id="${subSubshelfId}"]:not([data-metadata-subshelf])`)
-        const selector = `div[data-metadata-shelf_id="${subSubshelfId}"]:not([data-metadata-subshelf])`
-        const shelfElement = await waitForElement(selector)
-
-        console.log('clicking', `div[data-metadata-shelf_id="${subSubshelfId}"]`)
-        // Simulate click on the shelf
-        simulateClick(shelfElement)
+        await navigateToShelf(subSubshelfId)
     } catch (error) {
         console.error('Error handling sub-subshelf click:', error)
     }
 }
 
-const findNewShelfButton = () => {
-    return document.querySelector(newShelfButtonSelector)
+const navigateToShelf = async (shelf_id) => {
+    if (activeShelf) {
+        console.log('navigating home as part of navigate to shelf')
+        await navigateToHome()
+    }
+
+    console.log('navigating to shelf', shelf_id)
+
+    if (shelf_id) {
+        // Wait for the shelf to appear in the DOM
+        console.log('waiting for', `div[data-metadata-shelf_id="${shelf_id}"]:not([data-metadata-subshelf])`)
+        const selector = `div[data-metadata-shelf_id="${shelf_id}"]:not([data-metadata-subshelf])`
+        const shelfElement = await waitForElement(selector, 1000)
+
+        console.log('clicking', `div[data-metadata-shelf_id="${shelf_id}"]`)
+        // Simulate click on the shelf
+        simulateClick(shelfElement)
+    }
+    setTimeout(() => {
+        processStoryList()
+    }, 0)
+}
+
+const navigateToHome = async () => {
+    const shelf_id = activeShelf
+
+    if (shelf_id) {
+        const setTimeoutPromise = (delay) => new Promise((resolve) => setTimeout(resolve, delay))
+
+        // avoids a race condition in event queue
+        await setTimeoutPromise(0)
+        console.log('try navigate home', shelf_id, homeButton)
+
+        simulateClick(homeButton)
+        const selector = `div[data-metadata-shelf_id="${shelf_id}"]:not([data-metadata-subshelf])`
+        await waitForElement(selector)
+        console.log('navigated home')
+    }
 }
 
 //TODO: remove?
 const findShelvesWithoutMeta = () => {
     const storyListDiv = getStoryListEl()
     return storyListDiv?.querySelectorAll(`${storyListSelector} > div:not([data-metadata-processed]):not([role])`)
+}
+
+const createNewShelf = async () => {
+    const parent_id = activeShelf
+
+    sidebarLock = lockSideBar()
+
+    await navigateToHome()
+
+    let newShelfButton = findNewShelfButton()
+    console.log('newshelfButton', newShelfButton.dataset)
+    if (newShelfButton.dataset['newSubShelf'] !== 'true') {
+        activeShelf = parent_id
+        simulateClick(newShelfButton)
+    }
+}
+
+const updateShelfStateViaDescription = async (shelfElement, metadata) => {
+    let contextMenuPromise = waitForContextMenu(true)
+
+    setTimeout(() => {
+        simulateRightClick(shelfElement)
+    }, 0)
+
+    const { contextMenu, editButton, deleteButton } = await contextMenuPromise
+    if (contextMenu.style.visibility === 'hidden') {
+        throw 'found wrong context meny'
+    }
+    contextMenu.style.visibility = 'hidden'
+
+    simulateClick(editButton)
+    let { modal, overlay, closeButton, fields } = await waitForShelfSettingsModal(100)
+
+    setNativeValue(fields.description, writeMetadata('', metadata))
+    simulateInputEvent(fields.description)
+
+    simulateClick(closeButton)
+}
+
+const processNewShelf = async (shelf_id) => {
+    const newShelfButton = findNewShelfButton()
+    newShelfButton.disabled = true
+
+    console.log('attempting to inject id: ', shelf_id)
+    const inSubshelf = activeShelf !== null
+    let parent_id = null
+    if (inSubshelf) {
+        parent_id = activeShelf
+        simulateClick(homeButton)
+    }
+
+    const contextMenuPromise = waitForContextMenu()
+
+    let newShelf = await waitForElement(`${storyListSelector} > div:not([data-metadata-processed]):not([role]):not([data-locked-shelf])`)
+
+    let ctx = await contextMenuPromise
+
+    if (!newShelf) {
+        throw 'unable to find new shelf element'
+    }
+
+    if (!ctx) {
+        throw 'unable to find new shelf context menu'
+    }
+
+    let metadata = { shelf_id }
+    if (parent_id) {
+        metadata = { ...metadata, parent_id }
+        console.log('add parent id to metadata', metadata)
+    }
+
+    await updateShelfStateViaDescription(newShelf, metadata)
+    newShelfButton.disabled = false
+
+    if (parent_id) {
+        console.log('navigating back to', parent_id)
+        navigateToShelf(parent_id)
+    }
+
+    if (sidebarLock) {
+        sidebarLock.unlock()
+    }
 }

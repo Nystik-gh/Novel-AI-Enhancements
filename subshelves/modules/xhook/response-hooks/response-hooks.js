@@ -12,8 +12,7 @@ const postRequestHandler = async (request, response) => {
             case 'put':
                 return await postShelfPut(response)
             case 'delete':
-                // Add your delete logic here
-                break
+                return await postShelfDelete(response)
             default:
                 return response
         }
