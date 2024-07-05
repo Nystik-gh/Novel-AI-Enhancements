@@ -486,14 +486,13 @@ const constructSelectControl = (options, selectedValue) => {
     const selectControl = selectControlTemplate.cloneNode(true)
     selectControl.id = ''
 
-    const controlElement = selectControl.querySelector('.css-1kctwbj-control')
-    const singleValueElement = selectControl.querySelector('.css-4t5j3y-singleValue span')
-    const inputElement = selectControl.querySelector('input')
+    const controlElement = selectControl.querySelector('.naie-select-control')
+    const singleValueElement = selectControl.querySelector('.naie-select-value')
+    const inputElement = selectControl.querySelector('.naie-select-input')
 
     const selectedOption = options.find((option) => option.value === selectedValue)
     if (selectedOption) {
         singleValueElement.textContent = selectedOption.title
-        singleValueElement.style.fontFamily = selectedOption.title
     }
 
     const dropdown = createSelectDropdown(options, selectedValue)
@@ -514,14 +513,12 @@ const constructSelectControl = (options, selectedValue) => {
 
     const showDropdown = () => {
         dropdown.style.display = 'block'
-        inputElement.style.width = '100%'
         singleValueElement.style.display = 'none'
         inputElement.focus()
     }
 
     const hideDropdown = () => {
         dropdown.style.display = 'none'
-        inputElement.style.width = '2px'
         singleValueElement.style.display = 'block'
         inputElement.value = ''
         updateDropdown()
@@ -530,12 +527,15 @@ const constructSelectControl = (options, selectedValue) => {
     controlElement.addEventListener('click', showDropdown)
 
     inputElement.addEventListener('input', (e) => {
+        inputElement.value = e.target.value
+        inputElement.parentNode.dataset['value'] = e.target.value
         updateDropdown(e.target.value)
     })
 
     inputElement.addEventListener('blur', () => {
         // Delay hiding to allow for option selection
-        setTimeout(hideDropdown, 200)
+        hideDropdown()
+        //setTimeout(hideDropdown, 200)
     })
 
     const optionElements = dropdown.querySelectorAll('[data-option-value]')
@@ -544,7 +544,6 @@ const constructSelectControl = (options, selectedValue) => {
             const newValue = optionElement.getAttribute('data-option-value')
             const newTitle = optionElement.textContent
             singleValueElement.textContent = newTitle
-            singleValueElement.style.fontFamily = newTitle
             hideDropdown()
 
             optionElements.forEach((el) => {
@@ -1381,6 +1380,8 @@ const lockSideBar = () => {
 
 /* #### clone-dropdown.preflight.js #### */
 
+let selectControlTemplate = null
+
 const cloneSelectControl = async () => {
     simulateClick(getSettingsButton())
 
@@ -1393,9 +1394,23 @@ const cloneSelectControl = async () => {
 
     const template = createSelectControlTemplate(fontSelect)
 
-    fontSelect.parentNode.insertBefore(template, fontSelect)
+    selectControlTemplate = template
 
-    console.log(template)
+    fontSelect.parentNode.insertBefore(
+        constructSelectControl(
+            [
+                { title: 'Option 1', value: '1' },
+                { title: 'Option 2', value: '2' },
+
+                { title: 'Option 3', value: '3' },
+                { title: 'Option 4', value: '4' },
+
+                { title: 'Option 5', value: '5' },
+            ],
+            2,
+        ),
+        fontSelect,
+    )
 }
 
 const createSelectControlTemplate = (fontSelect) => {
@@ -1408,6 +1423,8 @@ const createSelectControlTemplate = (fontSelect) => {
 
     const selectedValueText = control.firstChild.querySelector('span')
     const inputElement = control.firstChild.querySelector('input')
+
+    inputElement.id = ''
 
     clone.classList.add('naie-select-box')
     control.classList.add('naie-select-control')

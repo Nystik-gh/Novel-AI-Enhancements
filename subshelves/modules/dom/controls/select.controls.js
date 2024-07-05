@@ -62,14 +62,13 @@ const constructSelectControl = (options, selectedValue) => {
     const selectControl = selectControlTemplate.cloneNode(true)
     selectControl.id = ''
 
-    const controlElement = selectControl.querySelector('.css-1kctwbj-control')
-    const singleValueElement = selectControl.querySelector('.css-4t5j3y-singleValue span')
-    const inputElement = selectControl.querySelector('input')
+    const controlElement = selectControl.querySelector('.naie-select-control')
+    const singleValueElement = selectControl.querySelector('.naie-select-value')
+    const inputElement = selectControl.querySelector('.naie-select-input')
 
     const selectedOption = options.find((option) => option.value === selectedValue)
     if (selectedOption) {
         singleValueElement.textContent = selectedOption.title
-        singleValueElement.style.fontFamily = selectedOption.title
     }
 
     const dropdown = createSelectDropdown(options, selectedValue)
@@ -90,14 +89,12 @@ const constructSelectControl = (options, selectedValue) => {
 
     const showDropdown = () => {
         dropdown.style.display = 'block'
-        inputElement.style.width = '100%'
         singleValueElement.style.display = 'none'
         inputElement.focus()
     }
 
     const hideDropdown = () => {
         dropdown.style.display = 'none'
-        inputElement.style.width = '2px'
         singleValueElement.style.display = 'block'
         inputElement.value = ''
         updateDropdown()
@@ -106,6 +103,8 @@ const constructSelectControl = (options, selectedValue) => {
     controlElement.addEventListener('click', showDropdown)
 
     inputElement.addEventListener('input', (e) => {
+        inputElement.value = e.target.value
+        inputElement.parentNode.dataset['value'] = e.target.value
         updateDropdown(e.target.value)
     })
 
@@ -120,7 +119,6 @@ const constructSelectControl = (options, selectedValue) => {
             const newValue = optionElement.getAttribute('data-option-value')
             const newTitle = optionElement.textContent
             singleValueElement.textContent = newTitle
-            singleValueElement.style.fontFamily = newTitle
             hideDropdown()
 
             optionElements.forEach((el) => {

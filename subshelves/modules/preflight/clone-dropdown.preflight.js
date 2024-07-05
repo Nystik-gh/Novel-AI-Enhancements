@@ -1,3 +1,5 @@
+let selectControlTemplate = null
+
 const cloneSelectControl = async () => {
     simulateClick(getSettingsButton())
 
@@ -10,9 +12,23 @@ const cloneSelectControl = async () => {
 
     const template = createSelectControlTemplate(fontSelect)
 
-    fontSelect.parentNode.insertBefore(template, fontSelect)
+    selectControlTemplate = template
 
-    console.log(template)
+    fontSelect.parentNode.insertBefore(
+        constructSelectControl(
+            [
+                { title: 'Option 1', value: '1' },
+                { title: 'Option 2', value: '2' },
+
+                { title: 'Option 3', value: '3' },
+                { title: 'Option 4', value: '4' },
+
+                { title: 'Option 5', value: '5' },
+            ],
+            2,
+        ),
+        fontSelect,
+    )
 }
 
 const createSelectControlTemplate = (fontSelect) => {
