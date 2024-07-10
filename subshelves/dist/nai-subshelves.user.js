@@ -1,9 +1,9 @@
 // ==UserScript==
-// @name         Novel AI nested shelves
+// @name         Novel AI Enhanced: Sub-shelves
 // @namespace    git.nystik
-// @version      0.1
-// @description  Modify shelf api response to be a nested structure
-// @match        https://novelai.net/*
+// @version      1.0
+// @description  Adds nested shelves functionality
+// @match        https://novelai.net/stories*
 // @grant        none
 // @run-at       document-start
 // ==/UserScript==
@@ -406,7 +406,7 @@ const createContextMenu = (shelf_id, x, y) => {
     menu.style.left = `${x}px`
     menu.style.visibility = 'visible'
 
-    OnClickOutside(
+    const handle = OnClickOutside(
         menu,
         () => {
             console.log('outside click handler')
@@ -414,6 +414,17 @@ const createContextMenu = (shelf_id, x, y) => {
         },
         true,
     )
+
+    addEventListenerOnce(editButton, 'click', () => {
+        handle.remove()
+        document.body.removeChild(menu)
+        simulateContextEdit(shelf_id)
+    })
+    addEventListenerOnce(deleteButton, 'click', () => {
+        handle.remove()
+        document.body.removeChild(menu)
+        simulateContextDelete(shelf_id)
+    })
 
     document.body.append(menu)
 }
@@ -500,40 +511,83 @@ const identifyContextMenu = (node) => {
     return { contextMenu, editButton, deleteButton }
 }
 
-/* not performant at large amounts of shelves
-const tagContextMenus = async () => {
-    if (!shelfState) {
-        return
+const simulateContextForShelf = async (shelf_id) => {
+    await navigateToHome()
+
+    await forcePopulateStoryList(shelf_id)
+
+    //find shelf
+    const selector = `div[data-metadata-shelf_id="${shelf_id}"]:not([data-metadata-subshelf])`
+    const shelfElement = await waitForElement(selector, 1000)
+
+    let contextMenuPromise = waitForNewContextMenu(true)
+    setTimeout(() => {
+        simulateRightClick(shelfElement)
+    }, 0)
+
+    const { contextMenu, editButton, deleteButton } = await contextMenuPromise
+    if (contextMenu.style.visibility === 'hidden') {
+        throw 'found wrong context meny'
     }
+    contextMenu.style.visibility = 'hidden'
 
-    const ctx = await waitForContextMenu(false, false, 100)
+    return { contextMenu, editButton, deleteButton }
+}
 
-    if (!ctx) {
-        console.log('unable to get context menu')
-        return
-    }
+const simulateContextEdit = async (shelf_id) => {
+    sidebarLock = lockSideBar(false)
 
-    const shelves = Array.from(shelfState.getMap().values())
+    const parent_id = getMetadataObject(shelfState?.getShelf(shelf_id) || {})?.parent_id
 
-    for (const shelfobj of shelves) {
-        const selector = `div[data-metadata-shelf_id="${shelfobj.meta}"]:not([data-metadata-subshelf])`
-        const shelfElement = await waitForElement(selector, 100)
+    const { contextMenu, editButton, deleteButton } = await simulateContextForShelf(shelf_id)
+    simulateClick(editButton)
 
-        const visible = true
-        const contextMenuPromise = waitForNewContextMenu(visible)
+    const { modal, overlay, closeButton, ...rest } = await waitForShelfSettingsModal()
 
-        setTimeout(() => {
-            simulateRightClick(shelfElement)
-        }, 0)
+    const handle = OnClickOutside(
+        modal,
+        () => {
+            navigateToShelf(parent_id)
+            sidebarLock.unlock()
+        },
+        true,
+    )
 
-        const { contextMenu, editButton, deleteButton } = await contextMenuPromise
+    addEventListenerOnce(closeButton, 'click', () => {
+        handle.remove()
+        navigateToShelf(parent_id)
+        sidebarLock.unlock()
+    })
+}
 
-        contextMenu.setAttribute('data-context-shelf_id', shelfobj.meta)
-        contextMenu.style.top = `-1000px`
-        contextMenu.style.left = `-1000px`
-        contextMenu.style.visibility = 'hidden'
-    }
-}*/
+const simulateContextDelete = async (shelf_id) => {
+    sidebarLock = lockSideBar(false)
+
+    const parent_id = getMetadataObject(shelfState?.getShelf(shelf_id) || {})?.parent_id
+
+    const { contextMenu, editButton, deleteButton } = await simulateContextForShelf(shelf_id)
+    simulateClick(deleteButton)
+
+    const { modal, overlay, closeButton, ...rest } = await waitForShelfDeleteModal()
+
+    const handle = OverlayClickListener(
+        overlay,
+        modal,
+        () => {
+            console.log('click outside delete modal')
+            navigateToShelf(parent_id)
+            sidebarLock.unlock()
+        },
+        true,
+    )
+
+    addEventListenerOnce(closeButton, 'click', () => {
+        console.log('click close delete modal')
+        handle.remove()
+        navigateToShelf(parent_id)
+        sidebarLock.unlock()
+    })
+}
 
 
 /* ----- end of contextMenu.dom.js ----- */
@@ -797,7 +851,7 @@ const addEventListenerOnce = (element, event, handler) => {
     }
 }
 
-function OnClickOutside(element, callback, oneShot = false) {
+const OnClickOutside = (element, callback, oneShot = false) => {
     const outsideClickListener = (event) => {
         console.log('outside listener', event.composedPath(), event.composedPath().includes(element))
         if (!event.composedPath().includes(element)) {
@@ -845,9 +899,10 @@ const findTitleBar = () => {
 }
 
 const findElementWithMaskImage = (elements, urlSubstrings) => {
+    console.log('find with mask image', elements)
     let results = [...elements].filter((e) => {
         const maskImageValue = e ? window.getComputedStyle(e).getPropertyValue('mask-image') : null
-
+        console.log('mask-image value', maskImageValue)
         return maskImageValue && urlSubstrings.every((sub) => maskImageValue.includes(sub))
     })
     return results
@@ -1028,7 +1083,7 @@ const handleSettingsDesktop = async (modal, sidebar) => {
     console.log('handle settings desktop')
 
     do {
-        await sleep('50')
+        await sleep(50)
     } while (sidebar?.firstChild?.nextSibling?.querySelectorAll('button').length !== 7)
 
     const buttons = sidebar.querySelectorAll('button')
@@ -1104,7 +1159,7 @@ const waitForThemePanel = async (modal) => {
         throw new Error('settings content not found')
     }
 
-    const themeIndicator = await waitForElement('button[aria-label="Import Theme File"]', 10000)
+    const themeIndicator = await waitForElement('button[aria-label="Import Theme File"]', 15000)
 
     if (!themeIndicator) {
         throw new Error('cannot identify theme panel')
@@ -1117,6 +1172,51 @@ const waitForThemePanel = async (modal) => {
 
 
 /* ------ end of theme.settings.js ----- */
+
+
+/* ####### shelf-delete.modal.js ####### */
+
+const waitForShelfDeleteModal = async (timeout) => {
+    console.log('waitForShelfSettingsModal')
+    let { modal, overlay } = await waitForModal(timeout)
+
+    const buttons = modal.firstChild.lastChild.querySelectorAll('button')
+    console.log('delete modal buttons', buttons, buttons.length)
+    // Check if title or description is null
+    if (buttons.length !== 1) {
+        throw new Error('Not a delete modal')
+    }
+
+    const deleteButton = buttons[0]
+    const closeButton = modal.querySelector('button[aria-label="Close Modal"]')
+
+    return { modal, overlay, closeButton, deleteButton }
+}
+
+const OverlayClickListener = (overlay, modal, callback, oneShot = false) => {
+    const outsideClickListener = (event) => {
+        console.log('overlay listener', event.composedPath(), event.composedPath().includes(modal))
+        if (!event.composedPath().includes(modal)) {
+            if (oneShot) {
+                removeClickListener()
+            }
+            callback()
+        }
+    }
+
+    const removeClickListener = () => {
+        console.log('removing outside listener')
+        document.removeEventListener('click', outsideClickListener)
+    }
+
+    overlay.addEventListener('click', outsideClickListener)
+
+    // Return a handle to manually remove the listener
+    return { remove: removeClickListener }
+}
+
+
+/* ---- end of shelf-delete.modal.js --- */
 
 
 /* ###### shelf-settings.modal.js ###### */
@@ -1351,24 +1451,6 @@ const forcePopulateStoryList = async (specificItemId = null) => {
         return scrollList.querySelectorAll(`${storyListSelector} > div:not([role])`).length // Adjust the selector to match the items
     }
 
-    // Helper function to check if a specific item is loaded
-    /*const parseAndTagItems = () => {
-        const childDivs = scrollList.querySelectorAll(
-            `${storyListSelector} > div:not([role]):not([data-item-pre-parsed]):not([data-metadata-subshelf])`,
-        )
-        childDivs.forEach((div) => {
-            const spans = div.querySelectorAll('span')
-            spans.forEach((span) => {
-                const metadata = parseMetadata(span.textContent)
-
-                if (!isObjEmpty(metadata)) {
-                    div.setAttribute('data-item-pre-parsed', 'true')
-                    parsedItems.set(metadata.shelf_id, metadata)
-                }
-            })
-        })
-    }*/
-
     const isSpecificItemLoaded = (itemId) => {
         return document.querySelector(`div[data-metadata-shelf_id="${itemId}"]:not([data-metadata-subshelf])`)
     }
@@ -1566,6 +1648,7 @@ const handleSubSubshelfClick = async (subSubshelfId) => {
 }
 
 const navigateToShelf = async (shelf_id) => {
+    const lock = lockSideBar()
     if (activeShelf) {
         console.log('navigating home as part of navigate to shelf')
         await navigateToHome()
@@ -1584,6 +1667,7 @@ const navigateToShelf = async (shelf_id) => {
         simulateClick(shelfElement)
     }
     setTimeout(() => {
+        lock.unlock()
         processStoryList()
     }, 0)
 }
@@ -1591,7 +1675,7 @@ const navigateToShelf = async (shelf_id) => {
 const navigateToHome = async () => {
     const shelf_id = activeShelf
 
-    if (shelf_id) {
+    if (shelf_id && findHomeButton()) {
         const setTimeoutPromise = (delay) => new Promise((resolve) => setTimeout(resolve, delay))
 
         // avoids a race condition in event queue
@@ -1600,8 +1684,7 @@ const navigateToHome = async () => {
 
         simulateClick(homeButton)
         await waitForHome()
-        console.log('no home button', findHomeButton())
-        await forcePopulateStoryList(shelf_id)
+        await forcePopulateStoryList(shelf_id) //not sure if necessary and is detrimental to performance
         const selector = `div[data-metadata-shelf_id="${shelf_id}"]:not([data-metadata-subshelf])`
         await waitForElement(selector)
         console.log('navigated home')
@@ -1703,12 +1786,63 @@ const processNewShelf = async (shelf_id) => {
 /* ########### sidebar.dom.js ########## */
 
 const getSidebarEl = () => {
-    return document.querySelector('.menubar')
+    return document.querySelector('.menubar:not(#sidebar-lock)')
 }
 
-const lockSideBar = () => {
+const lockSideBar = (showLoader = true) => {
     const sidebar = getSidebarEl()
 
+    const clone = cloneSidebar(sidebar)
+
+    sidebar.style.display = 'none'
+
+    const sibling = sidebar.nextSibling
+    sidebar.parentNode.insertBefore(clone, sibling)
+
+    let loaderTimeout
+    let loaderShownTime = null
+    let loaderElement
+
+    const addLoader = () => {
+        loaderElement = createSidebarLoader(clone)
+        console.log('sidebarLoader', loaderElement)
+        clone.replaceWith(loaderElement)
+        loaderShownTime = Date.now()
+    }
+
+    if (showLoader) {
+        loaderTimeout = setTimeout(() => {
+            addLoader()
+        }, 300)
+    }
+
+    const unlock = () => {
+        clearTimeout(loaderTimeout)
+
+        const currentClone = document.getElementById('sidebar-lock')
+
+        if (loaderShownTime && showLoader) {
+            const elapsedTime = Date.now() - loaderShownTime
+            const remainingTime = Math.max(1000 - elapsedTime, 0)
+
+            setTimeout(() => {
+                sidebar.style.removeProperty('display')
+                if (currentClone) {
+                    currentClone.remove()
+                }
+            }, remainingTime)
+        } else {
+            sidebar.style.removeProperty('display')
+            if (currentClone) {
+                currentClone.remove()
+            }
+        }
+    }
+
+    return { unlock }
+}
+
+const cloneSidebar = (sidebar) => {
     const clone = sidebar.cloneNode(true)
     clone.id = 'sidebar-lock'
 
@@ -1723,23 +1857,35 @@ const lockSideBar = () => {
 
     shelves.forEach((s) => {
         clearDataset(s)
-        s.setAttribute('data-locked-shelf', true)
+        s.setAttribute('data-locked-shelf', 'true')
     })
 
-    sidebar.style.display = 'none'
-    //sidebar.style.position = 'absolute'
-    //sidebar.style.left = '-1000px'
+    return clone
+}
 
-    const sibling = sidebar.nextSibling
-    sidebar.parentNode.insertBefore(clone, sibling)
+const createSidebarLoader = (lockedSidebar) => {
+    const loaderSidebar = lockedSidebar.cloneNode(true)
 
-    const unlock = () => {
-        sidebar.parentNode.removeChild(clone)
-        sidebar.style.removeProperty('display')
-        //sidebar.style.removeProperty('position')
-        //sidebar.style.removeProperty('left')
+    loaderSidebar.classList.add('sidebar-loader')
+
+    while (loaderSidebar.children.length > 2) {
+        loaderSidebar.removeChild(loaderSidebar.lastChild)
     }
-    return { unlock }
+
+    const container = createElement('div', {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+        width: '100%',
+    })
+
+    const spinner = loaderTemplate.firstChild.cloneNode(true)
+    container.append(spinner)
+
+    loaderSidebar.append(container)
+
+    return loaderSidebar
 }
 
 
@@ -1866,8 +2012,14 @@ const preflight = async () => {
     }
 }
 
+let loaderTemplate = null
+
 const lockLoader = (app) => {
-    const loader = app.firstChild
+    if (loaderTemplate === null) {
+        loaderTemplate = app.firstChild.cloneNode(true)
+    }
+
+    const loader = loaderTemplate
 
     const clone = loader.cloneNode(true)
     clone.id = 'loader-lock'
@@ -2132,6 +2284,9 @@ const preShelfDelete = (request) => {
             activeShelf = null
             //navigate to parent shelf
             navigateToShelf(parent)
+            if (sidebarLock) {
+                sidebarLock.unlock()
+            }
         } catch (e) {}
     }
 

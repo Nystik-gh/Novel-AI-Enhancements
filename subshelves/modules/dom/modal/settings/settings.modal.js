@@ -46,7 +46,7 @@ const handleSettingsDesktop = async (modal, sidebar) => {
     console.log('handle settings desktop')
 
     do {
-        await sleep('50')
+        await sleep(50)
     } while (sidebar?.firstChild?.nextSibling?.querySelectorAll('button').length !== 7)
 
     const buttons = sidebar.querySelectorAll('button')

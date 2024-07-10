@@ -31,7 +31,7 @@ const createContextMenu = (shelf_id, x, y) => {
     menu.style.left = `${x}px`
     menu.style.visibility = 'visible'
 
-    OnClickOutside(
+    const handle = OnClickOutside(
         menu,
         () => {
             console.log('outside click handler')
@@ -39,6 +39,17 @@ const createContextMenu = (shelf_id, x, y) => {
         },
         true,
     )
+
+    addEventListenerOnce(editButton, 'click', () => {
+        handle.remove()
+        document.body.removeChild(menu)
+        simulateContextEdit(shelf_id)
+    })
+    addEventListenerOnce(deleteButton, 'click', () => {
+        handle.remove()
+        document.body.removeChild(menu)
+        simulateContextDelete(shelf_id)
+    })
 
     document.body.append(menu)
 }
@@ -125,37 +136,80 @@ const identifyContextMenu = (node) => {
     return { contextMenu, editButton, deleteButton }
 }
 
-/* not performant at large amounts of shelves
-const tagContextMenus = async () => {
-    if (!shelfState) {
-        return
+const simulateContextForShelf = async (shelf_id) => {
+    await navigateToHome()
+
+    await forcePopulateStoryList(shelf_id)
+
+    //find shelf
+    const selector = `div[data-metadata-shelf_id="${shelf_id}"]:not([data-metadata-subshelf])`
+    const shelfElement = await waitForElement(selector, 1000)
+
+    let contextMenuPromise = waitForNewContextMenu(true)
+    setTimeout(() => {
+        simulateRightClick(shelfElement)
+    }, 0)
+
+    const { contextMenu, editButton, deleteButton } = await contextMenuPromise
+    if (contextMenu.style.visibility === 'hidden') {
+        throw 'found wrong context meny'
     }
+    contextMenu.style.visibility = 'hidden'
 
-    const ctx = await waitForContextMenu(false, false, 100)
+    return { contextMenu, editButton, deleteButton }
+}
 
-    if (!ctx) {
-        console.log('unable to get context menu')
-        return
-    }
+const simulateContextEdit = async (shelf_id) => {
+    sidebarLock = lockSideBar(false)
 
-    const shelves = Array.from(shelfState.getMap().values())
+    const parent_id = getMetadataObject(shelfState?.getShelf(shelf_id) || {})?.parent_id
 
-    for (const shelfobj of shelves) {
-        const selector = `div[data-metadata-shelf_id="${shelfobj.meta}"]:not([data-metadata-subshelf])`
-        const shelfElement = await waitForElement(selector, 100)
+    const { contextMenu, editButton, deleteButton } = await simulateContextForShelf(shelf_id)
+    simulateClick(editButton)
 
-        const visible = true
-        const contextMenuPromise = waitForNewContextMenu(visible)
+    const { modal, overlay, closeButton, ...rest } = await waitForShelfSettingsModal()
 
-        setTimeout(() => {
-            simulateRightClick(shelfElement)
-        }, 0)
+    const handle = OnClickOutside(
+        modal,
+        () => {
+            navigateToShelf(parent_id)
+            sidebarLock.unlock()
+        },
+        true,
+    )
 
-        const { contextMenu, editButton, deleteButton } = await contextMenuPromise
+    addEventListenerOnce(closeButton, 'click', () => {
+        handle.remove()
+        navigateToShelf(parent_id)
+        sidebarLock.unlock()
+    })
+}
 
-        contextMenu.setAttribute('data-context-shelf_id', shelfobj.meta)
-        contextMenu.style.top = `-1000px`
-        contextMenu.style.left = `-1000px`
-        contextMenu.style.visibility = 'hidden'
-    }
-}*/
+const simulateContextDelete = async (shelf_id) => {
+    sidebarLock = lockSideBar(false)
+
+    const parent_id = getMetadataObject(shelfState?.getShelf(shelf_id) || {})?.parent_id
+
+    const { contextMenu, editButton, deleteButton } = await simulateContextForShelf(shelf_id)
+    simulateClick(deleteButton)
+
+    const { modal, overlay, closeButton, ...rest } = await waitForShelfDeleteModal()
+
+    const handle = OverlayClickListener(
+        overlay,
+        modal,
+        () => {
+            console.log('click outside delete modal')
+            navigateToShelf(parent_id)
+            sidebarLock.unlock()
+        },
+        true,
+    )
+
+    addEventListenerOnce(closeButton, 'click', () => {
+        console.log('click close delete modal')
+        handle.remove()
+        navigateToShelf(parent_id)
+        sidebarLock.unlock()
+    })
+}

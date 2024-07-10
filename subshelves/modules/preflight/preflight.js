@@ -35,8 +35,14 @@ const preflight = async () => {
     }
 }
 
+let loaderTemplate = null
+
 const lockLoader = (app) => {
-    const loader = app.firstChild
+    if (loaderTemplate === null) {
+        loaderTemplate = app.firstChild.cloneNode(true)
+    }
+
+    const loader = loaderTemplate
 
     const clone = loader.cloneNode(true)
     clone.id = 'loader-lock'

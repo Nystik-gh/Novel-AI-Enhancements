@@ -59,24 +59,6 @@ const forcePopulateStoryList = async (specificItemId = null) => {
         return scrollList.querySelectorAll(`${storyListSelector} > div:not([role])`).length // Adjust the selector to match the items
     }
 
-    // Helper function to check if a specific item is loaded
-    /*const parseAndTagItems = () => {
-        const childDivs = scrollList.querySelectorAll(
-            `${storyListSelector} > div:not([role]):not([data-item-pre-parsed]):not([data-metadata-subshelf])`,
-        )
-        childDivs.forEach((div) => {
-            const spans = div.querySelectorAll('span')
-            spans.forEach((span) => {
-                const metadata = parseMetadata(span.textContent)
-
-                if (!isObjEmpty(metadata)) {
-                    div.setAttribute('data-item-pre-parsed', 'true')
-                    parsedItems.set(metadata.shelf_id, metadata)
-                }
-            })
-        })
-    }*/
-
     const isSpecificItemLoaded = (itemId) => {
         return document.querySelector(`div[data-metadata-shelf_id="${itemId}"]:not([data-metadata-subshelf])`)
     }
@@ -274,6 +256,7 @@ const handleSubSubshelfClick = async (subSubshelfId) => {
 }
 
 const navigateToShelf = async (shelf_id) => {
+    const lock = lockSideBar()
     if (activeShelf) {
         console.log('navigating home as part of navigate to shelf')
         await navigateToHome()
@@ -292,6 +275,7 @@ const navigateToShelf = async (shelf_id) => {
         simulateClick(shelfElement)
     }
     setTimeout(() => {
+        lock.unlock()
         processStoryList()
     }, 0)
 }
@@ -299,7 +283,7 @@ const navigateToShelf = async (shelf_id) => {
 const navigateToHome = async () => {
     const shelf_id = activeShelf
 
-    if (shelf_id) {
+    if (shelf_id && findHomeButton()) {
         const setTimeoutPromise = (delay) => new Promise((resolve) => setTimeout(resolve, delay))
 
         // avoids a race condition in event queue
@@ -308,8 +292,7 @@ const navigateToHome = async () => {
 
         simulateClick(homeButton)
         await waitForHome()
-        console.log('no home button', findHomeButton())
-        await forcePopulateStoryList(shelf_id)
+        await forcePopulateStoryList(shelf_id) //not sure if necessary and is detrimental to performance
         const selector = `div[data-metadata-shelf_id="${shelf_id}"]:not([data-metadata-subshelf])`
         await waitForElement(selector)
         console.log('navigated home')

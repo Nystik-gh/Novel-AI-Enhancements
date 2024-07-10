@@ -1,9 +1,9 @@
 // ==UserScript==
-// @name         Novel AI nested shelves
+// @name         Novel AI Enhanced: Sub-shelves
 // @namespace    git.nystik
-// @version      0.1
-// @description  Modify shelf api response to be a nested structure
-// @match        https://novelai.net/*
+// @version      1.0
+// @description  Adds nested shelves functionality
+// @match        https://novelai.net/stories*
 // @grant        none
 // @run-at       document-start
 // @require      ./modules/*

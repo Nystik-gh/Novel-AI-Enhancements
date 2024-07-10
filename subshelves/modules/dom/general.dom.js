@@ -67,7 +67,7 @@ const addEventListenerOnce = (element, event, handler) => {
     }
 }
 
-function OnClickOutside(element, callback, oneShot = false) {
+const OnClickOutside = (element, callback, oneShot = false) => {
     const outsideClickListener = (event) => {
         console.log('outside listener', event.composedPath(), event.composedPath().includes(element))
         if (!event.composedPath().includes(element)) {
@@ -115,9 +115,10 @@ const findTitleBar = () => {
 }
 
 const findElementWithMaskImage = (elements, urlSubstrings) => {
+    console.log('find with mask image', elements)
     let results = [...elements].filter((e) => {
         const maskImageValue = e ? window.getComputedStyle(e).getPropertyValue('mask-image') : null
-
+        console.log('mask-image value', maskImageValue)
         return maskImageValue && urlSubstrings.every((sub) => maskImageValue.includes(sub))
     })
     return results

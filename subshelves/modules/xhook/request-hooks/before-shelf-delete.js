@@ -12,6 +12,9 @@ const preShelfDelete = (request) => {
             activeShelf = null
             //navigate to parent shelf
             navigateToShelf(parent)
+            if (sidebarLock) {
+                sidebarLock.unlock()
+            }
         } catch (e) {}
     }
 
