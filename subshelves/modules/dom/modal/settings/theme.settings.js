@@ -6,7 +6,7 @@ const waitForThemePanel = async (modal) => {
         throw new Error('settings content not found')
     }
 
-    const themeIndicator = await waitForElement('button[aria-label="Import Theme File"]', 1000)
+    const themeIndicator = await waitForElement('button[aria-label="Import Theme File"]', 10000)
 
     if (!themeIndicator) {
         throw new Error('cannot identify theme panel')

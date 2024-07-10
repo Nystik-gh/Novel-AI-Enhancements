@@ -4,5 +4,6 @@ const preProcessIndicator = () => {
 
 const preProcessSidebar = async () => {
     createBreadcrumbBar()
+    await forcePopulateStoryList()
     await mapShelfMetadata()
 }

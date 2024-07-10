@@ -10,7 +10,7 @@ const waitForSettingsModal = async (timeout, hidden = false) => {
         overlay.style.display = 'none'
     }
 
-    const sidebar = await waitForElement('.settings-sidebar', 10000)
+    const sidebar = await waitForElement('.settings-sidebar', 15000)
 
     if (!sidebar) {
         throw new Error('No settings sidebar found')
@@ -46,7 +46,7 @@ const handleSettingsDesktop = async (modal, sidebar) => {
     console.log('handle settings desktop')
 
     do {
-        await waitForElement('nullelement', 50)
+        await sleep('50')
     } while (sidebar?.firstChild?.nextSibling?.querySelectorAll('button').length !== 7)
 
     const buttons = sidebar.querySelectorAll('button')

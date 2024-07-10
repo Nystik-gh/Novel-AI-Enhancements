@@ -36,6 +36,78 @@ const initStoryListObserver = (storyListEl) => {
     storyListObserver.observe(storyListEl, observerOptions)
 }
 
+const forcePopulateStoryList = async (specificItemId = null) => {
+    console.log('forcePopulateStoryList')
+    if (!shelfState) {
+        return
+    }
+
+    const totalItems = shelfState.getMap().size
+    const scrollList = document.querySelector(storyListSelector)
+
+    // Helper function to scroll to the bottom of the list
+    const scrollToEnd = () => {
+        scrollList.scrollTop = scrollList.scrollHeight
+    }
+
+    const scrollToTop = () => {
+        scrollList.scrollTop = 0
+    }
+
+    // Helper function to get the number of currently loaded items
+    const getLoadedItemsCount = () => {
+        return scrollList.querySelectorAll(`${storyListSelector} > div:not([role])`).length // Adjust the selector to match the items
+    }
+
+    // Helper function to check if a specific item is loaded
+    /*const parseAndTagItems = () => {
+        const childDivs = scrollList.querySelectorAll(
+            `${storyListSelector} > div:not([role]):not([data-item-pre-parsed]):not([data-metadata-subshelf])`,
+        )
+        childDivs.forEach((div) => {
+            const spans = div.querySelectorAll('span')
+            spans.forEach((span) => {
+                const metadata = parseMetadata(span.textContent)
+
+                if (!isObjEmpty(metadata)) {
+                    div.setAttribute('data-item-pre-parsed', 'true')
+                    parsedItems.set(metadata.shelf_id, metadata)
+                }
+            })
+        })
+    }*/
+
+    const isSpecificItemLoaded = (itemId) => {
+        return document.querySelector(`div[data-metadata-shelf_id="${itemId}"]:not([data-metadata-subshelf])`)
+    }
+
+    return new Promise((resolve, reject) => {
+        const checkLoadedItems = () => {
+            if (specificItemId) {
+                if (isSpecificItemLoaded(specificItemId)) {
+                    console.log(`Item with ID ${specificItemId} is loaded.`)
+                    scrollToTop()
+                    resolve()
+                    return
+                }
+            } else {
+                if (getLoadedItemsCount() >= totalItems) {
+                    console.log('All items are loaded.')
+                    scrollToTop()
+                    resolve()
+                    return
+                }
+            }
+
+            console.log('scrolling')
+            scrollToEnd()
+            setTimeout(checkLoadedItems, 50)
+        }
+
+        checkLoadedItems()
+    })
+}
+
 // map metadata injected into description onto data attributes on the shelf element
 const mapShelfMetadata = async () => {
     console.log('mapShelfMetadata')
@@ -66,7 +138,6 @@ const mapShelfMetadata = async () => {
             // Run parseMetadata on the span text contents
             const metadata = parseMetadata(span.textContent)
 
-            // Check if parseMetadata found a "story_id" property in metadata
             if (!isObjEmpty(metadata)) {
                 // Insert each metadata key as a data-metadata-[key]="value" onto that div
                 Object.keys(metadata).forEach((key) => {
@@ -236,11 +307,12 @@ const navigateToHome = async () => {
         console.log('try navigate home', shelf_id, homeButton)
 
         simulateClick(homeButton)
+        await waitForHome()
+        console.log('no home button', findHomeButton())
+        await forcePopulateStoryList(shelf_id)
         const selector = `div[data-metadata-shelf_id="${shelf_id}"]:not([data-metadata-subshelf])`
         await waitForElement(selector)
         console.log('navigated home')
-
-        console.log('tagging context menus')
     }
 }
 

@@ -49,6 +49,10 @@ const waitForElement = (selector, timeout) => {
     })
 }
 
+const sleep = async (duration) => {
+    await waitForElement('nullelement', duration)
+}
+
 const addEventListenerOnce = (element, event, handler) => {
     // Construct a unique flag based on the event type and handler function
     const flag = `listenerAdded_${event}_${handler.name}`

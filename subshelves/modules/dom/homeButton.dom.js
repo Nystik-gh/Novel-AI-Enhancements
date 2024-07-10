@@ -21,3 +21,17 @@ const findHomeButton = () => {
 
     return null
 }
+
+const waitForHome = () => {
+    return new Promise((resolve) => {
+        const checkHomeButton = () => {
+            const homeButton = findHomeButton()
+            if (homeButton === null) {
+                resolve()
+            } else {
+                requestAnimationFrame(checkHomeButton)
+            }
+        }
+        checkHomeButton()
+    })
+}
