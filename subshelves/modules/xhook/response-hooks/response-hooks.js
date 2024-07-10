@@ -7,8 +7,7 @@ const postRequestHandler = async (request, response) => {
             case 'get':
                 return await postShelfGetAll(response)
             case 'patch':
-                // Add your patch logic here
-                break
+                return await postShelfPatch(response)
             case 'put':
                 return await postShelfPut(response)
             case 'delete':

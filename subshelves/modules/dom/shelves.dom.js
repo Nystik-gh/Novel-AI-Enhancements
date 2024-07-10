@@ -124,7 +124,10 @@ const cleanShelfDescriptions = (spans) => {
 const hideSubShelves = () => {
     const subShelves = document.querySelectorAll(`${storyListSelector} > div[data-metadata-parent_id]`)
     subShelves.forEach((subShelf) => {
-        subShelf.style.display = 'none'
+        const parent_id = subShelf.getAttribute('data-metadata-parent_id')
+        if (shelfState.getMap().has(parent_id)) {
+            subShelf.style.display = 'none'
+        }
     })
 }
 
@@ -141,7 +144,7 @@ const insertSubshelves = () => {
     console.log('insertSubshelves', shelfState.getMap())
     if (activeShelf) {
         let currentShelf = activeShelf
-        let subshelves = shelfState.getSubShelves(currentShelf)
+        let subshelves = shelfState.getSubShelves(currentShelf).sort((a, b) => b.data.title.localeCompare(a.data.title))
 
         let storyList = getStoryListEl()
         subshelves.forEach((subshelf) => {
@@ -152,6 +155,11 @@ const insertSubshelves = () => {
             addEventListenerOnce(shelf, 'click', () => {
                 console.log('clicked', shelf_id)
                 handleSubSubshelfClick(shelf_id)
+            })
+            addEventListenerOnce(shelf, 'contextmenu', (e) => {
+                e.preventDefault()
+                console.log('onContextMenu', shelf_id)
+                createContextMenu(shelf_id, e.pageX, e.pageY)
             })
             storyList.prepend(shelf)
         })
@@ -231,6 +239,8 @@ const navigateToHome = async () => {
         const selector = `div[data-metadata-shelf_id="${shelf_id}"]:not([data-metadata-subshelf])`
         await waitForElement(selector)
         console.log('navigated home')
+
+        console.log('tagging context menus')
     }
 }
 
@@ -256,7 +266,7 @@ const createNewShelf = async () => {
 }
 
 const updateShelfStateViaDescription = async (shelfElement, metadata) => {
-    let contextMenuPromise = waitForContextMenu(true)
+    let contextMenuPromise = waitForNewContextMenu(true)
 
     setTimeout(() => {
         simulateRightClick(shelfElement)
@@ -289,7 +299,7 @@ const processNewShelf = async (shelf_id) => {
         simulateClick(homeButton)
     }
 
-    const contextMenuPromise = waitForContextMenu()
+    const contextMenuPromise = waitForNewContextMenu(false, 1000)
 
     let newShelf = await waitForElement(`${storyListSelector} > div:not([data-metadata-processed]):not([role]):not([data-locked-shelf])`)
 

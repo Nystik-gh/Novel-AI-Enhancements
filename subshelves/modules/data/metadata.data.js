@@ -1,6 +1,6 @@
 const metadataStartDelimiter = ';---naie_metadata;'
 const metadataEndDelimiter = ';naie_metadata---;'
-const header = '# THIS DATA IS CREATED BY NAI ENHANCEMENTS SCRIPT REMOVAL OR EDITING MAY BREAK FUNCTIONALITY\n'
+const header = '# THIS DATA IS CREATED BY NAI ENHANCEMENTS. EDITING MAY BREAK FUNCTIONALITY\n'
 
 // Parse function to extract metadata from the description
 const parseMetadata = (description) => {
@@ -79,4 +79,24 @@ const getMetadataObject = (shelf) => {
 
 const setMetadataObject = (shelf, metadata) => {
     shelf[persistent_metadata_key] = metadata
+}
+
+const tranientMetadataKeys = ['shelf_id']
+
+const stripTransientMetadataFromObject = (metadata) => {
+    const result = { ...metadata }
+    tranientMetadataKeys.forEach((key) => {
+        delete result[key]
+    })
+    return result
+}
+
+const stripTransientMetadataFromText = (text) => {
+    const meta = parseMetadata(text)
+
+    const cleanText = writeMetadata(text, {})
+
+    const cleanMeta = stripTransientMetadataFromObject(meta)
+
+    return writeMetadata(cleanText, cleanMeta)
 }

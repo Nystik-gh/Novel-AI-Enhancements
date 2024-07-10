@@ -3,15 +3,24 @@ const preShelfPatch = (request) => {
 
     const body = JSON.parse(options.body)
     const data = JSON.parse(decodeBase64(body.data))
+    const shelf_id = body.meta
 
-    const metadata = parseMetadata(data.description)
-    console.log('patch metadata', structuredClone(metadata))
-    delete metadata.shelf_id
+    console.log('raw description', data.description)
+    data.description = stripTransientMetadataFromText(data.description)
+    console.log('cleaned description', data.description)
 
-    data.description = writeMetadata(data.description, metadata)
     body.data = encodeBase64(JSON.stringify(data))
 
     options.body = JSON.stringify(body)
+
+    if (shelfState) {
+        try {
+            shelfState.upsertShelf(shelf_id, decodeShelf(body))
+            insertBreadcrumbs(shelf_id)
+        } catch (e) {
+            console.error('Error updating shelf state:', e)
+        }
+    }
 
     return options
 }

@@ -20,11 +20,10 @@ const preShelfPut = (request) => {
         return options
     }
 
-    const metadata = parseMetadata(data.description)
-    console.log('PUT request. body:', body, 'data:', data, structuredClone(metadata))
-    delete metadata.shelf_id
+    console.log('raw description', data.description)
+    data.description = stripTransientMetadataFromText(data.description)
+    console.log('cleaned description', data.description)
 
-    data.description = writeMetadata(data.description, metadata)
     body.data = encodeBase64(JSON.stringify(data))
 
     options.body = JSON.stringify(body)
@@ -41,6 +40,8 @@ const preShelfPut = (request) => {
     if (activePutShelfRequests.has(shelf_id)) {
         activePutShelfRequests.delete(shelf_id)
     }
+
+    createContextMenuTemplate()
 
     return options
 }

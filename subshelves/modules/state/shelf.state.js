@@ -60,26 +60,29 @@ const createShelfState = (shelfData) => {
     }
 
     const getSubShelves = (parentId) => {
-        return shelfDataMap.values().filter((s) => getMetadataObject(s)?.parent_id === parentId)
+        return Array.from(shelfDataMap.values().filter((s) => getMetadataObject(s)?.parent_id === parentId))
     }
 
     const getNonDescendants = (id) => {
         const result = []
         const descendants = new Set()
-        const stack = [id]
+        const stack = id ? [id] : []
+
+        console.log('id', id)
 
         while (stack.length > 0) {
             const currentId = stack.pop()
             descendants.add(currentId)
 
-            for (const [key, value] of this.map.entries()) {
-                if (value.parent_id === currentId) {
+            for (const [key, value] of shelfDataMap.entries()) {
+                const { parent_id } = getMetadataObject(value) || {}
+                if (parent_id === currentId) {
                     stack.push(key)
                 }
             }
         }
 
-        for (const [key, value] of this.map.entries()) {
+        for (const [key, value] of shelfDataMap.entries()) {
             if (!descendants.has(key)) {
                 result.push(value)
             }

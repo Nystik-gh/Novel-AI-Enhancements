@@ -63,6 +63,28 @@ const addEventListenerOnce = (element, event, handler) => {
     }
 }
 
+function OnClickOutside(element, callback, oneShot = false) {
+    const outsideClickListener = (event) => {
+        console.log('outside listener', event.composedPath(), event.composedPath().includes(element))
+        if (!event.composedPath().includes(element)) {
+            if (oneShot) {
+                removeClickListener()
+            }
+            callback()
+        }
+    }
+
+    const removeClickListener = () => {
+        console.log('removing outside listener')
+        document.removeEventListener('click', outsideClickListener)
+    }
+
+    document.addEventListener('click', outsideClickListener)
+
+    // Return a handle to manually remove the listener
+    return { remove: removeClickListener }
+}
+
 const removeEventListener = (element, event, handler) => {
     // Construct a unique flag based on the event type and handler function
     const flag = `listenerAdded_${event}_${handler.name}`
@@ -98,6 +120,7 @@ const findElementWithMaskImage = (elements, urlSubstrings) => {
 }
 
 const setNativeValue = (element, value) => {
+    console.log('setting value', value)
     const valueSetter = Object.getOwnPropertyDescriptor(element, 'value').set
     const prototype = Object.getPrototypeOf(element)
     const prototypeValueSetter = Object.getOwnPropertyDescriptor(prototype, 'value').set

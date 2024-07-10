@@ -1,12 +1,16 @@
 const getSettingsButton = () => {
-    return document.querySelector('button[aria-label="Open Settings"]')
+    return document.querySelector(settingsButtonSelector)
 }
 
-const waitForSettingsModal = async (timeout) => {
+const waitForSettingsModal = async (timeout, hidden = false) => {
     console.log('waitForSettingsModal')
     const { modal, overlay } = await waitForModal(timeout)
 
-    const sidebar = await waitForElement('.settings-sidebar', 1000)
+    if (hidden) {
+        overlay.style.display = 'none'
+    }
+
+    const sidebar = await waitForElement('.settings-sidebar', 10000)
 
     if (!sidebar) {
         throw new Error('No settings sidebar found')
@@ -14,10 +18,9 @@ const waitForSettingsModal = async (timeout) => {
 
     console.log('sidebar', sidebar.cloneNode(true), sidebar.firstElementChild?.tagName)
 
-    const { tabs, changelog, logout, closeButton } =
-        document.querySelectorAll('button[href="/image"]').length === 2
-            ? await handleSettingsMobile(sidebar)
-            : await handleSettingsDesktop(modal, sidebar)
+    const { tabs, changelog, logout, closeButton } = isMobileView()
+        ? await handleSettingsMobile(modal, sidebar)
+        : await handleSettingsDesktop(modal, sidebar)
 
     console.log('tabs', tabs, changelog, logout)
 
@@ -70,7 +73,7 @@ const handleSettingsDesktop = async (modal, sidebar) => {
     return { tabs, changelog, logout, closeButton }
 }
 
-const handleSettingsMobile = async (sidebar) => {
+const handleSettingsMobile = async (modal, sidebar) => {
     console.log('handle settings mobile')
     const buttons = sidebar.querySelectorAll('button')
 
@@ -92,7 +95,7 @@ const handleSettingsMobile = async (sidebar) => {
 
     const closeButton = findElementWithMaskImage(modal.querySelectorAll('button > div'), ['cross', '.svg'])?.[0]
 
-    return { tabs, changelog, logout, close }
+    return { tabs, changelog, logout, closeButton }
 }
 
 const getPanel = async (modal, button, waitForFunction) => {

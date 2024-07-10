@@ -36,16 +36,56 @@ const constructShelfSettingModal = ({ fields: { title, description }, modal, ...
 
     const descriptionMetadata = parseMetadata(description.value)
 
+    const updateNativeTextbox = (text) => {
+        setNativeValue(description, restoreMetadata(text, descriptionMetadata))
+        simulateInputEvent(description)
+    }
+
     // Initialize the cloned textarea with sanitized content
     clonedTextarea.value = cleanMetadata(description.value)
 
     // Add an event listener to proxy the input
     clonedTextarea.addEventListener('input', (event) => {
         // Update the original textarea with unsanitized value
-        setNativeValue(description, restoreMetadata(event.target.value, descriptionMetadata))
-        simulateInputEvent(description)
+        updateNativeTextbox(event.target.value)
     })
+
+    // insert a dropdown with shelves
+    const shelfPickerTitle = getTitleHeader(title, 'Parent shelf')
+    const selectableShelves = shelfState
+        .getNonDescendants(descriptionMetadata.shelf_id)
+        .map((s) => ({ title: s.data.title, value: s.meta }))
+        .sort((a, b) => a.title.localeCompare(b.title))
+
+    selectableShelves.unshift({ title: 'No shelf', value: 'noshelf' })
+    const selectedValue =
+        descriptionMetadata.parent_id && shelfState?.getMap()?.has(descriptionMetadata.parent_id)
+            ? descriptionMetadata.parent_id
+            : 'noshelf'
+    const dropdown = constructSelectControl(selectableShelves, selectedValue, (value) => {
+        console.log('old meta', { ...descriptionMetadata })
+        if (value === 'noshelf') {
+            delete descriptionMetadata.parent_id
+        } else {
+            descriptionMetadata.parent_id = value
+        }
+        console.log('new meta', descriptionMetadata)
+
+        updateNativeTextbox(clonedTextarea.value)
+    })
+    insertShelfPicker(title, shelfPickerTitle, dropdown)
 
     // Return the modified fields with proxied description
     return { ...rest, modal, fields: { title, description: clonedTextarea, rawDescription: description } }
+}
+
+const getTitleHeader = (titleInputElement, newTitle) => {
+    const clone = titleInputElement.previousSibling.cloneNode(true)
+    clone.textContent = newTitle
+    return clone
+}
+
+const insertShelfPicker = (textarea, title, dropdown) => {
+    textarea.parentNode.insertBefore(dropdown, textarea.nextSibling)
+    textarea.parentNode.insertBefore(title, dropdown)
 }

@@ -14,6 +14,8 @@
 const persistent_metadata_key = 'naie_persistent_metadata'
 const shelfElementKey = 'naie_element'
 
+const appSelector = '#app'
+const settingsButtonSelector = 'button[aria-label="Open Settings"]'
 const storyListSelector = '.story-list:not(#sidebar-lock .story-list)'
 const filterButtonSelector = 'button[aria-label="Open Sort Settings"]' // used to find the title bar
 const newShelfButtonSelector = 'button[aria-label="create a new shelf"]'
@@ -35,16 +37,12 @@ let homeButton = null
 const init = () => {
     loadXhookScript()
 
-    document.addEventListener('DOMContentLoaded', () => {
-        // Process story-list if it exists initially
-
-        waitForElement(storyListSelector).then((storyList) => {
-            preflight()
-            initModalObserver()
-            mapShelfMetadata()
-            initStoryListObserver(storyList)
-            createBreadcrumbBar()
-        })
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            await preflight()
+        } catch (e) {
+            alert('Failed to initialize NAI Enhanced: Subshelves.\n\nDisable the script and create an issue on gitlab for support.')
+        }
     })
 }
 

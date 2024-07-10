@@ -3,7 +3,7 @@ const postShelfGetAll = async (response) => {
     let data = await copy.json()
     shelfState = createShelfState(buildShelfMap(data.objects))
     console.log('after response shelf map', shelfState)
-    const modifiedData = { objects: injectShelfMeta(data.objects) }
+    const modifiedData = { objects: InjectShelfTransientMeta(data.objects) }
     console.log('data', data)
     console.log('modifiedData', modifiedData)
     const modifiedText = JSON.stringify(modifiedData)

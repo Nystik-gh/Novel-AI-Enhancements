@@ -39,11 +39,12 @@ const getShelfTreeMap = (shelves) => {
     let decoded = decodeShelves(shelves)
 }
 
-const InjectShelfMetaSingle = (shelf) => {
-    return injectShelfMeta([shelf])[0]
+const InjectShelfTransientMetaSingle = (shelf) => {
+    return InjectShelfTransientMeta([shelf])[0]
 }
 
-const injectShelfMeta = (shelves) => {
+//injects transient meta into description
+const InjectShelfTransientMeta = (shelves) => {
     let decoded = decodeShelves(shelves)
 
     for (let d of decoded) {

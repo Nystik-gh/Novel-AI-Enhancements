@@ -51,7 +51,7 @@ const waitForModal = async (timeout) => {
 
     const overlay = modal?.parentNode?.parentNode?.hasAttribute('data-projection-id') ? modal?.parentNode?.parentNode : null
 
-    const closeButton = findElementWithMaskImage(modal.querySelectorAll('button > div'), ['cross', '.svg'])?.[0]
+    const closeButton = modal ? findElementWithMaskImage(modal.querySelectorAll('button > div'), ['cross', '.svg'])?.[0] : null
 
     return { modal, overlay, closeButton }
 }
