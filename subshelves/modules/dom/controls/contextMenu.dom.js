@@ -160,7 +160,9 @@ const simulateContextForShelf = async (shelf_id) => {
 }
 
 const simulateContextEdit = async (shelf_id) => {
-    sidebarLock = lockSideBar(false)
+    if (!sidebarLock) {
+        sidebarLock = lockSideBar(false)
+    }
 
     const parent_id = getMetadataObject(shelfState?.getShelf(shelf_id) || {})?.parent_id
 
@@ -175,7 +177,9 @@ const simulateContextEdit = async (shelf_id) => {
             await sleep(100) //sleep as no to block patch request
             await navigateToShelf(parent_id)
             navigateToShelf(parent_id) // dirty fix to ensure subshelf element is updated
-            sidebarLock.unlock()
+            if (sidebarLock) {
+                sidebarLock.unlock()
+            }
         },
         true,
     )
@@ -185,12 +189,16 @@ const simulateContextEdit = async (shelf_id) => {
         await sleep(100) //sleep as no to block patch request
         await navigateToShelf(parent_id)
         navigateToShelf(parent_id) // dirty fix to ensure subshelf element is updated
-        sidebarLock.unlock()
+        if (sidebarLock) {
+            sidebarLock.unlock()
+        }
     })
 }
 
 const simulateContextDelete = async (shelf_id) => {
-    sidebarLock = lockSideBar(false)
+    if (!sidebarLock) {
+        sidebarLock = lockSideBar(false)
+    }
 
     const parent_id = getMetadataObject(shelfState?.getShelf(shelf_id) || {})?.parent_id
 
@@ -205,7 +213,9 @@ const simulateContextDelete = async (shelf_id) => {
         () => {
             console.log('click outside delete modal')
             navigateToShelf(parent_id)
-            sidebarLock.unlock()
+            if (sidebarLock) {
+                sidebarLock.unlock()
+            }
         },
         true,
     )
@@ -214,6 +224,8 @@ const simulateContextDelete = async (shelf_id) => {
         console.log('click close delete modal')
         handle.remove()
         navigateToShelf(parent_id)
-        sidebarLock.unlock()
+        if (sidebarLock) {
+            sidebarLock.unlock()
+        }
     })
 }

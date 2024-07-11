@@ -155,6 +155,7 @@ const mapShelfMetadata = async () => {
 const processStoryList = () => {
     if (!updateInProgress) {
         updateInProgress = true
+        updateMetadata()
         hideSubShelves()
         clearSubshelves()
         insertSubshelves()
@@ -174,6 +175,21 @@ const cleanShelfDescriptions = (spans) => {
     })
 }
 
+const updateMetadata = () => {
+    const subShelves = document.querySelectorAll(`${storyListSelector} > div[data-metadata-shelf_id]`)
+    subShelves.forEach((subShelf) => {
+        const shelf_id = subShelf.getAttribute('data-metadata-shelf_id')
+        try {
+            const shelf = shelfState.getShelf(shelf_id)
+            const parent_id = shelf?.[persistent_metadata_key]?.parent_id
+
+            if (parent_id) {
+                subShelf.setAttribute('data-metadata-parent_id', parent_id)
+            }
+        } catch (e) {}
+    })
+}
+
 const hideSubShelves = () => {
     const subShelves = document.querySelectorAll(`${storyListSelector} > div[data-metadata-parent_id]`)
     subShelves.forEach((subShelf) => {
@@ -181,6 +197,14 @@ const hideSubShelves = () => {
         if (shelfState.getMap().has(parent_id)) {
             subShelf.style.display = 'none'
         }
+    })
+}
+
+const restoreSubshelvesOfParent = (parent_id) => {
+    const subShelves = document.querySelectorAll(`${storyListSelector} > div[data-metadata-parent_id="${parent_id}"]`)
+    console.log('restoring subshelves', subShelves)
+    subShelves.forEach((subShelf) => {
+        subShelf.style.display = 'block'
     })
 }
 
@@ -257,7 +281,10 @@ const handleSubSubshelfClick = async (subSubshelfId) => {
 }
 
 const navigateToShelf = async (shelf_id) => {
-    const lock = lockSideBar()
+    if (!sidebarLock) {
+        sidebarLock = lockSideBar()
+    }
+
     if (activeShelf) {
         console.log('navigating home as part of navigate to shelf')
         await navigateToHome()
@@ -276,7 +303,9 @@ const navigateToShelf = async (shelf_id) => {
         simulateClick(shelfElement)
     }
     setTimeout(() => {
-        lock.unlock()
+        if (sidebarLock) {
+            sidebarLock.unlock()
+        }
         processStoryList()
     }, 0)
 }
@@ -293,7 +322,7 @@ const navigateToHome = async () => {
 
         simulateClick(homeButton)
         await waitForHome()
-        await forcePopulateStoryList(shelf_id) //not sure if necessary and is detrimental to performance
+        //await forcePopulateStoryList(shelf_id) //not sure if necessary and is detrimental to performance
         const selector = `div[data-metadata-shelf_id="${shelf_id}"]:not([data-metadata-subshelf])`
         await waitForElement(selector)
         console.log('navigated home')

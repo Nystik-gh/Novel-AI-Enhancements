@@ -2,7 +2,8 @@ const getSidebarEl = () => {
     return document.querySelector('.menubar:not(#sidebar-lock)')
 }
 
-const lockSideBar = (showLoader = true) => {
+const lockSideBar = (showLoader = true, forceLoader = false) => {
+    console.log('locking sidebar')
     const sidebar = getSidebarEl()
 
     const clone = cloneSidebar(sidebar)
@@ -23,10 +24,12 @@ const lockSideBar = (showLoader = true) => {
         loaderShownTime = Date.now()
     }
 
+    const timeout = forceLoader ? 0 : 250
+
     if (showLoader) {
         loaderTimeout = setTimeout(() => {
             addLoader()
-        }, 250)
+        }, timeout)
     }
 
     const unlock = () => {
@@ -42,12 +45,16 @@ const lockSideBar = (showLoader = true) => {
                 sidebar.style.removeProperty('display')
                 if (currentClone) {
                     currentClone.remove()
+                    sidebarLock = null
+                    console.log('sidebar unlocked')
                 }
             }, remainingTime)
         } else {
             sidebar.style.removeProperty('display')
             if (currentClone) {
                 currentClone.remove()
+                sidebarLock = null
+                console.log('sidebar unlocked')
             }
         }
     }

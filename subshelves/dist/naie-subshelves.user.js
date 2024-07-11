@@ -536,7 +536,9 @@ const simulateContextForShelf = async (shelf_id) => {
 }
 
 const simulateContextEdit = async (shelf_id) => {
-    sidebarLock = lockSideBar(false)
+    if (!sidebarLock) {
+        sidebarLock = lockSideBar(false)
+    }
 
     const parent_id = getMetadataObject(shelfState?.getShelf(shelf_id) || {})?.parent_id
 
@@ -551,7 +553,9 @@ const simulateContextEdit = async (shelf_id) => {
             await sleep(100) //sleep as no to block patch request
             await navigateToShelf(parent_id)
             navigateToShelf(parent_id) // dirty fix to ensure subshelf element is updated
-            sidebarLock.unlock()
+            if (sidebarLock) {
+                sidebarLock.unlock()
+            }
         },
         true,
     )
@@ -561,12 +565,16 @@ const simulateContextEdit = async (shelf_id) => {
         await sleep(100) //sleep as no to block patch request
         await navigateToShelf(parent_id)
         navigateToShelf(parent_id) // dirty fix to ensure subshelf element is updated
-        sidebarLock.unlock()
+        if (sidebarLock) {
+            sidebarLock.unlock()
+        }
     })
 }
 
 const simulateContextDelete = async (shelf_id) => {
-    sidebarLock = lockSideBar(false)
+    if (!sidebarLock) {
+        sidebarLock = lockSideBar(false)
+    }
 
     const parent_id = getMetadataObject(shelfState?.getShelf(shelf_id) || {})?.parent_id
 
@@ -581,7 +589,9 @@ const simulateContextDelete = async (shelf_id) => {
         () => {
             console.log('click outside delete modal')
             navigateToShelf(parent_id)
-            sidebarLock.unlock()
+            if (sidebarLock) {
+                sidebarLock.unlock()
+            }
         },
         true,
     )
@@ -590,7 +600,9 @@ const simulateContextDelete = async (shelf_id) => {
         console.log('click close delete modal')
         handle.remove()
         navigateToShelf(parent_id)
-        sidebarLock.unlock()
+        if (sidebarLock) {
+            sidebarLock.unlock()
+        }
     })
 }
 
@@ -1548,6 +1560,7 @@ const mapShelfMetadata = async () => {
 const processStoryList = () => {
     if (!updateInProgress) {
         updateInProgress = true
+        updateMetadata()
         hideSubShelves()
         clearSubshelves()
         insertSubshelves()
@@ -1567,6 +1580,21 @@ const cleanShelfDescriptions = (spans) => {
     })
 }
 
+const updateMetadata = () => {
+    const subShelves = document.querySelectorAll(`${storyListSelector} > div[data-metadata-shelf_id]`)
+    subShelves.forEach((subShelf) => {
+        const shelf_id = subShelf.getAttribute('data-metadata-shelf_id')
+        try {
+            const shelf = shelfState.getShelf(shelf_id)
+            const parent_id = shelf?.[persistent_metadata_key]?.parent_id
+
+            if (parent_id) {
+                subShelf.setAttribute('data-metadata-parent_id', parent_id)
+            }
+        } catch (e) {}
+    })
+}
+
 const hideSubShelves = () => {
     const subShelves = document.querySelectorAll(`${storyListSelector} > div[data-metadata-parent_id]`)
     subShelves.forEach((subShelf) => {
@@ -1574,6 +1602,14 @@ const hideSubShelves = () => {
         if (shelfState.getMap().has(parent_id)) {
             subShelf.style.display = 'none'
         }
+    })
+}
+
+const restoreSubshelvesOfParent = (parent_id) => {
+    const subShelves = document.querySelectorAll(`${storyListSelector} > div[data-metadata-parent_id="${parent_id}"]`)
+    console.log('restoring subshelves', subShelves)
+    subShelves.forEach((subShelf) => {
+        subShelf.style.display = 'block'
     })
 }
 
@@ -1650,7 +1686,10 @@ const handleSubSubshelfClick = async (subSubshelfId) => {
 }
 
 const navigateToShelf = async (shelf_id) => {
-    const lock = lockSideBar()
+    if (!sidebarLock) {
+        sidebarLock = lockSideBar()
+    }
+
     if (activeShelf) {
         console.log('navigating home as part of navigate to shelf')
         await navigateToHome()
@@ -1669,7 +1708,9 @@ const navigateToShelf = async (shelf_id) => {
         simulateClick(shelfElement)
     }
     setTimeout(() => {
-        lock.unlock()
+        if (sidebarLock) {
+            sidebarLock.unlock()
+        }
         processStoryList()
     }, 0)
 }
@@ -1686,7 +1727,7 @@ const navigateToHome = async () => {
 
         simulateClick(homeButton)
         await waitForHome()
-        await forcePopulateStoryList(shelf_id) //not sure if necessary and is detrimental to performance
+        //await forcePopulateStoryList(shelf_id) //not sure if necessary and is detrimental to performance
         const selector = `div[data-metadata-shelf_id="${shelf_id}"]:not([data-metadata-subshelf])`
         await waitForElement(selector)
         console.log('navigated home')
@@ -1791,7 +1832,8 @@ const getSidebarEl = () => {
     return document.querySelector('.menubar:not(#sidebar-lock)')
 }
 
-const lockSideBar = (showLoader = true) => {
+const lockSideBar = (showLoader = true, forceLoader = false) => {
+    console.log('locking sidebar')
     const sidebar = getSidebarEl()
 
     const clone = cloneSidebar(sidebar)
@@ -1812,10 +1854,12 @@ const lockSideBar = (showLoader = true) => {
         loaderShownTime = Date.now()
     }
 
+    const timeout = forceLoader ? 0 : 250
+
     if (showLoader) {
         loaderTimeout = setTimeout(() => {
             addLoader()
-        }, 250)
+        }, timeout)
     }
 
     const unlock = () => {
@@ -1831,12 +1875,16 @@ const lockSideBar = (showLoader = true) => {
                 sidebar.style.removeProperty('display')
                 if (currentClone) {
                     currentClone.remove()
+                    sidebarLock = null
+                    console.log('sidebar unlocked')
                 }
             }, remainingTime)
         } else {
             sidebar.style.removeProperty('display')
             if (currentClone) {
                 currentClone.remove()
+                sidebarLock = null
+                console.log('sidebar unlocked')
             }
         }
     }
@@ -2251,7 +2299,6 @@ const initializeXhook = () => {
 
 const beforeHook = (nativeFetch) => async (request, callback) => {
     const fetchOptions = preRequestHandlers(request)
-    console.log('request', request)
 
     try {
         if (fetchOptions.shouldBlock) {
@@ -2262,7 +2309,6 @@ const beforeHook = (nativeFetch) => async (request, callback) => {
         const raw_response = await nativeFetch(request.url, fetchOptions)
 
         const response = await postRequestHandler(request, raw_response)
-        console.log('response', response)
         callback(response)
     } catch (error) {
         console.error('Error fetching:', error)
@@ -2281,16 +2327,31 @@ const preShelfDelete = (request) => {
 
     if (shelfState) {
         try {
+            /*if (!sidebarLock) {
+                sidebarLock = lockSideBar()
+            }*/
             const shelf = shelfState.getShelfByRemoteId(remoteId)
             console.log('delete id', shelf.meta)
             const parent = getMetadataObject(shelf)?.parent_id
             shelfState.deleteShelf(shelf.meta)
             // bypass navigate home
-            //navigate to parent shelf
+
+            if (activeShelf === null) {
+                // we are deleting from the home shelf, manually restore hidden children of deleted parent
+                restoreSubshelvesOfParent(shelf.meta)
+            }
+
+            // we know delete sends us back to home if we're not, correct activeShelf to reflect that
+            activeShelf = null
+
             navigateToShelf(parent)
             if (sidebarLock) {
                 sidebarLock.unlock()
             }
+
+            /*setTimeout(async () => {
+                await 
+            }, 100)*/
         } catch (e) {}
     }
 
@@ -2322,6 +2383,7 @@ const preShelfPatch = (request) => {
         try {
             shelfState.upsertShelf(shelf_id, decodeShelf(body))
             insertBreadcrumbs(shelf_id)
+            processStoryList()
         } catch (e) {
             console.error('Error updating shelf state:', e)
         }

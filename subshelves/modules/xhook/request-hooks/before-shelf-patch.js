@@ -17,6 +17,7 @@ const preShelfPatch = (request) => {
         try {
             shelfState.upsertShelf(shelf_id, decodeShelf(body))
             insertBreadcrumbs(shelf_id)
+            processStoryList()
         } catch (e) {
             console.error('Error updating shelf state:', e)
         }
