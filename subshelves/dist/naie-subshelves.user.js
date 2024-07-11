@@ -1594,7 +1594,6 @@ const insertSubshelves = () => {
 
         let storyList = getStoryListEl()
         subshelves.forEach((subshelf) => {
-            console.log('shelf id', subshelf)
             let shelf = shelfState.getShelfElement(subshelf.meta).cloneNode(true)
             let shelf_id = subshelf.meta
             shelf.style.display = 'block'
@@ -1610,6 +1609,7 @@ const insertSubshelves = () => {
             })
             storyList.prepend(shelf)
         })
+        storyList.scrollTop = 0
     }
 }
 
@@ -2415,8 +2415,6 @@ const preRequestHandlers = (request) => {
 /* ####### after-shelf-delete.js ####### */
 
 const postShelfDelete = async (response) => {
-    //navigate to parent shelf
-
     //const copy = response.clone()
     //let shelf = await copy.json()
 

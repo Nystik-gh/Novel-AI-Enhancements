@@ -216,6 +216,7 @@ const insertSubshelves = () => {
             })
             storyList.prepend(shelf)
         })
+        storyList.scrollTop = 0
     }
 }
 
