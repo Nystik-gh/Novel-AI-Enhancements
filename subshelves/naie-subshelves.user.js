@@ -8,6 +8,7 @@
 // @grant        none
 // @run-at       document-start
 // @require      ./modules/*
+// @require      ./lib/*
 // ==/UserScript==
 'use strict'
 
