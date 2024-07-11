@@ -4,6 +4,7 @@
 // @version      1.0
 // @description  Adds nested shelves functionality
 // @match        https://novelai.net/stories*
+// @match        https://novelai.net/login
 // @grant        none
 // @run-at       document-start
 // @require      ./modules/*
@@ -48,4 +49,28 @@ const init = () => {
 
 // ;INJECT DEPENDENCIES;
 
-init()
+// force a reload when the app navigates between /stories and /login
+// this is to make sure we only load the script when we access /stories and not /login
+let previousPath = window.location.pathname
+const handleUrlChange = () => {
+    const currentPath = window.location.pathname
+
+    const targetPaths = ['/stories', '/login']
+
+    if (targetPaths.includes(currentPath) && targetPaths.includes(previousPath) && currentPath !== previousPath) {
+        window.location.reload()
+    }
+
+    previousPath = currentPath
+}
+
+const observer = new MutationObserver(handleUrlChange)
+
+observer.observe(document, { childList: true, subtree: true })
+
+handleUrlChange() // Initial check
+
+// Check if the current path is /stories before initializing
+if (window.location.pathname.startsWith('/stories')) {
+    init()
+}

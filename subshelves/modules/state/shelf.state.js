@@ -5,7 +5,8 @@ const createShelfState = (shelfData) => {
 
     const upsertShelf = (shelfId, shelfData) => {
         if (shelfDataMap.has(shelfId)) {
-            updateShelf(shelfId, shelfData)
+            const element = shelfDataMap.get(shelfId)[shelfElementKey]
+            updateShelf(shelfId, { ...shelfData, [shelfElementKey]: element })
         } else {
             insertShelf(shelfId, shelfData)
         }
@@ -26,7 +27,7 @@ const createShelfState = (shelfData) => {
     }
 
     const getShelfByRemoteId = (remoteId) => {
-        return shelfDataMap.values().find((s) => s.id === remoteId)
+        return Array.from(shelfDataMap.values()).find((s) => s.id === remoteId)
     }
 
     const updateShelf = (shelfId, newShelfData) => {
@@ -60,7 +61,7 @@ const createShelfState = (shelfData) => {
     }
 
     const getSubShelves = (parentId) => {
-        return Array.from(shelfDataMap.values().filter((s) => getMetadataObject(s)?.parent_id === parentId))
+        return Array.from(shelfDataMap.values()).filter((s) => getMetadataObject(s)?.parent_id === parentId)
     }
 
     const getNonDescendants = (id) => {

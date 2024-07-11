@@ -9,7 +9,6 @@ const preShelfDelete = (request) => {
             const parent = getMetadataObject(shelf)?.parent_id
             shelfState.deleteShelf(shelf.meta)
             // bypass navigate home
-            activeShelf = null
             //navigate to parent shelf
             navigateToShelf(parent)
             if (sidebarLock) {

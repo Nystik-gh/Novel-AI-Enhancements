@@ -4,6 +4,7 @@
 // @version      1.0
 // @description  Adds nested shelves functionality
 // @match        https://novelai.net/stories*
+// @match        https://novelai.net/login
 // @grant        none
 // @run-at       document-start
 // ==/UserScript==
@@ -546,16 +547,20 @@ const simulateContextEdit = async (shelf_id) => {
 
     const handle = OnClickOutside(
         modal,
-        () => {
-            navigateToShelf(parent_id)
+        async () => {
+            await sleep(100) //sleep as no to block patch request
+            await navigateToShelf(parent_id)
+            navigateToShelf(parent_id) // dirty fix to ensure subshelf element is updated
             sidebarLock.unlock()
         },
         true,
     )
 
-    addEventListenerOnce(closeButton, 'click', () => {
+    addEventListenerOnce(closeButton, 'click', async () => {
         handle.remove()
-        navigateToShelf(parent_id)
+        await sleep(100) //sleep as no to block patch request
+        await navigateToShelf(parent_id)
+        navigateToShelf(parent_id) // dirty fix to ensure subshelf element is updated
         sidebarLock.unlock()
     })
 }
@@ -853,7 +858,6 @@ const addEventListenerOnce = (element, event, handler) => {
 
 const OnClickOutside = (element, callback, oneShot = false) => {
     const outsideClickListener = (event) => {
-        console.log('outside listener', event.composedPath(), event.composedPath().includes(element))
         if (!event.composedPath().includes(element)) {
             if (oneShot) {
                 removeClickListener()
@@ -899,17 +903,14 @@ const findTitleBar = () => {
 }
 
 const findElementWithMaskImage = (elements, urlSubstrings) => {
-    console.log('find with mask image', elements)
     let results = [...elements].filter((e) => {
         const maskImageValue = e ? window.getComputedStyle(e).getPropertyValue('mask-image') : null
-        console.log('mask-image value', maskImageValue)
         return maskImageValue && urlSubstrings.every((sub) => maskImageValue.includes(sub))
     })
     return results
 }
 
 const setNativeValue = (element, value) => {
-    console.log('setting value', value)
     const valueSetter = Object.getOwnPropertyDescriptor(element, 'value').set
     const prototype = Object.getPrototypeOf(element)
     const prototypeValueSetter = Object.getOwnPropertyDescriptor(prototype, 'value').set
@@ -1593,6 +1594,7 @@ const insertSubshelves = () => {
 
         let storyList = getStoryListEl()
         subshelves.forEach((subshelf) => {
+            console.log('shelf id', subshelf)
             let shelf = shelfState.getShelfElement(subshelf.meta).cloneNode(true)
             let shelf_id = subshelf.meta
             shelf.style.display = 'block'
@@ -1813,7 +1815,7 @@ const lockSideBar = (showLoader = true) => {
     if (showLoader) {
         loaderTimeout = setTimeout(() => {
             addLoader()
-        }, 300)
+        }, 250)
     }
 
     const unlock = () => {
@@ -1823,7 +1825,7 @@ const lockSideBar = (showLoader = true) => {
 
         if (loaderShownTime && showLoader) {
             const elapsedTime = Date.now() - loaderShownTime
-            const remainingTime = Math.max(1000 - elapsedTime, 0)
+            const remainingTime = Math.max(500 - elapsedTime, 0)
 
             setTimeout(() => {
                 sidebar.style.removeProperty('display')
@@ -2063,7 +2065,8 @@ const createShelfState = (shelfData) => {
 
     const upsertShelf = (shelfId, shelfData) => {
         if (shelfDataMap.has(shelfId)) {
-            updateShelf(shelfId, shelfData)
+            const element = shelfDataMap.get(shelfId)[shelfElementKey]
+            updateShelf(shelfId, { ...shelfData, [shelfElementKey]: element })
         } else {
             insertShelf(shelfId, shelfData)
         }
@@ -2084,7 +2087,7 @@ const createShelfState = (shelfData) => {
     }
 
     const getShelfByRemoteId = (remoteId) => {
-        return shelfDataMap.values().find((s) => s.id === remoteId)
+        return Array.from(shelfDataMap.values()).find((s) => s.id === remoteId)
     }
 
     const updateShelf = (shelfId, newShelfData) => {
@@ -2118,7 +2121,7 @@ const createShelfState = (shelfData) => {
     }
 
     const getSubShelves = (parentId) => {
-        return Array.from(shelfDataMap.values().filter((s) => getMetadataObject(s)?.parent_id === parentId))
+        return Array.from(shelfDataMap.values()).filter((s) => getMetadataObject(s)?.parent_id === parentId)
     }
 
     const getNonDescendants = (id) => {
@@ -2281,7 +2284,6 @@ const preShelfDelete = (request) => {
             const parent = getMetadataObject(shelf)?.parent_id
             shelfState.deleteShelf(shelf.meta)
             // bypass navigate home
-            activeShelf = null
             //navigate to parent shelf
             navigateToShelf(parent)
             if (sidebarLock) {
@@ -2413,6 +2415,8 @@ const preRequestHandlers = (request) => {
 /* ####### after-shelf-delete.js ####### */
 
 const postShelfDelete = async (response) => {
+    //navigate to parent shelf
+
     //const copy = response.clone()
     //let shelf = await copy.json()
 
@@ -2538,5 +2542,29 @@ const postRequestHandler = async (request, response) => {
 
 
 
-init()
+// force a reload when the app navigates between /stories and /login
+// this is to make sure we only load the script when we access /stories and not /login
+let previousPath = window.location.pathname
+const handleUrlChange = () => {
+    const currentPath = window.location.pathname
+
+    const targetPaths = ['/stories', '/login']
+
+    if (targetPaths.includes(currentPath) && targetPaths.includes(previousPath) && currentPath !== previousPath) {
+        window.location.reload()
+    }
+
+    previousPath = currentPath
+}
+
+const observer = new MutationObserver(handleUrlChange)
+
+observer.observe(document, { childList: true, subtree: true })
+
+handleUrlChange() // Initial check
+
+// Check if the current path is /stories before initializing
+if (window.location.pathname.startsWith('/stories')) {
+    init()
+}
 

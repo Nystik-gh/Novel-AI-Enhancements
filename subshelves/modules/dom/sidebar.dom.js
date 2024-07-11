@@ -26,7 +26,7 @@ const lockSideBar = (showLoader = true) => {
     if (showLoader) {
         loaderTimeout = setTimeout(() => {
             addLoader()
-        }, 300)
+        }, 250)
     }
 
     const unlock = () => {
@@ -36,7 +36,7 @@ const lockSideBar = (showLoader = true) => {
 
         if (loaderShownTime && showLoader) {
             const elapsedTime = Date.now() - loaderShownTime
-            const remainingTime = Math.max(1000 - elapsedTime, 0)
+            const remainingTime = Math.max(500 - elapsedTime, 0)
 
             setTimeout(() => {
                 sidebar.style.removeProperty('display')

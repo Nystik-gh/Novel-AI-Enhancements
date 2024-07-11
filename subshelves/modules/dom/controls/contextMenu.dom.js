@@ -171,16 +171,20 @@ const simulateContextEdit = async (shelf_id) => {
 
     const handle = OnClickOutside(
         modal,
-        () => {
-            navigateToShelf(parent_id)
+        async () => {
+            await sleep(100) //sleep as no to block patch request
+            await navigateToShelf(parent_id)
+            navigateToShelf(parent_id) // dirty fix to ensure subshelf element is updated
             sidebarLock.unlock()
         },
         true,
     )
 
-    addEventListenerOnce(closeButton, 'click', () => {
+    addEventListenerOnce(closeButton, 'click', async () => {
         handle.remove()
-        navigateToShelf(parent_id)
+        await sleep(100) //sleep as no to block patch request
+        await navigateToShelf(parent_id)
+        navigateToShelf(parent_id) // dirty fix to ensure subshelf element is updated
         sidebarLock.unlock()
     })
 }
