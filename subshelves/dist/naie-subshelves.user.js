@@ -1725,11 +1725,28 @@ const clearSubshelves = () => {
     })
 }
 
+const removeEmptyShelfBox = () => {
+    const storyList = getStoryListEl()
+    if (!storyList) {
+        return
+    }
+    const storyElement = storyList.querySelector('div[role="button][data-id]')
+
+    if (!storyElement && storyList.children?.length === 1) {
+        //storyList.removeChild(storyList.firstChild)
+        storyList.firstChild.style.display = 'none'
+    }
+}
+
 const insertSubshelves = () => {
     console.log('insertSubshelves', shelfState.getMap())
     if (activeShelf) {
         let currentShelf = activeShelf
         let subshelves = shelfState.getSubShelves(currentShelf).sort((a, b) => b.data.title.localeCompare(a.data.title))
+
+        if (subshelves.length > 0) {
+            removeEmptyShelfBox()
+        }
 
         let storyList = getStoryListEl()
         subshelves.forEach((subshelf) => {
