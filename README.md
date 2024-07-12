@@ -35,7 +35,7 @@ NAIE Subshelves adds nested shelves to Novel AI, allowing users to create subshe
     - [Violentmonkey](https://violentmonkey.github.io/) (Open source)
     - [Tampermonkey](https://www.tampermonkey.net/) (Closed source)
 
-2. After installing the userscript extension, click on this link to install the NAIE Subshelves script: [Install NAIE Subshelves](https://gitlab.com/ynstir/novel-ai-enhancements/-/raw/main/dist/naie-subshelves.user.js)
+2. After installing the userscript extension, click on this link to install the NAIE Subshelves script: [Install NAIE Subshelves](https://gitlab.com/Nystik/nai-enhancements/-/raw/main/subshelves/dist/naie-subshelves.user.js)
 
 3. Your userscript extension should prompt you to install the script. Click "Install" or "OK" to proceed.
 
@@ -120,9 +120,9 @@ Please note that mobile performance may be slower compared to desktop, particula
 
 #### iOS Compatibility
 
-It is possible to run userscripts on iOS using a Safari extension. For more information on how to set this up, you can refer to the [iOS Userscripts project on GitHub](https://github.com/quoid/userscripts).
+It is possible to run userscripts on iOS using a Safari extension. For more information on how to set this up, you can refer to the [iOS Userscripts project on GitHub](https://github.com/quoid/userscripts). It could also possibly work with [Orion Browser](https://apps.apple.com/us/app/orion-browser-by-kagi/id14844982000) with Violentmonkey.
 
-However, I do not have an iOS device and have not tested if the script runs at all on safari. If you successfully run the script on iOS, please consider sharing your experience to help other users.
+However, I do not have an iOS device and so cannot test either if these solutions. If you successfully run the script on iOS, please consider sharing your experience to help other users.
 
 ### Reporting Compatibility Issues
 
