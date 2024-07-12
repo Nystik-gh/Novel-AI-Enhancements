@@ -77,7 +77,7 @@ Note: For information about iOS support, please refer to the [Mobile Compatibili
 -   Parent shelf IDs are stored in the shelf description as metadata.
 -   Most default Novel AI behaviors are maintained.
 
-### Dependency
+### Dependencies
 
 This script has one dependency (bundled with the script):
 
