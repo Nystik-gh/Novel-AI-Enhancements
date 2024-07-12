@@ -73,7 +73,7 @@ const waitForContextMenu = (isVisibleCheck, onlyNew, timeout) => {
                     return
                 }
                 console.log('stop observing contextmenu')
-                observer.disconnect() // Stop observing
+                observer.disconnect()
                 resolve({ contextMenu, editButton, deleteButton })
             }
         }

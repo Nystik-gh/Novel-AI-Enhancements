@@ -54,15 +54,11 @@ const sleep = async (duration) => {
 }
 
 const addEventListenerOnce = (element, event, handler) => {
-    // Construct a unique flag based on the event type and handler function
     const flag = `listenerAdded_${event}_${handler.name}`
 
-    // Check if the event listener has already been added
     if (!element.dataset[flag]) {
-        // Add the event listener
         element.addEventListener(event, handler)
 
-        // Set the flag to indicate that the listener has been added
         element.dataset[flag] = 'true'
     }
 }
@@ -88,13 +84,11 @@ const OnClickOutside = (element, callback, oneShot = false) => {
     return { remove: removeClickListener }
 }
 
+// not used, remove?
 const removeEventListener = (element, event, handler) => {
-    // Construct a unique flag based on the event type and handler function
     const flag = `listenerAdded_${event}_${handler.name}`
 
-    // Check if the event listener has already been added
     if (element.dataset[flag]) {
-        // Add the event listener
         element.dataset[flag] = false
     }
 }

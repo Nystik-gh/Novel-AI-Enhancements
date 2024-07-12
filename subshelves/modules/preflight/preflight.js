@@ -19,16 +19,20 @@ const preflight = async () => {
 
         await cloneSelectControl()
 
+        await waitForElement(menubarSelector)
+
+        showIndicator('subshelves ready')
+
+        lock.unlock()
+
         await waitForElement(storyListSelector)
 
         await preProcessSidebar()
         await initGlobalObservers()
 
-        createContextMenuTemplate()
-
-        showIndicator('subshelves ready')
-
-        lock.unlock()
+        if (AreThereShelves()) {
+            createContextMenuTemplate()
+        }
     } catch (e) {
         console.error(e)
         throw new Error('preflight failed!')

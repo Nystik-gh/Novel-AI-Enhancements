@@ -13,7 +13,7 @@ This is a monorepo for potentially multiple userscripts to enhance the functiona
         -   [Firefox for Android with Tampermonkey](#firefox-for-android-with-tampermonkey)
     -   [Key Features](#key-features)
     -   [How It Works](#how-it-works)
-    -   [Dependency](#dependency)
+    -   [Dependencies](#dependency)
     -   [Potential Future Features](#potential-future-features)
     -   [Important Notes](#important-notes)
     -   [Compatibility](#compatibility)

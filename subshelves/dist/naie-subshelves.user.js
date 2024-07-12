@@ -17,6 +17,7 @@ const shelfChildCountKey = 'naie_child_count'
 
 const appSelector = '#app'
 const settingsButtonSelector = 'button[aria-label="Open Settings"]'
+const menubarSelector = '.menubar'
 const storyListSelector = '.story-list:not(#sidebar-lock .story-list)'
 const filterButtonSelector = 'button[aria-label="Open Sort Settings"]' // used to find the title bar
 const newShelfButtonSelector = 'button[aria-label="create a new shelf"]'
@@ -31,6 +32,7 @@ let modalObserver = null
 let shelfState = null
 let updateInProgress = false
 let sidebarLock = null
+let emptyStoryListFlag = false
 
 // elements
 let homeButton = null
@@ -56,10 +58,10 @@ const makeBreadcrumbs = (id, map) => {
     while (currentId) {
         const obj = map.get(currentId)
         if (obj) {
-            breadcrumbs.unshift(obj) // Add the object to the beginning of the array
+            breadcrumbs.unshift(obj)
             currentId = getMetadataObject(obj)?.parent_id || null
         } else {
-            break // Break loop if object with currentId is not found
+            break
         }
     }
 
@@ -112,7 +114,6 @@ const writeMetadata = (description, metadata) => {
     const startDelimiter = metadataStartDelimiter
     const endDelimiter = metadataEndDelimiter
 
-    // Check if metadata object is empty
     if (Object.keys(metadata).length === 0) {
         // Remove metadata block if it exists
         const startIndex = description.indexOf(startDelimiter)
@@ -204,12 +205,10 @@ const encodeShelf = (item) => {
             }
         }
 
-        // Encode current item's data field to JSON and then base64
         const encodedData = encodeBase64(JSON.stringify(item.data))
         item.data = encodedData
     }
 
-    // Start encoding from the given item
     encodeDataFields(item)
     return item
 }
@@ -243,7 +242,7 @@ const InjectShelfTransientMeta = (shelves) => {
 const buildShelfMap = (shelves) => {
     const decodedShelves = decodeShelves(shelves)
 
-    const itemMap = new Map() // Map to quickly access items by id
+    const itemMap = new Map()
 
     // First pass: create a map of items
     for (const item of decodedShelves) {
@@ -281,16 +280,12 @@ const getNumChildrenFromDom = () => {
 }
 
 const getShelfStoryTotal = (shelf_id) => {
-    // Retrieve the shelf object for the given shelf_id
     const shelf = shelfState.getShelf(shelf_id)
 
-    // Initialize total count with the number of children in the current shelf
     let total = shelf?.[shelfChildCountKey] || 0
 
-    // Get the direct subshelves of the current shelf
     const subShelves = shelfState.getSubShelves(shelf_id) || []
 
-    // Recursively sum the number of children in all subshelves
     subShelves.forEach((subshelf) => {
         total += getShelfStoryTotal(subshelf.meta)
     })
@@ -324,6 +319,9 @@ const toggleBreadcrumbBar = () => {
 }
 
 const createBreadcrumbBar = () => {
+    if (getBreadcrumbBarEl()) {
+        return
+    }
     let titlebar = findTitleBar()
 
     if (titlebar && !document.querySelector(breadcrumbsBarSelector)) {
@@ -362,7 +360,7 @@ const createCrumbSeparator = () => {
     // original separator html
     const svgHTML = `<svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg" style="display: inline-block; height: 22px; width: 22px;"><path fill="none" d="M0 0h24v24H0V0z"></path><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"></path></svg>`
     const template = document.createElement('template')
-    template.innerHTML = svgHTML.trim() // Use trim() to remove any extraneous whitespace
+    template.innerHTML = svgHTML.trim()
     let separator = template.content.firstChild
     separator.style.transform = 'scale(.8)'
     return separator
@@ -385,7 +383,7 @@ const insertBreadcrumbs = (shelf_id) => {
             const separator = createCrumbSeparator()
             breadcrumbBar.appendChild(separator)
 
-            // Create breadcrumb elements using reduce
+            // Create breadcrumb elements
             const crumbs = crumbData.reduce((acc, crumb, index) => {
                 const crumbEl = createCrumb(
                     crumb.data.title,
@@ -486,7 +484,7 @@ const waitForContextMenu = (isVisibleCheck, onlyNew, timeout) => {
                     return
                 }
                 console.log('stop observing contextmenu')
-                observer.disconnect() // Stop observing
+                observer.disconnect()
                 resolve({ contextMenu, editButton, deleteButton })
             }
         }
@@ -892,15 +890,11 @@ const sleep = async (duration) => {
 }
 
 const addEventListenerOnce = (element, event, handler) => {
-    // Construct a unique flag based on the event type and handler function
     const flag = `listenerAdded_${event}_${handler.name}`
 
-    // Check if the event listener has already been added
     if (!element.dataset[flag]) {
-        // Add the event listener
         element.addEventListener(event, handler)
 
-        // Set the flag to indicate that the listener has been added
         element.dataset[flag] = 'true'
     }
 }
@@ -926,13 +920,11 @@ const OnClickOutside = (element, callback, oneShot = false) => {
     return { remove: removeClickListener }
 }
 
+// not used, remove?
 const removeEventListener = (element, event, handler) => {
-    // Construct a unique flag based on the event type and handler function
     const flag = `listenerAdded_${event}_${handler.name}`
 
-    // Check if the event listener has already been added
     if (element.dataset[flag]) {
-        // Add the event listener
         element.dataset[flag] = false
     }
 }
@@ -1201,7 +1193,6 @@ const getPanel = async (modal, button, waitForFunction) => {
 
 /* ######### theme.settings.js ######### */
 
-// implement elements as necessary
 const waitForThemePanel = async (modal) => {
     const content = modal.querySelector('.settings-content')
 
@@ -1232,7 +1223,7 @@ const waitForShelfDeleteModal = async (timeout) => {
 
     const buttons = modal.firstChild.lastChild.querySelectorAll('button')
     console.log('delete modal buttons', buttons, buttons.length)
-    // Check if title or description is null
+
     if (buttons.length !== 1) {
         throw new Error('Not a delete modal')
     }
@@ -1278,7 +1269,6 @@ const waitForShelfSettingsModal = async (timeout) => {
     const title = modal.querySelector('input')
     const description = modal.querySelector('textarea')
 
-    // Check if title or description is null
     if (!title || !description) {
         throw new Error('Title or description is null')
     }
@@ -1304,7 +1294,7 @@ const constructShelfSettingModal = ({ fields: { title, description }, modal, ...
     // Hide the original textarea
     description.style.display = 'none'
 
-    // Insert the cloned textarea into the DOM, right after the original one
+    // Insert the cloned textarea into the DOM
     description.parentNode.insertBefore(clonedTextarea, description.nextSibling)
 
     const descriptionMetadata = parseMetadata(description.value)
@@ -1348,7 +1338,6 @@ const constructShelfSettingModal = ({ fields: { title, description }, modal, ...
     })
     insertShelfPicker(title, shelfPickerTitle, dropdown)
 
-    // Return the modified fields with proxied description
     return { ...rest, modal, fields: { title, description: clonedTextarea, rawDescription: description } }
 }
 
@@ -1440,8 +1429,17 @@ const showIndicator = async (text) => {
 
 /* ########### shelves.dom.js ########## */
 
+const getMenubarEl = () => {
+    return document.querySelector(menubarSelector)
+}
+
 const getStoryListEl = () => {
     return document.querySelector(storyListSelector)
+}
+
+const AreThereShelves = () => {
+    const storyList = getStoryListEl()
+    return storyList.querySelectorAll(`${storyListSelector} > div:not([role])`).length > 0
 }
 
 const initStoryListObserver = (storyListEl) => {
@@ -1478,18 +1476,55 @@ const initStoryListObserver = (storyListEl) => {
     storyListObserver.observe(storyListEl, observerOptions)
 }
 
+const initMenubarObserver = (menubarEl) => {
+    const menubarObserverOptions = {
+        childList: true,
+        subtree: true,
+    }
+
+    const menubarObserverCallback = (mutationsList, observer) => {
+        for (const mutation of mutationsList) {
+            if (mutation.type === 'childList') {
+                const storyListEl = getStoryListEl()
+                const newShelfButton = findNewShelfButton()
+                if (!newShelfButton) {
+                    console.log('no new shelf button, empty list')
+                    if (storyListObserver) {
+                        storyListObserver.disconnect()
+                        storyListObserver = null
+                    }
+                    emptyStoryListFlag = true
+                }
+                // if there is no new shelf button, then we are on the empty story list
+                if (storyListEl && emptyStoryListFlag) {
+                    emptyStoryListFlag = false
+                    console.log('StoryList element added to DOM.')
+                    observer.disconnect()
+                    preProcessSidebar().then(() => {
+                        // Resume observing after mapShelfMetadata completes
+                        initStoryListObserver(storyListEl)
+                        observer.observe(menubarEl, menubarObserverOptions)
+                    })
+                }
+            }
+        }
+    }
+
+    const menubarObserver = new MutationObserver(menubarObserverCallback)
+    menubarObserver.observe(menubarEl, menubarObserverOptions)
+}
+
+// not used, remove?
 const triggerShelfObserver = () => {
     console.log('trigger story list observer')
     const storyListEl = getStoryListEl()
-    // Create a hidden div element
+
     const hiddenDiv = document.createElement('div')
     hiddenDiv.style.display = 'none'
     hiddenDiv.setAttribute('data-metadata-processed', 'true')
 
-    // Append the hidden div to storyListEl to trigger the observer
     storyListEl.appendChild(hiddenDiv)
 
-    // Clean up by removing the hidden div
     storyListEl.removeChild(hiddenDiv)
 }
 
@@ -1522,7 +1557,6 @@ const forcePopulateStoryList = async (specificItemId = null) => {
     const totalItems = shelfState.getMap().size
     const scrollList = document.querySelector(storyListSelector)
 
-    // Helper function to scroll to the bottom of the list
     const scrollToEnd = () => {
         scrollList.scrollTop = scrollList.scrollHeight
     }
@@ -1531,9 +1565,8 @@ const forcePopulateStoryList = async (specificItemId = null) => {
         scrollList.scrollTop = 0
     }
 
-    // Helper function to get the number of currently loaded items
     const getLoadedItemsCount = () => {
-        return scrollList.querySelectorAll(`${storyListSelector} > div:not([role])`).length // Adjust the selector to match the items
+        return scrollList.querySelectorAll(`${storyListSelector} > div:not([role])`).length
     }
 
     const isSpecificItemLoaded = (itemId) => {
@@ -1567,49 +1600,42 @@ const forcePopulateStoryList = async (specificItemId = null) => {
     })
 }
 
-// map metadata injected into description onto data attributes on the shelf element
+// map metadata injected into description as data attributes on the shelf element
 const mapShelfMetadata = async () => {
     console.log('mapShelfMetadata')
-    // Find the div with class "story-list"
+
     const storyListDiv = getStoryListEl()
 
-    // Check if the div exists before proceeding
     if (!storyListDiv) {
-        return Promise.reject() // Resolve immediately if storyListDiv is not found
+        return Promise.reject()
     }
 
-    // Select direct child divs that do not have a role attribute and do not have the data-metadata-* attributes
+    // shelves do not have a role
     const childDivs = storyListDiv.querySelectorAll(`${storyListSelector} > div:not([role])`)
 
     const promises = []
 
-    // Iterate over each child div
     childDivs.forEach((div) => {
         if (div.hasAttribute('data-metadata-processed')) {
             return
         }
 
-        // Find all spans inside the current div
         const spans = div.querySelectorAll('span')
 
-        // Iterate over each span
+        // find metadata
         spans.forEach((span) => {
-            // Run parseMetadata on the span text contents
             const metadata = parseMetadata(span.textContent)
 
             if (!isObjEmpty(metadata)) {
-                // Insert each metadata key as a data-metadata-[key]="value" onto that div
                 Object.keys(metadata).forEach((key) => {
                     div.setAttribute(`data-metadata-${key}`, metadata[key])
                 })
 
-                // Mark the div as processed
                 div.setAttribute('data-metadata-processed', 'true')
 
-                // Update the span with the metadata using writeMetadata with empty metadata
                 span.textContent = writeMetadata(span.textContent, {})
 
-                // Store the metadata and the element in the shelves object
+                // store element for cloning for subshelves
                 shelfState.setShelfElement(metadata.shelf_id, div.cloneNode(true))
 
                 addEventListenerOnce(div, 'click', () => {
@@ -1621,7 +1647,6 @@ const mapShelfMetadata = async () => {
         })
     })
 
-    // Return a promise that resolves when all waitForElement promises are resolved
     let result = await Promise.all(promises)
 
     processStoryList()
@@ -1738,7 +1763,6 @@ const updateShelfEntry = (element, data) => {
     element.id = ''
 
     /*
-    // Parse metadata from description
     const metadata = parseMetadata(descriptionEl.textContent)
 
     // Update/set data annotations with the extracted metadata
@@ -1788,15 +1812,12 @@ const updateShelfEntry = (element, data) => {
 
     element.lastChild.replaceWith(svgImage)
 
-    // Update the content of the elements
     titleEl.textContent = data.title
     descriptionEl.textContent = writeMetadata(data.description, {})
-    //countEl.textContent = totalStories
 
     return element
 }
 
-//TODO: break out navigation logic to own function?
 const handleSubSubshelfClick = async (subSubshelfId) => {
     try {
         await navigateToShelf(subSubshelfId)
@@ -1847,7 +1868,7 @@ const navigateToHome = async () => {
 
         simulateClick(homeButton)
         await waitForHome()
-        //await forcePopulateStoryList(shelf_id) //not sure if necessary and is detrimental to performance
+
         const selector = `div[data-metadata-shelf_id="${shelf_id}"]:not([data-metadata-subshelf])`
         await waitForElement(selector)
         console.log('navigated home')
@@ -2086,7 +2107,6 @@ const shelfSvgMap = {
 
 const getShelfSVG = (value) => {
     const svgString = [...Object.entries(shelfSvgMap)].reverse().find(([k]) => value >= Number(k))?.[1] ?? shelfSvgMap[0]
-    console.log('svg', value, svgString)
     const template = document.createElement('template')
     template.innerHTML = svgString.trim() // .trim() is important to avoid issues with leading whitespace
     return template.content.firstChild
@@ -2170,7 +2190,11 @@ const createSelectControlTemplate = (fontSelect) => {
 
 const initGlobalObservers = () => {
     initModalObserver()
-    initStoryListObserver(getStoryListEl())
+    initMenubarObserver(getMenubarEl())
+    const storyList = getStoryListEl()
+    if (storyList) {
+        initStoryListObserver(storyList)
+    }
 }
 
 
@@ -2200,16 +2224,20 @@ const preflight = async () => {
 
         await cloneSelectControl()
 
+        await waitForElement(menubarSelector)
+
+        showIndicator('subshelves ready')
+
+        lock.unlock()
+
         await waitForElement(storyListSelector)
 
         await preProcessSidebar()
         await initGlobalObservers()
 
-        createContextMenuTemplate()
-
-        showIndicator('subshelves ready')
-
-        lock.unlock()
+        if (AreThereShelves()) {
+            createContextMenuTemplate()
+        }
     } catch (e) {
         console.error(e)
         throw new Error('preflight failed!')
@@ -2505,7 +2533,6 @@ const preShelfDelete = (request) => {
             console.log('delete id', shelf.meta)
             const parent = getMetadataObject(shelf)?.parent_id
             shelfState.deleteShelf(shelf.meta)
-            // bypass navigate home
 
             if (activeShelf === null) {
                 // we are deleting from the home shelf, manually restore hidden children of deleted parent
@@ -2578,9 +2605,6 @@ const preShelfPut = (request) => {
 
     // Check if this is the first request for this meta
     if (!activePutShelfRequests.has(shelf_id)) {
-        // Mark this request to be blocked
-
-        // Handle the new process
         processNewShelf(shelf_id) // This will trigger a new PUT request
         activePutShelfRequests.set(shelf_id, 1)
 

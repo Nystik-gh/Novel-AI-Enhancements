@@ -8,9 +8,6 @@ const preShelfPut = (request) => {
 
     // Check if this is the first request for this meta
     if (!activePutShelfRequests.has(shelf_id)) {
-        // Mark this request to be blocked
-
-        // Handle the new process
         processNewShelf(shelf_id) // This will trigger a new PUT request
         activePutShelfRequests.set(shelf_id, 1)
 

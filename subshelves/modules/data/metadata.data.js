@@ -38,7 +38,6 @@ const writeMetadata = (description, metadata) => {
     const startDelimiter = metadataStartDelimiter
     const endDelimiter = metadataEndDelimiter
 
-    // Check if metadata object is empty
     if (Object.keys(metadata).length === 0) {
         // Remove metadata block if it exists
         const startIndex = description.indexOf(startDelimiter)

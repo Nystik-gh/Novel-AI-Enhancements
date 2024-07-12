@@ -4,7 +4,7 @@ const waitForShelfDeleteModal = async (timeout) => {
 
     const buttons = modal.firstChild.lastChild.querySelectorAll('button')
     console.log('delete modal buttons', buttons, buttons.length)
-    // Check if title or description is null
+
     if (buttons.length !== 1) {
         throw new Error('Not a delete modal')
     }

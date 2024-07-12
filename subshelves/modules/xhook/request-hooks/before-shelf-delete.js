@@ -11,7 +11,6 @@ const preShelfDelete = (request) => {
             console.log('delete id', shelf.meta)
             const parent = getMetadataObject(shelf)?.parent_id
             shelfState.deleteShelf(shelf.meta)
-            // bypass navigate home
 
             if (activeShelf === null) {
                 // we are deleting from the home shelf, manually restore hidden children of deleted parent

@@ -1,4 +1,8 @@
 const initGlobalObservers = () => {
     initModalObserver()
-    initStoryListObserver(getStoryListEl())
+    initMenubarObserver(getMenubarEl())
+    const storyList = getStoryListEl()
+    if (storyList) {
+        initStoryListObserver(storyList)
+    }
 }

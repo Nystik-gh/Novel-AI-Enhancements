@@ -14,7 +14,6 @@ const shelfSvgMap = {
 
 const getShelfSVG = (value) => {
     const svgString = [...Object.entries(shelfSvgMap)].reverse().find(([k]) => value >= Number(k))?.[1] ?? shelfSvgMap[0]
-    console.log('svg', value, svgString)
     const template = document.createElement('template')
     template.innerHTML = svgString.trim() // .trim() is important to avoid issues with leading whitespace
     return template.content.firstChild

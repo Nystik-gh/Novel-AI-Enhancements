@@ -19,6 +19,7 @@ const shelfChildCountKey = 'naie_child_count'
 
 const appSelector = '#app'
 const settingsButtonSelector = 'button[aria-label="Open Settings"]'
+const menubarSelector = '.menubar'
 const storyListSelector = '.story-list:not(#sidebar-lock .story-list)'
 const filterButtonSelector = 'button[aria-label="Open Sort Settings"]' // used to find the title bar
 const newShelfButtonSelector = 'button[aria-label="create a new shelf"]'
@@ -33,6 +34,7 @@ let modalObserver = null
 let shelfState = null
 let updateInProgress = false
 let sidebarLock = null
+let emptyStoryListFlag = false
 
 // elements
 let homeButton = null

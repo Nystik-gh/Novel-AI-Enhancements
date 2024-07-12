@@ -5,31 +5,27 @@ const mergeDependencies = (scriptDir, scriptFile) => {
     const inputScript = path.join(scriptDir, scriptFile)
     const outputScriptDir = path.join(scriptDir, 'dist')
 
-    // Ensure the dist directory exists
     if (!fs.existsSync(outputScriptDir)) {
         fs.mkdirSync(outputScriptDir)
     }
 
     const outputScript = path.join(outputScriptDir, path.basename(scriptFile))
 
-    // Read the input script
     const scriptContent = fs.readFileSync(inputScript, 'utf-8')
 
-    // Extract dependencies from the userscript
     const dependencies = []
     const requireRegex = /\/\/\s*@require\s+(.*)/g
     let match
 
-    // Function to recursively find JavaScript files in a directory
     const findJavaScriptFiles = (dir) => {
         const files = fs.readdirSync(dir)
         files.forEach((file) => {
             const filePath = path.join(dir, file)
             const stat = fs.statSync(filePath)
             if (stat.isDirectory()) {
-                findJavaScriptFiles(filePath) // Recursively search subdirectories
+                findJavaScriptFiles(filePath)
             } else if (file.endsWith('.js')) {
-                dependencies.push(filePath) // Add JavaScript file to dependencies
+                dependencies.push(filePath)
             }
         })
     }
@@ -47,10 +43,8 @@ const mergeDependencies = (scriptDir, scriptFile) => {
         }
     }
 
-    // Create a write stream for the output script
     const writeStream = fs.createWriteStream(outputScript)
 
-    // Function to write header for each dependency
     const writeDependencyHeader = (dependencyName) => {
         const headerLength = 35 // Max length of the header
         const paddingLength = Math.max(0, (headerLength - dependencyName.length) / 2)
@@ -59,7 +53,6 @@ const mergeDependencies = (scriptDir, scriptFile) => {
         writeStream.write(`/* ${leftPadding} ${dependencyName} ${rightPadding} */\n\n`)
     }
 
-    // Function to write footer for each dependency
     const writeDependencyFooter = (dependencyName) => {
         const footerLength = 35 // Max length of the footer
         const paddingLength = Math.max(0, (footerLength - dependencyName.length - 7) / 2)
@@ -68,7 +61,6 @@ const mergeDependencies = (scriptDir, scriptFile) => {
         writeStream.write(`\n/* ${leftPadding} end of ${dependencyName} ${rightPadding} */\n\n\n`)
     }
 
-    // Read the input script line by line and inject dependencies
     const scriptLines = scriptContent.split('\n')
     let inMetaBlock = false
 
@@ -89,13 +81,12 @@ const mergeDependencies = (scriptDir, scriptFile) => {
         }
 
         if (trimmedLine === '// ;INJECT DEPENDENCIES;') {
-            // Inject dependencies with a newline between each
             dependencies.forEach((dependency) => {
                 const dependencyName = path.basename(dependency)
                 writeDependencyHeader(dependencyName)
 
                 const dependencyContent = fs.readFileSync(dependency, 'utf-8')
-                writeStream.write(dependencyContent + '\n') // Write dependency content
+                writeStream.write(dependencyContent + '\n')
 
                 writeDependencyFooter(dependencyName)
             })

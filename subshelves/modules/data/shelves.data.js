@@ -21,12 +21,10 @@ const encodeShelf = (item) => {
             }
         }
 
-        // Encode current item's data field to JSON and then base64
         const encodedData = encodeBase64(JSON.stringify(item.data))
         item.data = encodedData
     }
 
-    // Start encoding from the given item
     encodeDataFields(item)
     return item
 }
@@ -60,7 +58,7 @@ const InjectShelfTransientMeta = (shelves) => {
 const buildShelfMap = (shelves) => {
     const decodedShelves = decodeShelves(shelves)
 
-    const itemMap = new Map() // Map to quickly access items by id
+    const itemMap = new Map()
 
     // First pass: create a map of items
     for (const item of decodedShelves) {
@@ -98,16 +96,12 @@ const getNumChildrenFromDom = () => {
 }
 
 const getShelfStoryTotal = (shelf_id) => {
-    // Retrieve the shelf object for the given shelf_id
     const shelf = shelfState.getShelf(shelf_id)
 
-    // Initialize total count with the number of children in the current shelf
     let total = shelf?.[shelfChildCountKey] || 0
 
-    // Get the direct subshelves of the current shelf
     const subShelves = shelfState.getSubShelves(shelf_id) || []
 
-    // Recursively sum the number of children in all subshelves
     subShelves.forEach((subshelf) => {
         total += getShelfStoryTotal(subshelf.meta)
     })

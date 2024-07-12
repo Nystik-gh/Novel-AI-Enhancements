@@ -5,10 +5,10 @@ const makeBreadcrumbs = (id, map) => {
     while (currentId) {
         const obj = map.get(currentId)
         if (obj) {
-            breadcrumbs.unshift(obj) // Add the object to the beginning of the array
+            breadcrumbs.unshift(obj)
             currentId = getMetadataObject(obj)?.parent_id || null
         } else {
-            break // Break loop if object with currentId is not found
+            break
         }
     }
 

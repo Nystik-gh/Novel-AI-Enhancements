@@ -5,7 +5,6 @@ const waitForShelfSettingsModal = async (timeout) => {
     const title = modal.querySelector('input')
     const description = modal.querySelector('textarea')
 
-    // Check if title or description is null
     if (!title || !description) {
         throw new Error('Title or description is null')
     }
@@ -31,7 +30,7 @@ const constructShelfSettingModal = ({ fields: { title, description }, modal, ...
     // Hide the original textarea
     description.style.display = 'none'
 
-    // Insert the cloned textarea into the DOM, right after the original one
+    // Insert the cloned textarea into the DOM
     description.parentNode.insertBefore(clonedTextarea, description.nextSibling)
 
     const descriptionMetadata = parseMetadata(description.value)
@@ -75,7 +74,6 @@ const constructShelfSettingModal = ({ fields: { title, description }, modal, ...
     })
     insertShelfPicker(title, shelfPickerTitle, dropdown)
 
-    // Return the modified fields with proxied description
     return { ...rest, modal, fields: { title, description: clonedTextarea, rawDescription: description } }
 }
 

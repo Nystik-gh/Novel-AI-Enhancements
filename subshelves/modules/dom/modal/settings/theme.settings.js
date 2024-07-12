@@ -1,4 +1,3 @@
-// implement elements as necessary
 const waitForThemePanel = async (modal) => {
     const content = modal.querySelector('.settings-content')
 
