@@ -36,6 +36,41 @@ const initStoryListObserver = (storyListEl) => {
     storyListObserver.observe(storyListEl, observerOptions)
 }
 
+const triggerShelfObserver = () => {
+    console.log('trigger story list observer')
+    const storyListEl = getStoryListEl()
+    // Create a hidden div element
+    const hiddenDiv = document.createElement('div')
+    hiddenDiv.style.display = 'none'
+    hiddenDiv.setAttribute('data-metadata-processed', 'true')
+
+    // Append the hidden div to storyListEl to trigger the observer
+    storyListEl.appendChild(hiddenDiv)
+
+    // Clean up by removing the hidden div
+    storyListEl.removeChild(hiddenDiv)
+}
+
+const forceStoryListRefresh = async () => {
+    const storyLisEl = getStoryListEl()
+    if (activeShelf === null) {
+        const shelf = storyLisEl.querySelector('div[data-metadata-shelf_id]')
+        const shelf_id = shelf.getAttribute('data-metadata-shelf_id')
+        if (shelf_id) {
+            if (!sidebarLock) {
+                sidebarLock = lockSideBar(true, true)
+            }
+            await navigateToShelf(shelf_id, false)
+            await navigateToHome()
+            if (sidebarLock) {
+                sidebarLock.unlock()
+            }
+        }
+    } else {
+        await navigateToShelf(activeShelf)
+    }
+}
+
 const forcePopulateStoryList = async (specificItemId = null) => {
     console.log('forcePopulateStoryList')
     if (!shelfState) {
@@ -155,6 +190,7 @@ const mapShelfMetadata = async () => {
 const processStoryList = () => {
     if (!updateInProgress) {
         updateInProgress = true
+        getNumChildrenFromDom()
         updateMetadata()
         hideSubShelves()
         clearSubshelves()
@@ -177,6 +213,7 @@ const cleanShelfDescriptions = (spans) => {
 
 const updateMetadata = () => {
     const subShelves = document.querySelectorAll(`${storyListSelector} > div[data-metadata-shelf_id]`)
+    console.log('metadata subshelves', subShelves)
     subShelves.forEach((subShelf) => {
         const shelf_id = subShelf.getAttribute('data-metadata-shelf_id')
         try {
@@ -186,7 +223,11 @@ const updateMetadata = () => {
             if (parent_id) {
                 subShelf.setAttribute('data-metadata-parent_id', parent_id)
             }
-        } catch (e) {}
+
+            updateShelfEntry(subShelf, shelf.data)
+        } catch (e) {
+            console.log('metadata error', e)
+        }
     })
 }
 
@@ -229,6 +270,7 @@ const insertSubshelves = () => {
             let shelf_id = subshelf.meta
             shelf.style.display = 'block'
             shelf.setAttribute(`data-metadata-subshelf`, true)
+            updateShelfEntry(shelf, subshelf.data)
             addEventListenerOnce(shelf, 'click', () => {
                 console.log('clicked', shelf_id)
                 handleSubSubshelfClick(shelf_id)
@@ -253,6 +295,7 @@ const updateShelfEntry = (element, data) => {
 
     element.id = ''
 
+    /*
     // Parse metadata from description
     const metadata = parseMetadata(descriptionEl.textContent)
 
@@ -261,12 +304,52 @@ const updateShelfEntry = (element, data) => {
         Object.keys(metadata).forEach((key) => {
             element.setAttribute(`data-metadata-${key}`, metadata[key])
         })
+    }*/
+
+    const countClone = countEl.cloneNode()
+    countClone.classList.add('naie-computed-count')
+
+    const subshelves = shelfState.getSubShelves(data.id)
+
+    const totalShelves = getShelfStoryTotal(data.id)
+
+    if (subshelves.length > 0) {
+        const storyCount = countClone.cloneNode()
+        storyCount.style.position = 'relative'
+        storyCount.style.right = 'auto'
+        storyCount.style.top = 'auto'
+        storyCount.style.transform = 'none'
+
+        const shelfCount = storyCount.cloneNode()
+        shelfCount.style.fontSize = '0.775rem'
+
+        countClone.style.display = 'flex'
+        countClone.style.flexDirection = 'column'
+        countClone.style.gap = '0.2rem'
+        countClone.style.alignItems = 'end'
+
+        storyCount.textContent = `${totalShelves} Stories`
+        shelfCount.textContent = `${subshelves.length} ${subshelves.length === 1 ? 'Shelf' : 'Shelves'}`
+
+        countClone.appendChild(storyCount)
+        countClone.appendChild(shelfCount)
+    } else {
+        countClone.textContent = `${totalShelves} Stories`
     }
+
+    countEl.style.display = 'none'
+    //console.log('updating data', data, totalStories)
+
+    element.insertBefore(countClone, element.lastChild)
+
+    const svgImage = getShelfSVG(totalShelves)
+
+    element.lastChild.replaceWith(svgImage)
 
     // Update the content of the elements
     titleEl.textContent = data.title
     descriptionEl.textContent = writeMetadata(data.description, {})
-    countEl.textContent = data.children?.length || 0
+    //countEl.textContent = totalStories
 
     return element
 }
@@ -280,8 +363,8 @@ const handleSubSubshelfClick = async (subSubshelfId) => {
     }
 }
 
-const navigateToShelf = async (shelf_id) => {
-    if (!sidebarLock) {
+const navigateToShelf = async (shelf_id, lockSidebar = true) => {
+    if (!sidebarLock && lockSidebar) {
         sidebarLock = lockSideBar()
     }
 
@@ -303,7 +386,7 @@ const navigateToShelf = async (shelf_id) => {
         simulateClick(shelfElement)
     }
     setTimeout(() => {
-        if (sidebarLock) {
+        if (sidebarLock && lockSidebar) {
             sidebarLock.unlock()
         }
         processStoryList()

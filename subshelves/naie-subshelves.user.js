@@ -3,18 +3,19 @@
 // @namespace    git.nystik
 // @version      1.0
 // @description  Adds nested shelves functionality
-// @match        https://novelai.net/stories*
-// @match        https://novelai.net/login
+// @match        https://novelai.net/*
 // @grant        none
 // @run-at       document-start
 // @require      ./modules/*
 // @require      ./lib/*
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=novelai.net
 // ==/UserScript==
 'use strict'
 
 // Config
 const persistent_metadata_key = 'naie_persistent_metadata'
 const shelfElementKey = 'naie_element'
+const shelfChildCountKey = 'naie_child_count'
 
 const appSelector = '#app'
 const settingsButtonSelector = 'button[aria-label="Open Settings"]'
@@ -50,15 +51,17 @@ const init = () => {
 
 // ;INJECT DEPENDENCIES;
 
-// force a reload when the app navigates between /stories and /login
-// this is to make sure we only load the script when we access /stories and not /login
+// Force a reload when the app navigates to or from /stories
+// This is to make sure we only load the script when we access /stories
+
 let previousPath = window.location.pathname
 const handleUrlChange = () => {
     const currentPath = window.location.pathname
 
-    const targetPaths = ['/stories', '/login']
-
-    if (targetPaths.includes(currentPath) && targetPaths.includes(previousPath) && currentPath !== previousPath) {
+    if (
+        (previousPath.startsWith('/stories') && !currentPath.startsWith('/stories')) ||
+        (!previousPath.startsWith('/stories') && currentPath.startsWith('/stories'))
+    ) {
         window.location.reload()
     }
 

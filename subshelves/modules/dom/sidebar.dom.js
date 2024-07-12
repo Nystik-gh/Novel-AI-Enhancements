@@ -6,7 +6,10 @@ const lockSideBar = (showLoader = true, forceLoader = false) => {
     console.log('locking sidebar')
     const sidebar = getSidebarEl()
 
-    const clone = cloneSidebar(sidebar)
+    const storyListEl = getStoryListEl()
+    const scroll = storyListEl.scrollTop
+
+    const clone = cloneSidebar(sidebar, scroll)
 
     sidebar.style.display = 'none'
 
@@ -62,7 +65,7 @@ const lockSideBar = (showLoader = true, forceLoader = false) => {
     return { unlock }
 }
 
-const cloneSidebar = (sidebar) => {
+const cloneSidebar = (sidebar, scrollValue = 0) => {
     const clone = sidebar.cloneNode(true)
     clone.id = 'sidebar-lock'
 
@@ -79,6 +82,9 @@ const cloneSidebar = (sidebar) => {
         clearDataset(s)
         s.setAttribute('data-locked-shelf', 'true')
     })
+
+    const storyList = clone.querySelector('.story-list')
+    storyList.scrollTop = scrollValue
 
     return clone
 }

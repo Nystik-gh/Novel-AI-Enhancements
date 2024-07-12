@@ -3,16 +3,17 @@
 // @namespace    git.nystik
 // @version      1.0
 // @description  Adds nested shelves functionality
-// @match        https://novelai.net/stories*
-// @match        https://novelai.net/login
+// @match        https://novelai.net/*
 // @grant        none
 // @run-at       document-start
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=novelai.net
 // ==/UserScript==
 'use strict'
 
 // Config
 const persistent_metadata_key = 'naie_persistent_metadata'
 const shelfElementKey = 'naie_element'
+const shelfChildCountKey = 'naie_child_count'
 
 const appSelector = '#app'
 const settingsButtonSelector = 'button[aria-label="Open Settings"]'
@@ -259,6 +260,42 @@ const buildShelfMap = (shelves) => {
     }
 
     return itemMap
+}
+
+const getNumChildrenFromDom = () => {
+    const shelves = document.querySelectorAll(
+        `${storyListSelector} > div[data-metadata-shelf_id]:not([role]):not([data-metadata-subshelf="true"])`,
+    )
+
+    //console.log('getNumChildrenFromDom', shelves)
+    for (const shelfEl of shelves) {
+        shelfEl.id = 'tmpShelfID'
+        let countEl = shelfEl.querySelector('#tmpShelfID > div:nth-child(3):not(.naie-computed-count)')
+        shelfEl.id = ''
+
+        const count = countEl?.firstChild?.textContent || '0'
+        const shelf_id = shelfEl.getAttribute('data-metadata-shelf_id')
+
+        shelfState.setShelfChildCount(shelf_id, parseInt(count))
+    }
+}
+
+const getShelfStoryTotal = (shelf_id) => {
+    // Retrieve the shelf object for the given shelf_id
+    const shelf = shelfState.getShelf(shelf_id)
+
+    // Initialize total count with the number of children in the current shelf
+    let total = shelf?.[shelfChildCountKey] || 0
+
+    // Get the direct subshelves of the current shelf
+    const subShelves = shelfState.getSubShelves(shelf_id) || []
+
+    // Recursively sum the number of children in all subshelves
+    subShelves.forEach((subshelf) => {
+        total += getShelfStoryTotal(subshelf.meta)
+    })
+
+    return total
 }
 
 
@@ -1441,6 +1478,41 @@ const initStoryListObserver = (storyListEl) => {
     storyListObserver.observe(storyListEl, observerOptions)
 }
 
+const triggerShelfObserver = () => {
+    console.log('trigger story list observer')
+    const storyListEl = getStoryListEl()
+    // Create a hidden div element
+    const hiddenDiv = document.createElement('div')
+    hiddenDiv.style.display = 'none'
+    hiddenDiv.setAttribute('data-metadata-processed', 'true')
+
+    // Append the hidden div to storyListEl to trigger the observer
+    storyListEl.appendChild(hiddenDiv)
+
+    // Clean up by removing the hidden div
+    storyListEl.removeChild(hiddenDiv)
+}
+
+const forceStoryListRefresh = async () => {
+    const storyLisEl = getStoryListEl()
+    if (activeShelf === null) {
+        const shelf = storyLisEl.querySelector('div[data-metadata-shelf_id]')
+        const shelf_id = shelf.getAttribute('data-metadata-shelf_id')
+        if (shelf_id) {
+            if (!sidebarLock) {
+                sidebarLock = lockSideBar(true, true)
+            }
+            await navigateToShelf(shelf_id, false)
+            await navigateToHome()
+            if (sidebarLock) {
+                sidebarLock.unlock()
+            }
+        }
+    } else {
+        await navigateToShelf(activeShelf)
+    }
+}
+
 const forcePopulateStoryList = async (specificItemId = null) => {
     console.log('forcePopulateStoryList')
     if (!shelfState) {
@@ -1560,6 +1632,7 @@ const mapShelfMetadata = async () => {
 const processStoryList = () => {
     if (!updateInProgress) {
         updateInProgress = true
+        getNumChildrenFromDom()
         updateMetadata()
         hideSubShelves()
         clearSubshelves()
@@ -1582,6 +1655,7 @@ const cleanShelfDescriptions = (spans) => {
 
 const updateMetadata = () => {
     const subShelves = document.querySelectorAll(`${storyListSelector} > div[data-metadata-shelf_id]`)
+    console.log('metadata subshelves', subShelves)
     subShelves.forEach((subShelf) => {
         const shelf_id = subShelf.getAttribute('data-metadata-shelf_id')
         try {
@@ -1591,7 +1665,11 @@ const updateMetadata = () => {
             if (parent_id) {
                 subShelf.setAttribute('data-metadata-parent_id', parent_id)
             }
-        } catch (e) {}
+
+            updateShelfEntry(subShelf, shelf.data)
+        } catch (e) {
+            console.log('metadata error', e)
+        }
     })
 }
 
@@ -1634,6 +1712,7 @@ const insertSubshelves = () => {
             let shelf_id = subshelf.meta
             shelf.style.display = 'block'
             shelf.setAttribute(`data-metadata-subshelf`, true)
+            updateShelfEntry(shelf, subshelf.data)
             addEventListenerOnce(shelf, 'click', () => {
                 console.log('clicked', shelf_id)
                 handleSubSubshelfClick(shelf_id)
@@ -1658,6 +1737,7 @@ const updateShelfEntry = (element, data) => {
 
     element.id = ''
 
+    /*
     // Parse metadata from description
     const metadata = parseMetadata(descriptionEl.textContent)
 
@@ -1666,12 +1746,52 @@ const updateShelfEntry = (element, data) => {
         Object.keys(metadata).forEach((key) => {
             element.setAttribute(`data-metadata-${key}`, metadata[key])
         })
+    }*/
+
+    const countClone = countEl.cloneNode()
+    countClone.classList.add('naie-computed-count')
+
+    const subshelves = shelfState.getSubShelves(data.id)
+
+    const totalShelves = getShelfStoryTotal(data.id)
+
+    if (subshelves.length > 0) {
+        const storyCount = countClone.cloneNode()
+        storyCount.style.position = 'relative'
+        storyCount.style.right = 'auto'
+        storyCount.style.top = 'auto'
+        storyCount.style.transform = 'none'
+
+        const shelfCount = storyCount.cloneNode()
+        shelfCount.style.fontSize = '0.775rem'
+
+        countClone.style.display = 'flex'
+        countClone.style.flexDirection = 'column'
+        countClone.style.gap = '0.2rem'
+        countClone.style.alignItems = 'end'
+
+        storyCount.textContent = `${totalShelves} Stories`
+        shelfCount.textContent = `${subshelves.length} ${subshelves.length === 1 ? 'Shelf' : 'Shelves'}`
+
+        countClone.appendChild(storyCount)
+        countClone.appendChild(shelfCount)
+    } else {
+        countClone.textContent = `${totalShelves} Stories`
     }
+
+    countEl.style.display = 'none'
+    //console.log('updating data', data, totalStories)
+
+    element.insertBefore(countClone, element.lastChild)
+
+    const svgImage = getShelfSVG(totalShelves)
+
+    element.lastChild.replaceWith(svgImage)
 
     // Update the content of the elements
     titleEl.textContent = data.title
     descriptionEl.textContent = writeMetadata(data.description, {})
-    countEl.textContent = data.children?.length || 0
+    //countEl.textContent = totalStories
 
     return element
 }
@@ -1685,8 +1805,8 @@ const handleSubSubshelfClick = async (subSubshelfId) => {
     }
 }
 
-const navigateToShelf = async (shelf_id) => {
-    if (!sidebarLock) {
+const navigateToShelf = async (shelf_id, lockSidebar = true) => {
+    if (!sidebarLock && lockSidebar) {
         sidebarLock = lockSideBar()
     }
 
@@ -1708,7 +1828,7 @@ const navigateToShelf = async (shelf_id) => {
         simulateClick(shelfElement)
     }
     setTimeout(() => {
-        if (sidebarLock) {
+        if (sidebarLock && lockSidebar) {
             sidebarLock.unlock()
         }
         processStoryList()
@@ -1836,7 +1956,10 @@ const lockSideBar = (showLoader = true, forceLoader = false) => {
     console.log('locking sidebar')
     const sidebar = getSidebarEl()
 
-    const clone = cloneSidebar(sidebar)
+    const storyListEl = getStoryListEl()
+    const scroll = storyListEl.scrollTop
+
+    const clone = cloneSidebar(sidebar, scroll)
 
     sidebar.style.display = 'none'
 
@@ -1892,7 +2015,7 @@ const lockSideBar = (showLoader = true, forceLoader = false) => {
     return { unlock }
 }
 
-const cloneSidebar = (sidebar) => {
+const cloneSidebar = (sidebar, scrollValue = 0) => {
     const clone = sidebar.cloneNode(true)
     clone.id = 'sidebar-lock'
 
@@ -1909,6 +2032,9 @@ const cloneSidebar = (sidebar) => {
         clearDataset(s)
         s.setAttribute('data-locked-shelf', 'true')
     })
+
+    const storyList = clone.querySelector('.story-list')
+    storyList.scrollTop = scrollValue
 
     return clone
 }
@@ -1940,6 +2066,34 @@ const createSidebarLoader = (lockedSidebar) => {
 
 
 /* ------- end of sidebar.dom.js ------- */
+
+
+/* ######### shelf-image.svg.js ######## */
+
+const shelfSvgMap = {
+    0: '<svg width="134" height="59" viewBox="0 0 134 59" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="svg-color-bg1 svg-fill" y="43" width="134" height="8" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="0.5" y="43.5" width="133" height="7" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="15" y="50" width="6" height="8" rx="1" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="15.5" y="50.5" width="5" height="7" rx="0.5" stroke="#F7F7F7"></rect></svg>',
+    1: '<svg width="134" height="59" viewBox="0 0 134 59" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="svg-color-bg1 svg-fill" y="43" width="134" height="8" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="0.5" y="43.5" width="133" height="7" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="15" y="50" width="6" height="8" rx="1" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="15.5" y="50.5" width="5" height="7" rx="0.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="32" y="11" width="10" height="33" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="32.5" y="11.5" width="9" height="32" rx="1.5" stroke="#F7F7F7"></rect></svg>',
+    5: '<svg width="134" height="59" viewBox="0 0 134 59" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="svg-color-bg1 svg-fill" y="43" width="134" height="8" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="0.5" y="43.5" width="133" height="7" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="15" y="50" width="6" height="8" rx="1" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="15.5" y="50.5" width="5" height="7" rx="0.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="16" y="6" width="10" height="38" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="16.5" y="6.5" width="9" height="37" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="32" y="11" width="10" height="33" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="32.5" y="11.5" width="9" height="32" rx="1.5" stroke="#F7F7F7"></rect></svg>',
+    10: '<svg width="134" height="59" viewBox="0 0 134 59" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="svg-color-bg1 svg-fill" y="43" width="134" height="8" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="0.5" y="43.5" width="133" height="7" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="15" y="50" width="6" height="8" rx="1" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="15.5" y="50.5" width="5" height="7" rx="0.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="16" y="6" width="10" height="38" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="16.5" y="6.5" width="9" height="37" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="32" y="11" width="10" height="33" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="32.5" y="11.5" width="9" height="32" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="69" y="8" width="14" height="36" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="69.5" y="8.5" width="13" height="35" rx="1.5" stroke="#F7F7F7"></rect></svg>',
+    15: '<svg width="134" height="59" viewBox="0 0 134 59" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="svg-color-bg1 svg-fill" y="43" width="134" height="8" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="0.5" y="43.5" width="133" height="7" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="15" y="50" width="6" height="8" rx="1" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="15.5" y="50.5" width="5" height="7" rx="0.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="16" y="6" width="10" height="38" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="16.5" y="6.5" width="9" height="37" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="32" y="11" width="10" height="33" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="32.5" y="11.5" width="9" height="32" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="45" y="10" width="7" height="34" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="45.5" y="10.5" width="6" height="33" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="69" y="8" width="14" height="36" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="69.5" y="8.5" width="13" height="35" rx="1.5" stroke="#F7F7F7"></rect></svg>',
+    20: '<svg width="134" height="59" viewBox="0 0 134 59" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="svg-color-bg1 svg-fill" y="43" width="134" height="8" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="0.5" y="43.5" width="133" height="7" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="15" y="50" width="6" height="8" rx="1" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="15.5" y="50.5" width="5" height="7" rx="0.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="16" y="6" width="10" height="38" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="16.5" y="6.5" width="9" height="37" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="32" y="11" width="10" height="33" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="32.5" y="11.5" width="9" height="32" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="45" y="10" width="7" height="34" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="45.5" y="10.5" width="6" height="33" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="69" y="8" width="14" height="36" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="69.5" y="8.5" width="13" height="35" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="78.3" y="15.5195" width="7" height="31.6992" rx="2" transform="rotate(-30 82 10.5)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="78.983" y="15.7025" width="6" height="30.6992" rx="1.5" transform="rotate(-30 82.683 10.683)" stroke="#F7F7F7"></rect></svg>',
+    25: '<svg width="134" height="59" viewBox="0 0 134 59" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="svg-color-bg1 svg-fill" y="43" width="134" height="8" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="0.5" y="43.5" width="133" height="7" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="15" y="50" width="6" height="8" rx="1" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="15.5" y="50.5" width="5" height="7" rx="0.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="16" y="6" width="10" height="38" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="16.5" y="6.5" width="9" height="37" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="32" y="11" width="10" height="33" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="32.5" y="11.5" width="9" height="32" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="45" y="10" width="7" height="34" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="45.5" y="10.5" width="6" height="33" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="69" y="8" width="14" height="36" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="69.5" y="8.5" width="13" height="35" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="78.3" y="15.5195" width="7" height="31.6992" rx="2" transform="rotate(-30 82 10.5)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="78.983" y="15.7025" width="6" height="30.6992" rx="1.5" transform="rotate(-30 82.683 10.683)" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="57" y="19.0195" width="8" height="25" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="57.5" y="19.5195" width="7" height="24" rx="1.5" stroke="#F7F7F7"></rect></svg>',
+    30: '<svg width="134" height="59" viewBox="0 0 134 59" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="svg-color-bg1 svg-fill" y="43" width="134" height="8" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="0.5" y="43.5" width="133" height="7" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="15" y="50" width="6" height="8" rx="1" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="15.5" y="50.5" width="5" height="7" rx="0.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="16" y="6" width="10" height="38" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="16.5" y="6.5" width="9" height="37" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="32" y="11" width="10" height="33" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="32.5" y="11.5" width="9" height="32" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="45" y="10" width="7" height="34" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="45.5" y="10.5" width="6" height="33" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="69" y="8" width="14" height="36" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="69.5" y="8.5" width="13" height="35" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="78.3" y="15.5195" width="7" height="31.6992" rx="2" transform="rotate(-30 82 10.5)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="78.983" y="15.7025" width="6" height="30.6992" rx="1.5" transform="rotate(-30 82.683 10.683)" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="57" y="19.0195" width="8" height="25" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="57.5" y="19.5195" width="7" height="24" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="9.06875" y="18.0078" width="8" height="25" rx="2" transform="rotate(15 9.46875 18.0078)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="9.4223" y="18.6202" width="7" height="24" rx="1.5" transform="rotate(15 9.8223 18.6202)" stroke="#F7F7F7"></rect></svg>',
+    40: '<svg width="134" height="59" viewBox="0 0 134 59" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="svg-color-bg1 svg-fill" y="43" width="134" height="8" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="0.5" y="43.5" width="133" height="7" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="15" y="50" width="6" height="8" rx="1" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="15.5" y="50.5" width="5" height="7" rx="0.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="16" y="6" width="10" height="38" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="16.5" y="6.5" width="9" height="37" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="32" y="11" width="10" height="33" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="32.5" y="11.5" width="9" height="32" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="45" y="10" width="7" height="34" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="45.5" y="10.5" width="6" height="33" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="69" y="8" width="14" height="36" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="69.5" y="8.5" width="13" height="35" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="78.3" y="15.5195" width="7" height="31.6992" rx="2" transform="rotate(-30 82 10.5)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="78.983" y="15.7025" width="6" height="30.6992" rx="1.5" transform="rotate(-30 82.683 10.683)" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="57" y="19.0195" width="8" height="25" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="57.5" y="19.5195" width="7" height="24" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="9.06875" y="18.0078" width="8" height="25" rx="2" transform="rotate(15 9.46875 18.0078)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="9.4223" y="18.6202" width="7" height="24" rx="1.5" transform="rotate(15 9.8223 18.6202)" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="62.8789" width="10" height="38" rx="2" transform="rotate(85.4507 62.8789 0)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="62.4201" y="0.538083" width="9" height="37" rx="1.5" transform="rotate(85.4507 62.4201 0.538083)" stroke="#F7F7F7"></rect></svg>',
+    55: '<svg width="134" height="59" viewBox="0 0 134 59" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="svg-color-bg1 svg-fill" y="43" width="134" height="8" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="0.5" y="43.5" width="133" height="7" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="15" y="50" width="6" height="8" rx="1" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="15.5" y="50.5" width="5" height="7" rx="0.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="16" y="6" width="10" height="38" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="16.5" y="6.5" width="9" height="37" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="32" y="11" width="10" height="33" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="32.5" y="11.5" width="9" height="32" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="45" y="10" width="7" height="34" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="45.5" y="10.5" width="6" height="33" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="69" y="8" width="14" height="36" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="69.5" y="8.5" width="13" height="35" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="78.3" y="15.5195" width="7" height="31.6992" rx="2" transform="rotate(-30 82 10.5)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="78.983" y="15.7025" width="6" height="30.6992" rx="1.5" transform="rotate(-30 82.683 10.683)" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="57" y="19.0195" width="8" height="25" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="57.5" y="19.5195" width="7" height="24" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="9.06875" y="18.0078" width="8" height="25" rx="2" transform="rotate(15 9.46875 18.0078)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="9.4223" y="18.6202" width="7" height="24" rx="1.5" transform="rotate(15 9.8223 18.6202)" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="62.8789" width="10" height="38" rx="2" transform="rotate(85.4507 62.8789 0)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="62.4201" y="0.538083" width="9" height="37" rx="1.5" transform="rotate(85.4507 62.4201 0.538083)" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="83" y="8.00098" width="7.75503" height="47.531" rx="2" transform="rotate(-40.1313 83 8.00098)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="83.7046" y="8.06099" width="6.75503" height="46.531" rx="1.5" transform="rotate(-40.1313 83.7046 8.06099)" stroke="#F7F7F7"></rect></svg>',
+    70: '<svg width="134" height="59" viewBox="0 0 134 59" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="svg-color-bg1 svg-fill" y="43" width="134" height="8" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="0.5" y="43.5" width="133" height="7" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="15" y="50" width="6" height="8" rx="1" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="15.5" y="50.5" width="5" height="7" rx="0.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="16" y="6" width="10" height="38" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="16.5" y="6.5" width="9" height="37" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="32" y="11" width="10" height="33" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="32.5" y="11.5" width="9" height="32" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="45" y="10" width="7" height="34" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="45.5" y="10.5" width="6" height="33" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="69" y="8" width="14" height="36" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="69.5" y="8.5" width="13" height="35" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="78.3" y="15.5195" width="7" height="31.6992" rx="2" transform="rotate(-30 82 10.5)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="78.983" y="15.7025" width="6" height="30.6992" rx="1.5" transform="rotate(-30 82.683 10.683)" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="57" y="19.0195" width="8" height="25" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="57.5" y="19.5195" width="7" height="24" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="9.06875" y="18.0078" width="8" height="25" rx="2" transform="rotate(15 9.46875 18.0078)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="9.4223" y="18.6202" width="7" height="24" rx="1.5" transform="rotate(15 9.8223 18.6202)" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="62.8789" width="10" height="38" rx="2" transform="rotate(85.4507 62.8789 0)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="62.4201" y="0.538083" width="9" height="37" rx="1.5" transform="rotate(85.4507 62.4201 0.538083)" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="83" y="8.00098" width="7.75503" height="47.531" rx="2" transform="rotate(-40.1313 83 8.00098)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="83.7046" y="8.06099" width="6.75503" height="46.531" rx="1.5" transform="rotate(-40.1313 83.7046 8.06099)" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="65.1523" y="20.1592" width="6.64128" height="18.4574" rx="2" transform="rotate(-157.911 65.1523 20.1592)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="64.8771" y="19.5079" width="5.64128" height="17.4574" rx="1.5" transform="rotate(-157.911 64.8771 19.5079)" stroke="#F7F7F7"></rect></svg>',
+}
+
+const getShelfSVG = (value) => {
+    const svgString = [...Object.entries(shelfSvgMap)].reverse().find(([k]) => value >= Number(k))?.[1] ?? shelfSvgMap[0]
+    console.log('svg', value, svgString)
+    const template = document.createElement('template')
+    template.innerHTML = svgString.trim() // .trim() is important to avoid issues with leading whitespace
+    return template.content.firstChild
+}
+
+
+/* ----- end of shelf-image.svg.js ----- */
 
 
 /* #### clone-dropdown.preflight.js #### */
@@ -2168,6 +2322,21 @@ const createShelfState = (shelfData) => {
         return null
     }
 
+    const setShelfChildCount = (shelfId, count) => {
+        const shelfData = shelfDataMap.get(shelfId)
+        if (shelfData !== undefined) {
+            shelfDataMap.set(shelfId, { ...shelfData, [shelfChildCountKey]: count })
+        }
+    }
+
+    const getShelfChildCount = (shelfId) => {
+        const shelfData = shelfDataMap.get(shelfId)
+        if (shelfData) {
+            return shelfData[shelfChildCountKey]
+        }
+        return null
+    }
+
     const getSubShelves = (parentId) => {
         return Array.from(shelfDataMap.values()).filter((s) => getMetadataObject(s)?.parent_id === parentId)
     }
@@ -2212,6 +2381,8 @@ const createShelfState = (shelfData) => {
         getShelfElement,
         getSubShelves,
         getNonDescendants,
+        getShelfChildCount,
+        setShelfChildCount,
     }
 }
 
@@ -2382,7 +2553,6 @@ const preShelfPatch = (request) => {
     if (shelfState) {
         try {
             shelfState.upsertShelf(shelf_id, decodeShelf(body))
-            insertBreadcrumbs(shelf_id)
             processStoryList()
         } catch (e) {
             console.error('Error updating shelf state:', e)
@@ -2539,6 +2709,8 @@ const postShelfPatch = async (response) => {
         statusText: response.statusText,
         headers: response.headers,
     })
+
+    forceStoryListRefresh()
 
     return modifiedResponse
 }
@@ -3010,15 +3182,17 @@ const xhook = (function () {
 
 
 
-// force a reload when the app navigates between /stories and /login
-// this is to make sure we only load the script when we access /stories and not /login
+// Force a reload when the app navigates to or from /stories
+// This is to make sure we only load the script when we access /stories
+
 let previousPath = window.location.pathname
 const handleUrlChange = () => {
     const currentPath = window.location.pathname
 
-    const targetPaths = ['/stories', '/login']
-
-    if (targetPaths.includes(currentPath) && targetPaths.includes(previousPath) && currentPath !== previousPath) {
+    if (
+        (previousPath.startsWith('/stories') && !currentPath.startsWith('/stories')) ||
+        (!previousPath.startsWith('/stories') && currentPath.startsWith('/stories'))
+    ) {
         window.location.reload()
     }
 

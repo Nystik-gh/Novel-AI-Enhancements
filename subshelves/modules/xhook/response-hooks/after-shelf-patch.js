@@ -17,5 +17,7 @@ const postShelfPatch = async (response) => {
         headers: response.headers,
     })
 
+    forceStoryListRefresh()
+
     return modifiedResponse
 }

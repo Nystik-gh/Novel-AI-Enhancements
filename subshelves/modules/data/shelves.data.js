@@ -78,3 +78,39 @@ const buildShelfMap = (shelves) => {
 
     return itemMap
 }
+
+const getNumChildrenFromDom = () => {
+    const shelves = document.querySelectorAll(
+        `${storyListSelector} > div[data-metadata-shelf_id]:not([role]):not([data-metadata-subshelf="true"])`,
+    )
+
+    //console.log('getNumChildrenFromDom', shelves)
+    for (const shelfEl of shelves) {
+        shelfEl.id = 'tmpShelfID'
+        let countEl = shelfEl.querySelector('#tmpShelfID > div:nth-child(3):not(.naie-computed-count)')
+        shelfEl.id = ''
+
+        const count = countEl?.firstChild?.textContent || '0'
+        const shelf_id = shelfEl.getAttribute('data-metadata-shelf_id')
+
+        shelfState.setShelfChildCount(shelf_id, parseInt(count))
+    }
+}
+
+const getShelfStoryTotal = (shelf_id) => {
+    // Retrieve the shelf object for the given shelf_id
+    const shelf = shelfState.getShelf(shelf_id)
+
+    // Initialize total count with the number of children in the current shelf
+    let total = shelf?.[shelfChildCountKey] || 0
+
+    // Get the direct subshelves of the current shelf
+    const subShelves = shelfState.getSubShelves(shelf_id) || []
+
+    // Recursively sum the number of children in all subshelves
+    subShelves.forEach((subshelf) => {
+        total += getShelfStoryTotal(subshelf.meta)
+    })
+
+    return total
+}

@@ -60,6 +60,21 @@ const createShelfState = (shelfData) => {
         return null
     }
 
+    const setShelfChildCount = (shelfId, count) => {
+        const shelfData = shelfDataMap.get(shelfId)
+        if (shelfData !== undefined) {
+            shelfDataMap.set(shelfId, { ...shelfData, [shelfChildCountKey]: count })
+        }
+    }
+
+    const getShelfChildCount = (shelfId) => {
+        const shelfData = shelfDataMap.get(shelfId)
+        if (shelfData) {
+            return shelfData[shelfChildCountKey]
+        }
+        return null
+    }
+
     const getSubShelves = (parentId) => {
         return Array.from(shelfDataMap.values()).filter((s) => getMetadataObject(s)?.parent_id === parentId)
     }
@@ -104,5 +119,7 @@ const createShelfState = (shelfData) => {
         getShelfElement,
         getSubShelves,
         getNonDescendants,
+        getShelfChildCount,
+        setShelfChildCount,
     }
 }
