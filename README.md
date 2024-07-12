@@ -7,19 +7,20 @@ This is a monorepo for potentially multiple userscripts to enhance the functiona
 ## Table of Contents
 
 -   [NAIE Subshelves](#naie-subshelves)
-    -   [How to Install](#how-to-install)
-    -   [Mobile Installation (Android)](#mobile-installation-android)
-        -   [Firefox Nightly with Violentmonkey](#firefox-nightly-with-violentmonkey)
-        -   [Firefox for Android with Tampermonkey](#firefox-for-android-with-tampermonkey)
-    -   [Key Features](#key-features)
-    -   [How It Works](#how-it-works)
-    -   [Dependencies](#dependency)
-    -   [Potential Future Features](#potential-future-features)
-    -   [Important Notes](#important-notes)
-    -   [Compatibility](#compatibility)
-    -   [Mobile Compatibility (Android)](#mobile-compatibility-android)
-        -   [iOS Compatibility](#ios-compatibility)
-    -   [Reporting Compatibility Issues](#reporting-compatibility-issues)
+-   [How to Install](#how-to-install)
+-   [Mobile Installation (Android)](#mobile-installation-android)
+    -   [Firefox Nightly with Violentmonkey](#firefox-nightly-with-violentmonkey)
+    -   [Firefox for Android with Tampermonkey](#firefox-for-android-with-tampermonkey)
+-   [Key Features](#key-features)
+-   [How It Works](#how-it-works)
+-   [Dependencies](#dependency)
+-   [Potential Future Features](#potential-future-features)
+-   [Important Notes](#important-notes)
+-   [Compatibility](#compatibility)
+-   [Mobile Compatibility](#mobile-compatibility)
+    -   [Android Compatibility](#android-compatibility)
+    -   [iOS Compatibility](#ios-compatibility)
+-   [Reporting Compatibility Issues](#reporting-compatibility-issues)
 -   [Feedback](#feedback)
 -   [License](#license)
 -   [Disclaimer](#disclaimer)
@@ -28,7 +29,7 @@ This is a monorepo for potentially multiple userscripts to enhance the functiona
 
 NAIE Subshelves adds nested shelves to Novel AI, allowing users to create subshelves within existing shelves. This feature helps organize stories more effectively.
 
-### How to Install
+## How to Install
 
 1. First, install a userscript extension for your browser:
 
@@ -41,9 +42,11 @@ NAIE Subshelves adds nested shelves to Novel AI, allowing users to create subshe
 
 4. Refresh your Novel AI page, and the NAIE Subshelves features should now be available.
 
-### Mobile Installation (Android)
+## Mobile Installation (Android)
 
-#### Firefox Nightly with Violentmonkey
+Note: For information about iOS support, please refer to the [iOS Compatibility](#ios-compatibility) section below.
+
+### Firefox Nightly with Violentmonkey
 
 1. Install [Firefox Nightly](https://play.google.com/store/apps/details?id=org.mozilla.fenix) from the Google Play Store.
 
@@ -53,7 +56,7 @@ NAIE Subshelves adds nested shelves to Novel AI, allowing users to create subshe
 
 4. Once Violentmonkey is installed, follow steps 2-4 from the desktop installation instructions above.
 
-#### Firefox for Android with Tampermonkey
+### Firefox for Android with Tampermonkey
 
 1. Install [Firefox for Android](https://play.google.com/store/apps/details?id=org.mozilla.firefox) from the Google Play Store.
 
@@ -63,27 +66,25 @@ NAIE Subshelves adds nested shelves to Novel AI, allowing users to create subshe
 
 4. Once Tampermonkey is installed, follow steps 2-4 from the desktop installation instructions above.
 
-Note: For information about iOS support, please refer to the [Mobile Compatibility](#mobile-compatibility) section below.
-
-### Key Features
+## Key Features
 
 -   Create subshelves within shelves
 -   Delete subshelves
 -   Move subshelves
 
-### How It Works
+## How It Works
 
 -   The script is made to integrate as seamlessly as possible with the existing platform, cloning existing UI elements.
 -   Parent shelf IDs are stored in the shelf description as metadata.
 -   Most default Novel AI behaviors are maintained.
 
-### Dependencies
+## Dependencies
 
 This script has one dependency (bundled with the script):
 
 -   xhook: Used for hooking into fetch requests, which is necessary to handle metadata when loading and saving.
 
-### Potential Future Features
+## Potential Future Features
 
 The following features may be implemented at some point in no particular order:
 
@@ -93,13 +94,13 @@ The following features may be implemented at some point in no particular order:
 -   Better support for Japanese UI
 -   Make subshelves respect sorting setting (currently subshelves are sorted alphabetically)
 
-### Important Notes
+## Important Notes
 
 -   The script may stop working if the Novel AI website design changes.
 -   If a shelf is deleted, its stories and subshelves will move to the root level, not to a parent shelf.
 -   Subshelf navigation and actions are a bit slower than original functionality, this is particularly noticeable on mobile.
 
-### Compatibility
+## Compatibility
 
 The script has been tested and confirmed to work on:
 
@@ -109,22 +110,24 @@ The script has been tested and confirmed to work on:
 
 Note: Greasemonkey is not currently supported. The script does not work on Greasemonkey, and I have very little interest in figuring out why. If you're a Greasemonkey user and want to make it work, you're welcome to investigate and contribute fixes.
 
-### Mobile Compatibility (Android)
+## Mobile Compatibility
+
+Please note that mobile performance may be slower compared to desktop, particularly when dealing with large numbers of shelves and subshelves.
+
+### Android Compatibility
 
 The script has been tested and confirmed to work on:
 
 -   Firefox Nightly with Violentmonkey
 -   Firefox for Android with Tampermonkey
 
-Please note that mobile performance may be slower compared to desktop, particularly when dealing with large numbers of shelves and subshelves.
-
-#### iOS Compatibility
+### iOS Compatibility
 
 It is possible to run userscripts on iOS using a Safari extension. For more information on how to set this up, you can refer to the [iOS Userscripts project on GitHub](https://github.com/quoid/userscripts). It could also possibly work with [Orion Browser](https://apps.apple.com/us/app/orion-browser-by-kagi/id14844982000) with Violentmonkey.
 
 However, I do not have an iOS device and so cannot test either if these solutions. If you successfully run the script on iOS, please consider sharing your experience to help other users.
 
-### Reporting Compatibility Issues
+## Reporting Compatibility Issues
 
 If you encounter any compatibility issues with the supported browsers and userscript extensions, or if you successfully use the script with other setups, please report your findings in the project's issue tracker. This will help improve compatibility information for all users.
 
