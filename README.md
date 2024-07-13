@@ -93,6 +93,7 @@ The following features may be implemented at some point in no particular order:
 -   Automatic navigation to the active story's shelf on page load
 -   Better support for Japanese UI
 -   Make subshelves respect sorting setting (currently subshelves are sorted alphabetically)
+-   Improve design for compact view
 
 ## Important Notes
 

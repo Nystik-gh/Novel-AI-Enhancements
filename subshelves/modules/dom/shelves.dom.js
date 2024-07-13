@@ -299,7 +299,7 @@ const removeEmptyShelfBox = () => {
     if (!storyList) {
         return
     }
-    const storyElement = storyList.querySelector('div[role="button][data-id]')
+    const storyElement = storyList.querySelector('div[role="button"][data-id]')
 
     if (!storyElement && storyList.children?.length === 1) {
         //storyList.removeChild(storyList.firstChild)
