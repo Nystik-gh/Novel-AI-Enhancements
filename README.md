@@ -29,6 +29,8 @@ This is a monorepo for potentially multiple userscripts to enhance the functiona
 
 NAIE Subshelves adds nested shelves to Novel AI, allowing users to create subshelves within existing shelves. This feature helps organize stories more effectively.
 
+![Demo](images/demo.gif){height=250px}
+
 ## How to Install
 
 1. First, install a userscript extension for your browser:
