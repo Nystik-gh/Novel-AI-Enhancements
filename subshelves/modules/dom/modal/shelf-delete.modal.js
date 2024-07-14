@@ -1,9 +1,7 @@
 const waitForShelfDeleteModal = async (timeout) => {
-    console.log('waitForShelfSettingsModal')
     let { modal, overlay } = await waitForModal(timeout)
 
     const buttons = modal.firstChild.lastChild.querySelectorAll('button')
-    console.log('delete modal buttons', buttons, buttons.length)
 
     if (buttons.length !== 1) {
         throw new Error('Not a delete modal')
@@ -17,7 +15,6 @@ const waitForShelfDeleteModal = async (timeout) => {
 
 const OverlayClickListener = (overlay, modal, callback, oneShot = false) => {
     const outsideClickListener = (event) => {
-        console.log('overlay listener', event.composedPath(), event.composedPath().includes(modal))
         if (!event.composedPath().includes(modal)) {
             if (oneShot) {
                 removeClickListener()
@@ -27,7 +24,6 @@ const OverlayClickListener = (overlay, modal, callback, oneShot = false) => {
     }
 
     const removeClickListener = () => {
-        console.log('removing outside listener')
         document.removeEventListener('click', outsideClickListener)
     }
 

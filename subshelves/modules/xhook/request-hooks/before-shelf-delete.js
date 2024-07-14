@@ -8,7 +8,6 @@ const preShelfDelete = (request) => {
                 sidebarLock = lockSideBar()
             }*/
             const shelf = shelfState.getShelfByRemoteId(remoteId)
-            console.log('delete id', shelf.meta)
             const parent = getMetadataObject(shelf)?.parent_id
             shelfState.deleteShelf(shelf.meta)
 

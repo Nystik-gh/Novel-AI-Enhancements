@@ -17,7 +17,7 @@ const initStoryListObserver = (storyListEl) => {
     }
 
     if (storyListObserver) {
-        console.log('observer already initiated, aborting...')
+        //console.log('observer already initiated, aborting...')
         return
     }
 
@@ -57,7 +57,6 @@ const initMenubarObserver = (menubarEl) => {
                 const storyListEl = getStoryListEl()
                 const newShelfButton = findNewShelfButton()
                 if (!newShelfButton) {
-                    console.log('no new shelf button, empty list')
                     if (storyListObserver) {
                         storyListObserver.disconnect()
                         storyListObserver = null
@@ -67,7 +66,6 @@ const initMenubarObserver = (menubarEl) => {
                 // if there is no new shelf button, then we are on the empty story list
                 if (storyListEl && emptyStoryListFlag) {
                     emptyStoryListFlag = false
-                    console.log('StoryList element added to DOM.')
                     observer.disconnect()
                     preProcessSidebar().then(() => {
                         // Resume observing after mapShelfMetadata completes
@@ -85,7 +83,6 @@ const initMenubarObserver = (menubarEl) => {
 
 // not used, remove?
 const triggerShelfObserver = () => {
-    console.log('trigger story list observer')
     const storyListEl = getStoryListEl()
 
     const hiddenDiv = document.createElement('div')
@@ -118,7 +115,6 @@ const forceStoryListRefresh = async () => {
 }
 
 const forcePopulateStoryList = async (specificItemId = null) => {
-    console.log('forcePopulateStoryList')
     if (!shelfState) {
         return
     }
@@ -146,21 +142,20 @@ const forcePopulateStoryList = async (specificItemId = null) => {
         const checkLoadedItems = () => {
             if (specificItemId) {
                 if (isSpecificItemLoaded(specificItemId)) {
-                    console.log(`Item with ID ${specificItemId} is loaded.`)
+                    //console.log(`Item with ID ${specificItemId} is loaded.`)
                     scrollToTop()
                     resolve()
                     return
                 }
             } else {
                 if (getLoadedItemsCount() >= totalItems) {
-                    console.log('All items are loaded.')
+                    //console.log('All items are loaded.')
                     scrollToTop()
                     resolve()
                     return
                 }
             }
 
-            console.log('scrolling')
             scrollToEnd()
             setTimeout(checkLoadedItems, 50)
         }
@@ -171,8 +166,6 @@ const forcePopulateStoryList = async (specificItemId = null) => {
 
 // map metadata injected into description as data attributes on the shelf element
 const mapShelfMetadata = async () => {
-    console.log('mapShelfMetadata')
-
     const storyListDiv = getStoryListEl()
 
     if (!storyListDiv) {
@@ -249,7 +242,6 @@ const cleanShelfDescriptions = (spans) => {
 
 const updateMetadata = () => {
     const subShelves = document.querySelectorAll(`${storyListSelector} > div[data-metadata-shelf_id]`)
-    console.log('metadata subshelves', subShelves)
     subShelves.forEach((subShelf) => {
         const shelf_id = subShelf.getAttribute('data-metadata-shelf_id')
         try {
@@ -279,7 +271,6 @@ const hideSubShelves = () => {
 
 const restoreSubshelvesOfParent = (parent_id) => {
     const subShelves = document.querySelectorAll(`${storyListSelector} > div[data-metadata-parent_id="${parent_id}"]`)
-    console.log('restoring subshelves', subShelves)
     subShelves.forEach((subShelf) => {
         subShelf.style.display = 'block'
     })
@@ -308,7 +299,6 @@ const removeEmptyShelfBox = () => {
 }
 
 const insertSubshelves = () => {
-    console.log('insertSubshelves', shelfState.getMap())
     if (activeShelf) {
         let currentShelf = activeShelf
         let subshelves = shelfState.getSubShelves(currentShelf).sort((a, b) => b.data.title.localeCompare(a.data.title))
@@ -325,12 +315,10 @@ const insertSubshelves = () => {
             shelf.setAttribute(`data-metadata-subshelf`, true)
             updateShelfEntry(shelf, subshelf.data)
             addEventListenerOnce(shelf, 'click', () => {
-                console.log('clicked', shelf_id)
                 handleSubSubshelfClick(shelf_id)
             })
             addEventListenerOnce(shelf, 'contextmenu', (e) => {
                 e.preventDefault()
-                console.log('onContextMenu', shelf_id)
                 createContextMenu(shelf_id, e.pageX, e.pageY)
             })
             storyList.prepend(shelf)
@@ -390,7 +378,6 @@ const updateShelfEntry = (element, data) => {
     }
 
     countEl.style.display = 'none'
-    //console.log('updating data', data, totalStories)
 
     element.insertBefore(countClone, element.lastChild)
 
@@ -418,19 +405,14 @@ const navigateToShelf = async (shelf_id, lockSidebar = true) => {
     }
 
     if (activeShelf) {
-        console.log('navigating home as part of navigate to shelf')
         await navigateToHome()
     }
 
-    console.log('navigating to shelf', shelf_id)
-
     if (shelf_id) {
         // Wait for the shelf to appear in the DOM
-        console.log('waiting for', `div[data-metadata-shelf_id="${shelf_id}"]:not([data-metadata-subshelf])`)
         const selector = `div[data-metadata-shelf_id="${shelf_id}"]:not([data-metadata-subshelf])`
         const shelfElement = await waitForElement(selector, 1000)
 
-        console.log('clicking', `div[data-metadata-shelf_id="${shelf_id}"]`)
         // Simulate click on the shelf
         simulateClick(shelfElement)
     }
@@ -450,14 +432,12 @@ const navigateToHome = async () => {
 
         // avoids a race condition in event queue
         await setTimeoutPromise(0)
-        console.log('try navigate home', shelf_id, homeButton)
 
         simulateClick(homeButton)
         await waitForHome()
 
         const selector = `div[data-metadata-shelf_id="${shelf_id}"]:not([data-metadata-subshelf])`
         await waitForElement(selector)
-        console.log('navigated home')
     }
 }
 
@@ -475,7 +455,6 @@ const createNewShelf = async () => {
     await navigateToHome()
 
     let newShelfButton = findNewShelfButton()
-    console.log('newshelfButton', newShelfButton.dataset)
     if (newShelfButton.dataset['newSubShelf'] !== 'true') {
         activeShelf = parent_id
         simulateClick(newShelfButton)
@@ -508,7 +487,6 @@ const processNewShelf = async (shelf_id) => {
     const newShelfButton = findNewShelfButton()
     newShelfButton.disabled = true
 
-    console.log('attempting to inject id: ', shelf_id)
     const inSubshelf = activeShelf !== null
     let parent_id = null
     if (inSubshelf) {
@@ -533,14 +511,12 @@ const processNewShelf = async (shelf_id) => {
     let metadata = { shelf_id }
     if (parent_id) {
         metadata = { ...metadata, parent_id }
-        console.log('add parent id to metadata', metadata)
     }
 
     await updateShelfStateViaDescription(newShelf, metadata)
     newShelfButton.disabled = false
 
     if (parent_id) {
-        console.log('navigating back to', parent_id)
         navigateToShelf(parent_id)
     }
 

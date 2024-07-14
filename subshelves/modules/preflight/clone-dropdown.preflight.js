@@ -5,7 +5,6 @@ const cloneSelectControl = async () => {
         simulateClick(getSettingsButton())
 
         const settingsModal = await waitForSettingsModal(null, true)
-        console.log('settings modal', settingsModal)
 
         const { fontSelect } = await settingsModal.panels.getThemePanel()
 
@@ -20,8 +19,6 @@ const cloneSelectControl = async () => {
     `)
 
         simulateClick(settingsModal.closeButton)
-
-        console.log('successfully created select control template', selectControlTemplate)
     } catch (e) {
         console.error(e)
         throw new Error('Failed to clone select element')

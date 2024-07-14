@@ -6,7 +6,6 @@ const createContextMenuTemplate = () => {
     }
     const ctx = [...document.querySelectorAll('body > div:not(#__next)')].find((e) => identifyContextMenu(e)?.contextMenu)
     const { contextMenu, editButton, deleteButton } = identifyContextMenu(ctx) || {}
-    console.log('found contextmenu?', contextMenu)
     if (contextMenu) {
         editButton.classList.add('naie-context-edit')
         deleteButton.classList.add('naie-context-delete')
@@ -21,7 +20,6 @@ const createContextMenu = (shelf_id, x, y) => {
     if (contextMenuTemplate === null) {
         return
     }
-    console.log(contextMenuTemplate)
 
     const menu = contextMenuTemplate.cloneNode(true)
     const editButton = menu.querySelector('.naie-context-edit')
@@ -34,7 +32,6 @@ const createContextMenu = (shelf_id, x, y) => {
     const handle = OnClickOutside(
         menu,
         () => {
-            console.log('outside click handler')
             document.body.removeChild(menu)
         },
         true,
@@ -72,7 +69,6 @@ const waitForContextMenu = (isVisibleCheck, onlyNew, timeout) => {
                 if (isVisibleCheck && contextMenu.style.visibility === 'hidden') {
                     return
                 }
-                console.log('stop observing contextmenu')
                 observer.disconnect()
                 resolve({ contextMenu, editButton, deleteButton })
             }
@@ -101,7 +97,6 @@ const waitForContextMenu = (isVisibleCheck, onlyNew, timeout) => {
             }, timeout)
         }
 
-        console.log('observing for contextmenu')
         observer.observe(document.body, config)
     })
 }
@@ -118,7 +113,6 @@ const identifyContextMenu = (node) => {
     if (node.tagName === 'DIV' && node.style) {
         const buttons = node.querySelectorAll('button[aria-disabled="false"]')
 
-        console.log('identifycontextmenu buttons', buttons)
         buttons.forEach((button) => {
             const iconDiv = button.querySelector('div > div')
             if (findElementWithMaskImage([iconDiv], ['edit', '.svg']).length > 0) {
@@ -211,7 +205,6 @@ const simulateContextDelete = async (shelf_id) => {
         overlay,
         modal,
         () => {
-            console.log('click outside delete modal')
             navigateToShelf(parent_id)
             if (sidebarLock) {
                 sidebarLock.unlock()
@@ -221,7 +214,6 @@ const simulateContextDelete = async (shelf_id) => {
     )
 
     addEventListenerOnce(closeButton, 'click', () => {
-        console.log('click close delete modal')
         handle.remove()
         navigateToShelf(parent_id)
         if (sidebarLock) {

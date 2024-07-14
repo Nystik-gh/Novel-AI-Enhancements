@@ -82,7 +82,6 @@ const getNumChildrenFromDom = () => {
         `${storyListSelector} > div[data-metadata-shelf_id]:not([role]):not([data-metadata-subshelf="true"])`,
     )
 
-    //console.log('getNumChildrenFromDom', shelves)
     for (const shelfEl of shelves) {
         shelfEl.id = 'tmpShelfID'
         let countEl = shelfEl.querySelector('#tmpShelfID > div:nth-child(3):not(.naie-computed-count)')

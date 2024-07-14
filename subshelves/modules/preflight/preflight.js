@@ -9,7 +9,7 @@ const preflight = async () => {
         const app = await waitForElement(appSelector)
 
         const lock = lockLoader(app)
-        console.log('locked loader')
+        //console.log('locked loader')
 
         await waitForElement(settingsButtonSelector)
 
@@ -55,7 +55,7 @@ const lockLoader = (app) => {
     document.documentElement.append(clone)
 
     const unlock = () => {
-        console.log('unlocking loader')
+        //console.log('unlocking loader')
         document.documentElement.removeChild(clone)
     }
     return { unlock }

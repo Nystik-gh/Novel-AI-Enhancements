@@ -80,7 +80,6 @@ const constructSelectControl = (options, selectedValue, callback) => {
     const inputWrapper = selectControl.querySelector('.naie-select-input-wrapper')
 
     const selectedOption = options.find((option) => option.value === selectedValue)
-    console.log('selected option', selectedOption, selectedValue)
     if (selectedOption) {
         singleValueElement.textContent = selectedOption.title
     }
@@ -111,7 +110,6 @@ const constructSelectControl = (options, selectedValue, callback) => {
     }
 
     const toggleDropdown = () => {
-        console.log('toggle dropdown', dropdown.style.display, dropdown.style.display === 'none')
         dropdown.style.display === 'none' ? showDropdown() : hideDropdown()
     }
 
@@ -125,7 +123,6 @@ const constructSelectControl = (options, selectedValue, callback) => {
         outsideClickHandle = OnClickOutside(
             selectControl,
             () => {
-                console.log('outside click handler')
                 hideDropdown()
             },
             true,

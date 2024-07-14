@@ -1,12 +1,10 @@
 const initModalObserver = () => {
     if (modalObserver) {
-        console.log('modal observer already initiated, aborting...')
+        //console.log('modal observer already initiated, aborting...')
         return
     }
 
     modalObserver = true
-
-    console.log('init modal observer')
 
     const observerOptions = {
         childList: true,

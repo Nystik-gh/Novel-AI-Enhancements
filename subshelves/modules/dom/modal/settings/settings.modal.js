@@ -3,7 +3,6 @@ const getSettingsButton = () => {
 }
 
 const waitForSettingsModal = async (timeout, hidden = false) => {
-    console.log('waitForSettingsModal')
     const { modal, overlay } = await waitForModal(timeout)
 
     if (hidden) {
@@ -16,13 +15,9 @@ const waitForSettingsModal = async (timeout, hidden = false) => {
         throw new Error('No settings sidebar found')
     }
 
-    console.log('sidebar', sidebar.cloneNode(true), sidebar.firstElementChild?.tagName)
-
     const { tabs, changelog, logout, closeButton } = isMobileView()
         ? await handleSettingsMobile(modal, sidebar)
         : await handleSettingsDesktop(modal, sidebar)
-
-    console.log('tabs', tabs, changelog, logout)
 
     return {
         modal,
@@ -43,8 +38,6 @@ const waitForSettingsModal = async (timeout, hidden = false) => {
 }
 
 const handleSettingsDesktop = async (modal, sidebar) => {
-    console.log('handle settings desktop')
-
     do {
         await sleep(50)
     } while (sidebar?.firstChild?.nextSibling?.querySelectorAll('button').length !== 7)
@@ -74,7 +67,6 @@ const handleSettingsDesktop = async (modal, sidebar) => {
 }
 
 const handleSettingsMobile = async (modal, sidebar) => {
-    console.log('handle settings mobile')
     const buttons = sidebar.querySelectorAll('button')
 
     if (buttons.length !== 9) {

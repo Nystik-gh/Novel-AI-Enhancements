@@ -3,7 +3,6 @@ const getSidebarEl = () => {
 }
 
 const lockSideBar = (showLoader = true, forceLoader = false) => {
-    console.log('locking sidebar')
     const sidebar = getSidebarEl()
 
     const storyListEl = getStoryListEl()
@@ -22,7 +21,6 @@ const lockSideBar = (showLoader = true, forceLoader = false) => {
 
     const addLoader = () => {
         loaderElement = createSidebarLoader(clone)
-        console.log('sidebarLoader', loaderElement)
         clone.replaceWith(loaderElement)
         loaderShownTime = Date.now()
     }
@@ -49,7 +47,6 @@ const lockSideBar = (showLoader = true, forceLoader = false) => {
                 if (currentClone) {
                     currentClone.remove()
                     sidebarLock = null
-                    console.log('sidebar unlocked')
                 }
             }, remainingTime)
         } else {
@@ -57,7 +54,6 @@ const lockSideBar = (showLoader = true, forceLoader = false) => {
             if (currentClone) {
                 currentClone.remove()
                 sidebarLock = null
-                console.log('sidebar unlocked')
             }
         }
     }

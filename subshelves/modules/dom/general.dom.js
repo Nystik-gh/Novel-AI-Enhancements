@@ -1,5 +1,4 @@
 const simulateClick = (element) => {
-    console.log('simulateClick', element)
     if (element) {
         element.click()
     }
@@ -74,7 +73,6 @@ const OnClickOutside = (element, callback, oneShot = false) => {
     }
 
     const removeClickListener = () => {
-        console.log('removing outside listener')
         document.removeEventListener('click', outsideClickListener)
     }
 

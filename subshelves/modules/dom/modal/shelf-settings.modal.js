@@ -1,5 +1,4 @@
 const waitForShelfSettingsModal = async (timeout) => {
-    console.log('waitForShelfSettingsModal')
     let { modal, overlay, closeButton } = await waitForModal(timeout)
 
     const title = modal.querySelector('input')
@@ -13,7 +12,6 @@ const waitForShelfSettingsModal = async (timeout) => {
 }
 
 const constructShelfSettingModal = ({ fields: { title, description }, modal, ...rest }) => {
-    console.log('constructShelfSettingModal')
     const cleanMetadata = (text) => {
         return writeMetadata(text, {})
     }
@@ -62,13 +60,11 @@ const constructShelfSettingModal = ({ fields: { title, description }, modal, ...
             ? descriptionMetadata.parent_id
             : 'noshelf'
     const dropdown = constructSelectControl(selectableShelves, selectedValue, (value) => {
-        console.log('old meta', { ...descriptionMetadata })
         if (value === 'noshelf') {
             delete descriptionMetadata.parent_id
         } else {
             descriptionMetadata.parent_id = value
         }
-        console.log('new meta', descriptionMetadata)
 
         updateNativeTextbox(clonedTextarea.value)
     })

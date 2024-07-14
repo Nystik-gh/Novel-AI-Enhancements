@@ -11,15 +11,12 @@ const preShelfPut = (request) => {
         processNewShelf(shelf_id) // This will trigger a new PUT request
         activePutShelfRequests.set(shelf_id, 1)
 
-        console.log('First request marked to be blocked. body:', body, 'data:', data)
         options.shouldBlock = true
 
         return options
     }
 
-    console.log('raw description', data.description)
     data.description = stripTransientMetadataFromText(data.description)
-    console.log('cleaned description', data.description)
 
     body.data = encodeBase64(JSON.stringify(data))
 

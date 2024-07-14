@@ -5,9 +5,7 @@ const preShelfPatch = (request) => {
     const data = JSON.parse(decodeBase64(body.data))
     const shelf_id = body.meta
 
-    console.log('raw description', data.description)
     data.description = stripTransientMetadataFromText(data.description)
-    console.log('cleaned description', data.description)
 
     body.data = encodeBase64(JSON.stringify(data))
 

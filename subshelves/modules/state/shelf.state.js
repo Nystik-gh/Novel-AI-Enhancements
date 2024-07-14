@@ -41,7 +41,6 @@ const createShelfState = (shelfData) => {
         if (!shelfDataMap.has(shelfId)) {
             throw new Error(`Shelf with ID ${shelfId} does not exist.`)
         }
-        console.log('deleting shelf with id', shelfId)
         shelfDataMap.delete(shelfId)
     }
 
@@ -83,8 +82,6 @@ const createShelfState = (shelfData) => {
         const result = []
         const descendants = new Set()
         const stack = id ? [id] : []
-
-        console.log('id', id)
 
         while (stack.length > 0) {
             const currentId = stack.pop()
