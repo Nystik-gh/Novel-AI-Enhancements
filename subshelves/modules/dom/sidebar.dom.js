@@ -25,6 +25,8 @@ const lockSideBar = (showLoader = true, forceLoader = false) => {
         loaderShownTime = Date.now()
     }
 
+    forceLoader = isMobileView() ? true : forceLoader
+
     const timeout = forceLoader ? 0 : 250
 
     if (showLoader) {

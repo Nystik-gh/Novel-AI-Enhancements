@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Novel AI Enhanced: Sub-shelves
-// @namespace    git.nystik
-// @version      1.0
+// @namespace    gitlab.nystik
+// @version      1.0.1
 // @description  Adds nested shelves functionality
 // @match        https://novelai.net/*
 // @grant        none
@@ -9,6 +9,10 @@
 // @require      ./modules/*
 // @require      ./lib/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=novelai.net
+// @author       Nystik (https://gitlab.com/Nystik)
+// @downloadUrl  https://gitlab.com/Nystik/nai-enhancements/-/raw/main/subshelves/dist/naie-subshelves.user.js
+// @homepageUrl  https://gitlab.com/Nystik/nai-enhancements
+// @supportUrl   https://gitlab.com/Nystik/nai-enhancements/-/issues
 // ==/UserScript==
 'use strict'
 

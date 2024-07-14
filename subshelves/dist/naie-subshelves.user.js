@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Novel AI Enhanced: Sub-shelves
 // @namespace    git.nystik
-// @version      1.0
+// @version      1.0.1
 // @description  Adds nested shelves functionality
 // @match        https://novelai.net/*
 // @grant        none
@@ -266,7 +266,6 @@ const getNumChildrenFromDom = () => {
         `${storyListSelector} > div[data-metadata-shelf_id]:not([role]):not([data-metadata-subshelf="true"])`,
     )
 
-    //console.log('getNumChildrenFromDom', shelves)
     for (const shelfEl of shelves) {
         shelfEl.id = 'tmpShelfID'
         let countEl = shelfEl.querySelector('#tmpShelfID > div:nth-child(3):not(.naie-computed-count)')
@@ -417,7 +416,6 @@ const createContextMenuTemplate = () => {
     }
     const ctx = [...document.querySelectorAll('body > div:not(#__next)')].find((e) => identifyContextMenu(e)?.contextMenu)
     const { contextMenu, editButton, deleteButton } = identifyContextMenu(ctx) || {}
-    console.log('found contextmenu?', contextMenu)
     if (contextMenu) {
         editButton.classList.add('naie-context-edit')
         deleteButton.classList.add('naie-context-delete')
@@ -432,7 +430,6 @@ const createContextMenu = (shelf_id, x, y) => {
     if (contextMenuTemplate === null) {
         return
     }
-    console.log(contextMenuTemplate)
 
     const menu = contextMenuTemplate.cloneNode(true)
     const editButton = menu.querySelector('.naie-context-edit')
@@ -445,7 +442,6 @@ const createContextMenu = (shelf_id, x, y) => {
     const handle = OnClickOutside(
         menu,
         () => {
-            console.log('outside click handler')
             document.body.removeChild(menu)
         },
         true,
@@ -483,7 +479,6 @@ const waitForContextMenu = (isVisibleCheck, onlyNew, timeout) => {
                 if (isVisibleCheck && contextMenu.style.visibility === 'hidden') {
                     return
                 }
-                console.log('stop observing contextmenu')
                 observer.disconnect()
                 resolve({ contextMenu, editButton, deleteButton })
             }
@@ -512,7 +507,6 @@ const waitForContextMenu = (isVisibleCheck, onlyNew, timeout) => {
             }, timeout)
         }
 
-        console.log('observing for contextmenu')
         observer.observe(document.body, config)
     })
 }
@@ -529,7 +523,6 @@ const identifyContextMenu = (node) => {
     if (node.tagName === 'DIV' && node.style) {
         const buttons = node.querySelectorAll('button[aria-disabled="false"]')
 
-        console.log('identifycontextmenu buttons', buttons)
         buttons.forEach((button) => {
             const iconDiv = button.querySelector('div > div')
             if (findElementWithMaskImage([iconDiv], ['edit', '.svg']).length > 0) {
@@ -622,7 +615,6 @@ const simulateContextDelete = async (shelf_id) => {
         overlay,
         modal,
         () => {
-            console.log('click outside delete modal')
             navigateToShelf(parent_id)
             if (sidebarLock) {
                 sidebarLock.unlock()
@@ -632,7 +624,6 @@ const simulateContextDelete = async (shelf_id) => {
     )
 
     addEventListenerOnce(closeButton, 'click', () => {
-        console.log('click close delete modal')
         handle.remove()
         navigateToShelf(parent_id)
         if (sidebarLock) {
@@ -729,7 +720,6 @@ const constructSelectControl = (options, selectedValue, callback) => {
     const inputWrapper = selectControl.querySelector('.naie-select-input-wrapper')
 
     const selectedOption = options.find((option) => option.value === selectedValue)
-    console.log('selected option', selectedOption, selectedValue)
     if (selectedOption) {
         singleValueElement.textContent = selectedOption.title
     }
@@ -760,7 +750,6 @@ const constructSelectControl = (options, selectedValue, callback) => {
     }
 
     const toggleDropdown = () => {
-        console.log('toggle dropdown', dropdown.style.display, dropdown.style.display === 'none')
         dropdown.style.display === 'none' ? showDropdown() : hideDropdown()
     }
 
@@ -774,7 +763,6 @@ const constructSelectControl = (options, selectedValue, callback) => {
         outsideClickHandle = OnClickOutside(
             selectControl,
             () => {
-                console.log('outside click handler')
                 hideDropdown()
             },
             true,
@@ -835,7 +823,6 @@ const constructSelectControl = (options, selectedValue, callback) => {
 /* ########### general.dom.js ########## */
 
 const simulateClick = (element) => {
-    console.log('simulateClick', element)
     if (element) {
         element.click()
     }
@@ -910,7 +897,6 @@ const OnClickOutside = (element, callback, oneShot = false) => {
     }
 
     const removeClickListener = () => {
-        console.log('removing outside listener')
         document.removeEventListener('click', outsideClickListener)
     }
 
@@ -1015,13 +1001,11 @@ const waitForHome = () => {
 
 const initModalObserver = () => {
     if (modalObserver) {
-        console.log('modal observer already initiated, aborting...')
+        //console.log('modal observer already initiated, aborting...')
         return
     }
 
     modalObserver = true
-
-    console.log('init modal observer')
 
     const observerOptions = {
         childList: true,
@@ -1082,7 +1066,6 @@ const getSettingsButton = () => {
 }
 
 const waitForSettingsModal = async (timeout, hidden = false) => {
-    console.log('waitForSettingsModal')
     const { modal, overlay } = await waitForModal(timeout)
 
     if (hidden) {
@@ -1095,13 +1078,9 @@ const waitForSettingsModal = async (timeout, hidden = false) => {
         throw new Error('No settings sidebar found')
     }
 
-    console.log('sidebar', sidebar.cloneNode(true), sidebar.firstElementChild?.tagName)
-
     const { tabs, changelog, logout, closeButton } = isMobileView()
         ? await handleSettingsMobile(modal, sidebar)
         : await handleSettingsDesktop(modal, sidebar)
-
-    console.log('tabs', tabs, changelog, logout)
 
     return {
         modal,
@@ -1122,8 +1101,6 @@ const waitForSettingsModal = async (timeout, hidden = false) => {
 }
 
 const handleSettingsDesktop = async (modal, sidebar) => {
-    console.log('handle settings desktop')
-
     do {
         await sleep(50)
     } while (sidebar?.firstChild?.nextSibling?.querySelectorAll('button').length !== 7)
@@ -1153,7 +1130,6 @@ const handleSettingsDesktop = async (modal, sidebar) => {
 }
 
 const handleSettingsMobile = async (modal, sidebar) => {
-    console.log('handle settings mobile')
     const buttons = sidebar.querySelectorAll('button')
 
     if (buttons.length !== 9) {
@@ -1218,11 +1194,9 @@ const waitForThemePanel = async (modal) => {
 /* ####### shelf-delete.modal.js ####### */
 
 const waitForShelfDeleteModal = async (timeout) => {
-    console.log('waitForShelfSettingsModal')
     let { modal, overlay } = await waitForModal(timeout)
 
     const buttons = modal.firstChild.lastChild.querySelectorAll('button')
-    console.log('delete modal buttons', buttons, buttons.length)
 
     if (buttons.length !== 1) {
         throw new Error('Not a delete modal')
@@ -1236,7 +1210,6 @@ const waitForShelfDeleteModal = async (timeout) => {
 
 const OverlayClickListener = (overlay, modal, callback, oneShot = false) => {
     const outsideClickListener = (event) => {
-        console.log('overlay listener', event.composedPath(), event.composedPath().includes(modal))
         if (!event.composedPath().includes(modal)) {
             if (oneShot) {
                 removeClickListener()
@@ -1246,7 +1219,6 @@ const OverlayClickListener = (overlay, modal, callback, oneShot = false) => {
     }
 
     const removeClickListener = () => {
-        console.log('removing outside listener')
         document.removeEventListener('click', outsideClickListener)
     }
 
@@ -1263,7 +1235,6 @@ const OverlayClickListener = (overlay, modal, callback, oneShot = false) => {
 /* ###### shelf-settings.modal.js ###### */
 
 const waitForShelfSettingsModal = async (timeout) => {
-    console.log('waitForShelfSettingsModal')
     let { modal, overlay, closeButton } = await waitForModal(timeout)
 
     const title = modal.querySelector('input')
@@ -1277,7 +1248,6 @@ const waitForShelfSettingsModal = async (timeout) => {
 }
 
 const constructShelfSettingModal = ({ fields: { title, description }, modal, ...rest }) => {
-    console.log('constructShelfSettingModal')
     const cleanMetadata = (text) => {
         return writeMetadata(text, {})
     }
@@ -1326,13 +1296,11 @@ const constructShelfSettingModal = ({ fields: { title, description }, modal, ...
             ? descriptionMetadata.parent_id
             : 'noshelf'
     const dropdown = constructSelectControl(selectableShelves, selectedValue, (value) => {
-        console.log('old meta', { ...descriptionMetadata })
         if (value === 'noshelf') {
             delete descriptionMetadata.parent_id
         } else {
             descriptionMetadata.parent_id = value
         }
-        console.log('new meta', descriptionMetadata)
 
         updateNativeTextbox(clonedTextarea.value)
     })
@@ -1365,8 +1333,6 @@ const findNewShelfButton = () => {
 const initNewSubShelfButton = () => {
     const newShelfButton = findNewShelfButton()
 
-    console.log('initNewSubShelfButton', 'activeShelf', activeShelf, newShelfButton.disabled)
-
     if (activeShelf !== null) {
         newShelfButton.disabled = false
 
@@ -1377,7 +1343,6 @@ const initNewSubShelfButton = () => {
         addEventListenerOnce(newShelfButton, 'click', (e) => {
             if (newShelfButton.dataset['newSubShelf'] === 'true') {
                 e.preventDefault()
-                console.log('subshelf new shelf click')
                 createNewShelf()
             }
         })
@@ -1448,7 +1413,7 @@ const initStoryListObserver = (storyListEl) => {
     }
 
     if (storyListObserver) {
-        console.log('observer already initiated, aborting...')
+        //console.log('observer already initiated, aborting...')
         return
     }
 
@@ -1488,7 +1453,6 @@ const initMenubarObserver = (menubarEl) => {
                 const storyListEl = getStoryListEl()
                 const newShelfButton = findNewShelfButton()
                 if (!newShelfButton) {
-                    console.log('no new shelf button, empty list')
                     if (storyListObserver) {
                         storyListObserver.disconnect()
                         storyListObserver = null
@@ -1498,7 +1462,6 @@ const initMenubarObserver = (menubarEl) => {
                 // if there is no new shelf button, then we are on the empty story list
                 if (storyListEl && emptyStoryListFlag) {
                     emptyStoryListFlag = false
-                    console.log('StoryList element added to DOM.')
                     observer.disconnect()
                     preProcessSidebar().then(() => {
                         // Resume observing after mapShelfMetadata completes
@@ -1516,7 +1479,6 @@ const initMenubarObserver = (menubarEl) => {
 
 // not used, remove?
 const triggerShelfObserver = () => {
-    console.log('trigger story list observer')
     const storyListEl = getStoryListEl()
 
     const hiddenDiv = document.createElement('div')
@@ -1549,7 +1511,6 @@ const forceStoryListRefresh = async () => {
 }
 
 const forcePopulateStoryList = async (specificItemId = null) => {
-    console.log('forcePopulateStoryList')
     if (!shelfState) {
         return
     }
@@ -1577,21 +1538,20 @@ const forcePopulateStoryList = async (specificItemId = null) => {
         const checkLoadedItems = () => {
             if (specificItemId) {
                 if (isSpecificItemLoaded(specificItemId)) {
-                    console.log(`Item with ID ${specificItemId} is loaded.`)
+                    //console.log(`Item with ID ${specificItemId} is loaded.`)
                     scrollToTop()
                     resolve()
                     return
                 }
             } else {
                 if (getLoadedItemsCount() >= totalItems) {
-                    console.log('All items are loaded.')
+                    //console.log('All items are loaded.')
                     scrollToTop()
                     resolve()
                     return
                 }
             }
 
-            console.log('scrolling')
             scrollToEnd()
             setTimeout(checkLoadedItems, 50)
         }
@@ -1602,8 +1562,6 @@ const forcePopulateStoryList = async (specificItemId = null) => {
 
 // map metadata injected into description as data attributes on the shelf element
 const mapShelfMetadata = async () => {
-    console.log('mapShelfMetadata')
-
     const storyListDiv = getStoryListEl()
 
     if (!storyListDiv) {
@@ -1680,7 +1638,6 @@ const cleanShelfDescriptions = (spans) => {
 
 const updateMetadata = () => {
     const subShelves = document.querySelectorAll(`${storyListSelector} > div[data-metadata-shelf_id]`)
-    console.log('metadata subshelves', subShelves)
     subShelves.forEach((subShelf) => {
         const shelf_id = subShelf.getAttribute('data-metadata-shelf_id')
         try {
@@ -1710,7 +1667,6 @@ const hideSubShelves = () => {
 
 const restoreSubshelvesOfParent = (parent_id) => {
     const subShelves = document.querySelectorAll(`${storyListSelector} > div[data-metadata-parent_id="${parent_id}"]`)
-    console.log('restoring subshelves', subShelves)
     subShelves.forEach((subShelf) => {
         subShelf.style.display = 'block'
     })
@@ -1739,7 +1695,6 @@ const removeEmptyShelfBox = () => {
 }
 
 const insertSubshelves = () => {
-    console.log('insertSubshelves', shelfState.getMap())
     if (activeShelf) {
         let currentShelf = activeShelf
         let subshelves = shelfState.getSubShelves(currentShelf).sort((a, b) => b.data.title.localeCompare(a.data.title))
@@ -1756,12 +1711,10 @@ const insertSubshelves = () => {
             shelf.setAttribute(`data-metadata-subshelf`, true)
             updateShelfEntry(shelf, subshelf.data)
             addEventListenerOnce(shelf, 'click', () => {
-                console.log('clicked', shelf_id)
                 handleSubSubshelfClick(shelf_id)
             })
             addEventListenerOnce(shelf, 'contextmenu', (e) => {
                 e.preventDefault()
-                console.log('onContextMenu', shelf_id)
                 createContextMenu(shelf_id, e.pageX, e.pageY)
             })
             storyList.prepend(shelf)
@@ -1821,7 +1774,6 @@ const updateShelfEntry = (element, data) => {
     }
 
     countEl.style.display = 'none'
-    //console.log('updating data', data, totalStories)
 
     element.insertBefore(countClone, element.lastChild)
 
@@ -1849,19 +1801,14 @@ const navigateToShelf = async (shelf_id, lockSidebar = true) => {
     }
 
     if (activeShelf) {
-        console.log('navigating home as part of navigate to shelf')
         await navigateToHome()
     }
 
-    console.log('navigating to shelf', shelf_id)
-
     if (shelf_id) {
         // Wait for the shelf to appear in the DOM
-        console.log('waiting for', `div[data-metadata-shelf_id="${shelf_id}"]:not([data-metadata-subshelf])`)
         const selector = `div[data-metadata-shelf_id="${shelf_id}"]:not([data-metadata-subshelf])`
         const shelfElement = await waitForElement(selector, 1000)
 
-        console.log('clicking', `div[data-metadata-shelf_id="${shelf_id}"]`)
         // Simulate click on the shelf
         simulateClick(shelfElement)
     }
@@ -1881,14 +1828,12 @@ const navigateToHome = async () => {
 
         // avoids a race condition in event queue
         await setTimeoutPromise(0)
-        console.log('try navigate home', shelf_id, homeButton)
 
         simulateClick(homeButton)
         await waitForHome()
 
         const selector = `div[data-metadata-shelf_id="${shelf_id}"]:not([data-metadata-subshelf])`
         await waitForElement(selector)
-        console.log('navigated home')
     }
 }
 
@@ -1906,7 +1851,6 @@ const createNewShelf = async () => {
     await navigateToHome()
 
     let newShelfButton = findNewShelfButton()
-    console.log('newshelfButton', newShelfButton.dataset)
     if (newShelfButton.dataset['newSubShelf'] !== 'true') {
         activeShelf = parent_id
         simulateClick(newShelfButton)
@@ -1939,7 +1883,6 @@ const processNewShelf = async (shelf_id) => {
     const newShelfButton = findNewShelfButton()
     newShelfButton.disabled = true
 
-    console.log('attempting to inject id: ', shelf_id)
     const inSubshelf = activeShelf !== null
     let parent_id = null
     if (inSubshelf) {
@@ -1964,14 +1907,12 @@ const processNewShelf = async (shelf_id) => {
     let metadata = { shelf_id }
     if (parent_id) {
         metadata = { ...metadata, parent_id }
-        console.log('add parent id to metadata', metadata)
     }
 
     await updateShelfStateViaDescription(newShelf, metadata)
     newShelfButton.disabled = false
 
     if (parent_id) {
-        console.log('navigating back to', parent_id)
         navigateToShelf(parent_id)
     }
 
@@ -1991,7 +1932,6 @@ const getSidebarEl = () => {
 }
 
 const lockSideBar = (showLoader = true, forceLoader = false) => {
-    console.log('locking sidebar')
     const sidebar = getSidebarEl()
 
     const storyListEl = getStoryListEl()
@@ -2010,10 +1950,11 @@ const lockSideBar = (showLoader = true, forceLoader = false) => {
 
     const addLoader = () => {
         loaderElement = createSidebarLoader(clone)
-        console.log('sidebarLoader', loaderElement)
         clone.replaceWith(loaderElement)
         loaderShownTime = Date.now()
     }
+
+    forceLoader = isMobileView() ? true : forceLoader
 
     const timeout = forceLoader ? 0 : 250
 
@@ -2037,7 +1978,6 @@ const lockSideBar = (showLoader = true, forceLoader = false) => {
                 if (currentClone) {
                     currentClone.remove()
                     sidebarLock = null
-                    console.log('sidebar unlocked')
                 }
             }, remainingTime)
         } else {
@@ -2045,7 +1985,6 @@ const lockSideBar = (showLoader = true, forceLoader = false) => {
             if (currentClone) {
                 currentClone.remove()
                 sidebarLock = null
-                console.log('sidebar unlocked')
             }
         }
     }
@@ -2142,7 +2081,6 @@ const cloneSelectControl = async () => {
         simulateClick(getSettingsButton())
 
         const settingsModal = await waitForSettingsModal(null, true)
-        console.log('settings modal', settingsModal)
 
         const { fontSelect } = await settingsModal.panels.getThemePanel()
 
@@ -2157,8 +2095,6 @@ const cloneSelectControl = async () => {
     `)
 
         simulateClick(settingsModal.closeButton)
-
-        console.log('successfully created select control template', selectControlTemplate)
     } catch (e) {
         console.error(e)
         throw new Error('Failed to clone select element')
@@ -2231,7 +2167,7 @@ const preflight = async () => {
         const app = await waitForElement(appSelector)
 
         const lock = lockLoader(app)
-        console.log('locked loader')
+        //console.log('locked loader')
 
         await waitForElement(settingsButtonSelector)
 
@@ -2277,7 +2213,7 @@ const lockLoader = (app) => {
     document.documentElement.append(clone)
 
     const unlock = () => {
-        console.log('unlocking loader')
+        //console.log('unlocking loader')
         document.documentElement.removeChild(clone)
     }
     return { unlock }
@@ -2348,7 +2284,6 @@ const createShelfState = (shelfData) => {
         if (!shelfDataMap.has(shelfId)) {
             throw new Error(`Shelf with ID ${shelfId} does not exist.`)
         }
-        console.log('deleting shelf with id', shelfId)
         shelfDataMap.delete(shelfId)
     }
 
@@ -2390,8 +2325,6 @@ const createShelfState = (shelfData) => {
         const result = []
         const descendants = new Set()
         const stack = id ? [id] : []
-
-        console.log('id', id)
 
         while (stack.length > 0) {
             const currentId = stack.pop()
@@ -2547,7 +2480,6 @@ const preShelfDelete = (request) => {
                 sidebarLock = lockSideBar()
             }*/
             const shelf = shelfState.getShelfByRemoteId(remoteId)
-            console.log('delete id', shelf.meta)
             const parent = getMetadataObject(shelf)?.parent_id
             shelfState.deleteShelf(shelf.meta)
 
@@ -2586,9 +2518,7 @@ const preShelfPatch = (request) => {
     const data = JSON.parse(decodeBase64(body.data))
     const shelf_id = body.meta
 
-    console.log('raw description', data.description)
     data.description = stripTransientMetadataFromText(data.description)
-    console.log('cleaned description', data.description)
 
     body.data = encodeBase64(JSON.stringify(data))
 
@@ -2625,15 +2555,12 @@ const preShelfPut = (request) => {
         processNewShelf(shelf_id) // This will trigger a new PUT request
         activePutShelfRequests.set(shelf_id, 1)
 
-        console.log('First request marked to be blocked. body:', body, 'data:', data)
         options.shouldBlock = true
 
         return options
     }
 
-    console.log('raw description', data.description)
     data.description = stripTransientMetadataFromText(data.description)
-    console.log('cleaned description', data.description)
 
     body.data = encodeBase64(JSON.stringify(data))
 
@@ -2712,10 +2639,7 @@ const postShelfGetAll = async (response) => {
     const copy = response.clone()
     let data = await copy.json()
     shelfState = createShelfState(buildShelfMap(data.objects))
-    console.log('after response shelf map', shelfState)
     const modifiedData = { objects: InjectShelfTransientMeta(data.objects) }
-    console.log('data', data)
-    console.log('modifiedData', modifiedData)
     const modifiedText = JSON.stringify(modifiedData)
     const modifiedResponse = new Response(modifiedText, {
         status: response.status,
