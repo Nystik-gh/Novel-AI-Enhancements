@@ -144,4 +144,6 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## Disclaimer
 
-This is an independent project by a single developer. Further development depends on available time and motivation. Use at your own risk.
+This userscript is an independent project developed by a single individual and is not affiliated with, endorsed by, or in any way officially connected to Novel AI or its developers.
+
+Further development of this project depends on the developer's available time and motivation. Use this userscript at your own risk.
