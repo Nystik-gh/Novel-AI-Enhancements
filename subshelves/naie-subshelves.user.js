@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Novel AI Enhanced: Sub-shelves
-// @namespace    gitlab.nystik
+// @namespace    github.nystik-hg
 // @version      1.0.1
 // @description  Adds nested shelves functionality
 // @match        https://novelai.net/*
@@ -10,9 +10,9 @@
 // @require      ./lib/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=novelai.net
 // @author       Nystik (https://gitlab.com/Nystik)
-// @downloadUrl  https://gitlab.com/Nystik/nai-enhancements/-/raw/main/subshelves/dist/naie-subshelves.user.js
-// @homepageUrl  https://gitlab.com/Nystik/nai-enhancements
-// @supportUrl   https://gitlab.com/Nystik/nai-enhancements/-/issues
+// @downloadUrl  https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/main/subshelves/dist/naie-subshelves.user.js
+// @homepageUrl  https://github.com/Nystik-gh/Novel-AI-Enhancements
+// @supportUrl   https://github.com/Nystik-gh/Novel-AI-Enhancements/issues
 // ==/UserScript==
 'use strict'
 
@@ -50,7 +50,7 @@ const init = () => {
         try {
             await preflight()
         } catch (e) {
-            alert('Failed to initialize NAI Enhanced: Subshelves.\n\nDisable the script and create an issue on gitlab for support.')
+            alert('Failed to initialize NAI Enhanced: Subshelves.\n\nDisable the script and create an issue on github for support.')
         }
     })
 }
