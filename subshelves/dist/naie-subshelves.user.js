@@ -524,7 +524,7 @@ const identifyContextMenu = (node) => {
     let editButton = null
     let deleteButton = null
 
-    if (node.tagName === 'DIV' && node.style) {
+    if (node && node.tagName === 'DIV' && node.style) {
         const buttons = node.querySelectorAll('button[aria-disabled="false"]')
 
         buttons.forEach((button) => {
