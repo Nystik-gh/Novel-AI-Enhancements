@@ -29,7 +29,7 @@ This is a monorepo for potentially multiple userscripts to enhance the functiona
 
 NAIE Subshelves adds nested shelves to Novel AI, allowing users to create subshelves within existing shelves. This feature helps organize stories more effectively.
 
-![Demo](images/demo.gif){height=250px width=508px}
+![Demo](images/demo.gif =508x250)
 
 ## How to Install
 
@@ -38,7 +38,7 @@ NAIE Subshelves adds nested shelves to Novel AI, allowing users to create subshe
     - [Violentmonkey](https://violentmonkey.github.io/) (Open source)
     - [Tampermonkey](https://www.tampermonkey.net/) (Closed source)
 
-2. After installing the userscript extension, click on this link to install the NAIE Subshelves script: [Install NAIE Subshelves](https://gitlab.com/Nystik/nai-enhancements/-/raw/main/subshelves/dist/naie-subshelves.user.js)
+2. After installing the userscript extension, click on this link to install the NAIE Subshelves script: [Install NAIE Subshelves](https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/main/subshelves/dist/naie-subshelves.user.js)
 
 3. Your userscript extension should prompt you to install the script. Click "Install" or "OK" to proceed.
 
@@ -136,7 +136,7 @@ If you encounter any compatibility issues with the supported browsers and usersc
 
 ## Feedback
 
-Feedback and bug reports are welcome. Please open an issue on Gitlab.
+Feedback and bug reports are welcome. Please open an issue on Github.
 
 ## License
 
