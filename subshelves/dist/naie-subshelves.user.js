@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Novel AI Enhanced: Sub-shelves
 // @namespace    github.nystik-hg
-// @version      1.0.1
+// @version      1.0.2
 // @description  Adds nested shelves functionality
 // @match        https://novelai.net/*
 // @grant        none
@@ -1107,11 +1107,11 @@ const waitForSettingsModal = async (timeout, hidden = false) => {
 const handleSettingsDesktop = async (modal, sidebar) => {
     do {
         await sleep(50)
-    } while (sidebar?.firstChild?.nextSibling?.querySelectorAll('button').length !== 7)
+    } while (sidebar?.parentNode?.parentNode?.previousSibling?.tagName?.toLowerCase() !== 'button')
 
     const buttons = sidebar.querySelectorAll('button')
 
-    if (buttons.length !== 9) {
+    if (buttons.length < 9) {
         throw new Error('Not all required buttons are found')
     }
 
@@ -1136,7 +1136,7 @@ const handleSettingsDesktop = async (modal, sidebar) => {
 const handleSettingsMobile = async (modal, sidebar) => {
     const buttons = sidebar.querySelectorAll('button')
 
-    if (buttons.length !== 9) {
+    if (buttons.length < 9) {
         throw new Error('Not all required buttons are found')
     }
 
@@ -2389,7 +2389,7 @@ const encodeBase64 = (str) => {
 /* ########### misc.utils.js ########### */
 
 const isMobileView = () => {
-    return document.querySelector('.menubar-toggler') === null
+    return window.innerWidth <= 650
 }
 
 const isObjEmpty = (obj) => {

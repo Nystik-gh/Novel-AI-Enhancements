@@ -1,5 +1,5 @@
 const isMobileView = () => {
-    return document.querySelector('.menubar-toggler') === null
+    return window.innerWidth <= 650
 }
 
 const isObjEmpty = (obj) => {

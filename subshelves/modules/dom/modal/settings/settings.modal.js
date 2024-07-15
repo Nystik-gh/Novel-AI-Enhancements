@@ -40,11 +40,11 @@ const waitForSettingsModal = async (timeout, hidden = false) => {
 const handleSettingsDesktop = async (modal, sidebar) => {
     do {
         await sleep(50)
-    } while (sidebar?.firstChild?.nextSibling?.querySelectorAll('button').length !== 7)
+    } while (sidebar?.parentNode?.parentNode?.previousSibling?.tagName?.toLowerCase() !== 'button')
 
     const buttons = sidebar.querySelectorAll('button')
 
-    if (buttons.length !== 9) {
+    if (buttons.length < 9) {
         throw new Error('Not all required buttons are found')
     }
 
@@ -69,7 +69,7 @@ const handleSettingsDesktop = async (modal, sidebar) => {
 const handleSettingsMobile = async (modal, sidebar) => {
     const buttons = sidebar.querySelectorAll('button')
 
-    if (buttons.length !== 9) {
+    if (buttons.length < 9) {
         throw new Error('Not all required buttons are found')
     }
 
