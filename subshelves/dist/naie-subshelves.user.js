@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Novel AI Enhanced: Sub-shelves
 // @namespace    github.nystik-hg
-// @version      1.0.5
+// @version      1.0.6
 // @description  Adds nested shelves functionality
 // @match        https://novelai.net/*
 // @grant        none
@@ -37,6 +37,7 @@ let shelfState = null
 let updateInProgress = false
 let sidebarLock = null
 let emptyStoryListFlag = false
+let activeContextMenu = null
 
 // elements
 let homeButton = null
@@ -435,6 +436,10 @@ const createContextMenu = (shelf_id, x, y) => {
         return
     }
 
+    if (activeContextMenu) {
+        activeContextMenu.destroy()
+    }
+
     const menu = contextMenuTemplate.cloneNode(true)
     const editButton = menu.querySelector('.naie-context-edit')
     const deleteButton = menu.querySelector('.naie-context-delete')
@@ -446,23 +451,35 @@ const createContextMenu = (shelf_id, x, y) => {
     const handle = OnClickOutside(
         menu,
         () => {
-            document.body.removeChild(menu)
+            if (document.body.contains(menu)) {
+                document.body.removeChild(menu)
+                activeContextMenu = null
+            }
         },
         true,
     )
 
-    addEventListenerOnce(editButton, 'click', () => {
+    const destroy = () => {
         handle.remove()
-        document.body.removeChild(menu)
+
+        if (document.body.contains(menu)) {
+            document.body.removeChild(menu)
+        }
+        activeContextMenu = null
+    }
+
+    addEventListenerOnce(editButton, 'click', () => {
+        destroy()
         simulateContextEdit(shelf_id)
     })
     addEventListenerOnce(deleteButton, 'click', () => {
-        handle.remove()
-        document.body.removeChild(menu)
+        destroy()
         simulateContextDelete(shelf_id)
     })
 
     document.body.append(menu)
+
+    activeContextMenu = { element: menu, destroy }
 }
 
 const waitForContextMenu = (isVisibleCheck, onlyNew, timeout) => {
@@ -1522,18 +1539,8 @@ const forcePopulateStoryList = async (specificItemId = null, loadAllStories = fa
         return
     }
 
-    if (!sidebarLock) {
-        sidebarLock = lockSideBar(true, true, true)
-    }
-
     const totalItems = shelfState.getMap().size
     const scrollList = document.querySelector(storyListSelector)
-
-    const unlockSidebar = () => {
-        if (sidebarLock) {
-            sidebarLock.unlock()
-        }
-    }
 
     const scrollToEnd = () => {
         scrollList.scrollTop = scrollList.scrollHeight
@@ -1558,7 +1565,6 @@ const forcePopulateStoryList = async (specificItemId = null, loadAllStories = fa
             if (specificItemId) {
                 if (isSpecificItemLoaded(specificItemId)) {
                     scrollToTop()
-                    unlockSidebar()
                     resolve()
                     return
                 }
@@ -1566,7 +1572,6 @@ const forcePopulateStoryList = async (specificItemId = null, loadAllStories = fa
                 const currentScrollHeight = scrollList.scrollHeight
                 if (currentScrollHeight === lastScrollHeight) {
                     scrollToTop()
-                    unlockSidebar()
                     resolve()
                     return
                 }
@@ -1574,7 +1579,6 @@ const forcePopulateStoryList = async (specificItemId = null, loadAllStories = fa
             } else {
                 if (getLoadedItemsCount() >= totalItems) {
                     scrollToTop()
-                    unlockSidebar()
                     resolve()
                     return
                 }
@@ -2232,15 +2236,24 @@ const preflight = async () => {
 
         showIndicator('subshelves ready')
 
-        lock.unlock()
-
         await waitForElement(storyListSelector)
+
+        if (!sidebarLock) {
+            sidebarLock = lockSideBar(true, true, true)
+            await sleep(100)
+        }
+
+        lock.unlock()
 
         await preProcessSidebar()
         await initGlobalObservers()
 
         if (AreThereShelves()) {
             createContextMenuTemplate()
+        }
+
+        if (sidebarLock) {
+            sidebarLock.unlock()
         }
     } catch (e) {
         console.error(e)

@@ -119,18 +119,8 @@ const forcePopulateStoryList = async (specificItemId = null, loadAllStories = fa
         return
     }
 
-    if (!sidebarLock) {
-        sidebarLock = lockSideBar(true, true, true)
-    }
-
     const totalItems = shelfState.getMap().size
     const scrollList = document.querySelector(storyListSelector)
-
-    const unlockSidebar = () => {
-        if (sidebarLock) {
-            sidebarLock.unlock()
-        }
-    }
 
     const scrollToEnd = () => {
         scrollList.scrollTop = scrollList.scrollHeight
@@ -155,7 +145,6 @@ const forcePopulateStoryList = async (specificItemId = null, loadAllStories = fa
             if (specificItemId) {
                 if (isSpecificItemLoaded(specificItemId)) {
                     scrollToTop()
-                    unlockSidebar()
                     resolve()
                     return
                 }
@@ -163,7 +152,6 @@ const forcePopulateStoryList = async (specificItemId = null, loadAllStories = fa
                 const currentScrollHeight = scrollList.scrollHeight
                 if (currentScrollHeight === lastScrollHeight) {
                     scrollToTop()
-                    unlockSidebar()
                     resolve()
                     return
                 }
@@ -171,7 +159,6 @@ const forcePopulateStoryList = async (specificItemId = null, loadAllStories = fa
             } else {
                 if (getLoadedItemsCount() >= totalItems) {
                     scrollToTop()
-                    unlockSidebar()
                     resolve()
                     return
                 }

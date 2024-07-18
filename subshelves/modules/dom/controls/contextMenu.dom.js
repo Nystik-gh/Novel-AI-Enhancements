@@ -21,6 +21,10 @@ const createContextMenu = (shelf_id, x, y) => {
         return
     }
 
+    if (activeContextMenu) {
+        activeContextMenu.destroy()
+    }
+
     const menu = contextMenuTemplate.cloneNode(true)
     const editButton = menu.querySelector('.naie-context-edit')
     const deleteButton = menu.querySelector('.naie-context-delete')
@@ -32,23 +36,35 @@ const createContextMenu = (shelf_id, x, y) => {
     const handle = OnClickOutside(
         menu,
         () => {
-            document.body.removeChild(menu)
+            if (document.body.contains(menu)) {
+                document.body.removeChild(menu)
+                activeContextMenu = null
+            }
         },
         true,
     )
 
-    addEventListenerOnce(editButton, 'click', () => {
+    const destroy = () => {
         handle.remove()
-        document.body.removeChild(menu)
+
+        if (document.body.contains(menu)) {
+            document.body.removeChild(menu)
+        }
+        activeContextMenu = null
+    }
+
+    addEventListenerOnce(editButton, 'click', () => {
+        destroy()
         simulateContextEdit(shelf_id)
     })
     addEventListenerOnce(deleteButton, 'click', () => {
-        handle.remove()
-        document.body.removeChild(menu)
+        destroy()
         simulateContextDelete(shelf_id)
     })
 
     document.body.append(menu)
+
+    activeContextMenu = { element: menu, destroy }
 }
 
 const waitForContextMenu = (isVisibleCheck, onlyNew, timeout) => {

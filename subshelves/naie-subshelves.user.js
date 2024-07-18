@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Novel AI Enhanced: Sub-shelves
 // @namespace    github.nystik-hg
-// @version      1.0.5
+// @version      1.0.6
 // @description  Adds nested shelves functionality
 // @match        https://novelai.net/*
 // @grant        none
@@ -39,6 +39,7 @@ let shelfState = null
 let updateInProgress = false
 let sidebarLock = null
 let emptyStoryListFlag = false
+let activeContextMenu = null
 
 // elements
 let homeButton = null
