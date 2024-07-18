@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Novel AI Enhanced: Sub-shelves
 // @namespace    github.nystik-hg
-// @version      1.0.4
+// @version      1.0.5
 // @description  Adds nested shelves functionality
 // @match        https://novelai.net/*
 // @grant        none
