@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Novel AI Enhanced: Sub-shelves
 // @namespace    github.nystik-hg
-// @version      1.0.3
+// @version      1.0.4
 // @description  Adds nested shelves functionality
 // @match        https://novelai.net/*
 // @grant        none
@@ -1514,13 +1514,23 @@ const forceStoryListRefresh = async () => {
     }
 }
 
-const forcePopulateStoryList = async (specificItemId = null) => {
+const forcePopulateStoryList = async (specificItemId = null, loadAllStories = false) => {
     if (!shelfState) {
         return
     }
 
+    if (!sidebarLock) {
+        sidebarLock = lockSideBar(true, true, true)
+    }
+
     const totalItems = shelfState.getMap().size
     const scrollList = document.querySelector(storyListSelector)
+
+    const unlockSidebar = () => {
+        if (sidebarLock) {
+            sidebarLock.unlock()
+        }
+    }
 
     const scrollToEnd = () => {
         scrollList.scrollTop = scrollList.scrollHeight
@@ -1539,18 +1549,29 @@ const forcePopulateStoryList = async (specificItemId = null) => {
     }
 
     return new Promise((resolve, reject) => {
+        let lastScrollHeight = 0
+
         const checkLoadedItems = () => {
             if (specificItemId) {
                 if (isSpecificItemLoaded(specificItemId)) {
-                    //console.log(`Item with ID ${specificItemId} is loaded.`)
                     scrollToTop()
+                    unlockSidebar()
                     resolve()
                     return
                 }
+            } else if (loadAllStories) {
+                const currentScrollHeight = scrollList.scrollHeight
+                if (currentScrollHeight === lastScrollHeight) {
+                    scrollToTop()
+                    unlockSidebar()
+                    resolve()
+                    return
+                }
+                lastScrollHeight = currentScrollHeight
             } else {
                 if (getLoadedItemsCount() >= totalItems) {
-                    //console.log('All items are loaded.')
                     scrollToTop()
+                    unlockSidebar()
                     resolve()
                     return
                 }
@@ -1935,7 +1956,7 @@ const getSidebarEl = () => {
     return document.querySelector('.menubar:not(#sidebar-lock)')
 }
 
-const lockSideBar = (showLoader = true, forceLoader = false) => {
+const lockSideBar = (showLoader = true, forceLoader = false, positional = false) => {
     const sidebar = getSidebarEl()
 
     const storyListEl = getStoryListEl()
@@ -1943,7 +1964,30 @@ const lockSideBar = (showLoader = true, forceLoader = false) => {
 
     const clone = cloneSidebar(sidebar, scroll)
 
-    sidebar.style.display = 'none'
+    const hideSidebarWithPosition = () => {
+        sidebar.style.position = 'absolute'
+        sidebar.style.left = '-1000px'
+        sidebar.style.top = '-1000px'
+    }
+
+    const restoreSidebarWithPosition = () => {
+        sidebar.style.removeProperty('position')
+        sidebar.style.removeProperty('left')
+        sidebar.style.removeProperty('top')
+    }
+
+    const hideSidebarWithDisplay = () => {
+        sidebar.style.display = 'none'
+    }
+
+    const restoreSidebarWithDisplay = () => {
+        sidebar.style.removeProperty('display')
+    }
+
+    const hideSidebar = positional ? hideSidebarWithPosition : hideSidebarWithDisplay
+    const restoreSidebar = positional ? restoreSidebarWithPosition : restoreSidebarWithDisplay
+
+    hideSidebar()
 
     const sibling = sidebar.nextSibling
     sidebar.parentNode.insertBefore(clone, sibling)
@@ -1978,14 +2022,14 @@ const lockSideBar = (showLoader = true, forceLoader = false) => {
             const remainingTime = Math.max(500 - elapsedTime, 0)
 
             setTimeout(() => {
-                sidebar.style.removeProperty('display')
+                restoreSidebar()
                 if (currentClone) {
                     currentClone.remove()
                     sidebarLock = null
                 }
             }, remainingTime)
         } else {
-            sidebar.style.removeProperty('display')
+            restoreSidebar()
             if (currentClone) {
                 currentClone.remove()
                 sidebarLock = null
@@ -2235,7 +2279,7 @@ const preProcessIndicator = () => {
 
 const preProcessSidebar = async () => {
     createBreadcrumbBar()
-    await forcePopulateStoryList()
+    await forcePopulateStoryList(null, true)
     await mapShelfMetadata()
 }
 
