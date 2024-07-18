@@ -114,13 +114,23 @@ const forceStoryListRefresh = async () => {
     }
 }
 
-const forcePopulateStoryList = async (specificItemId = null) => {
+const forcePopulateStoryList = async (specificItemId = null, loadAllStories = false) => {
     if (!shelfState) {
         return
     }
 
+    if (!sidebarLock) {
+        sidebarLock = lockSideBar(true, true, true)
+    }
+
     const totalItems = shelfState.getMap().size
     const scrollList = document.querySelector(storyListSelector)
+
+    const unlockSidebar = () => {
+        if (sidebarLock) {
+            sidebarLock.unlock()
+        }
+    }
 
     const scrollToEnd = () => {
         scrollList.scrollTop = scrollList.scrollHeight
@@ -139,18 +149,29 @@ const forcePopulateStoryList = async (specificItemId = null) => {
     }
 
     return new Promise((resolve, reject) => {
+        let lastScrollHeight = 0
+
         const checkLoadedItems = () => {
             if (specificItemId) {
                 if (isSpecificItemLoaded(specificItemId)) {
-                    //console.log(`Item with ID ${specificItemId} is loaded.`)
                     scrollToTop()
+                    unlockSidebar()
                     resolve()
                     return
                 }
+            } else if (loadAllStories) {
+                const currentScrollHeight = scrollList.scrollHeight
+                if (currentScrollHeight === lastScrollHeight) {
+                    scrollToTop()
+                    unlockSidebar()
+                    resolve()
+                    return
+                }
+                lastScrollHeight = currentScrollHeight
             } else {
                 if (getLoadedItemsCount() >= totalItems) {
-                    //console.log('All items are loaded.')
                     scrollToTop()
+                    unlockSidebar()
                     resolve()
                     return
                 }
