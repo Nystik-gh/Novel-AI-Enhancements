@@ -106,9 +106,12 @@ const findTitleBar = () => {
 }
 
 const findElementWithMaskImage = (elements, urlSubstrings) => {
-    let results = [...elements].filter((e) => {
-        const maskImageValue = e ? window.getComputedStyle(e).getPropertyValue('mask-image') : null
-        return maskImageValue && urlSubstrings.every((sub) => maskImageValue.includes(sub))
+    const results = [...elements].filter((e) => {
+        const computedStyle = e ? window.getComputedStyle(e) : null
+        const maskImageValue = computedStyle ? computedStyle.getPropertyValue('mask-image') : null
+        const finalMaskImageValue = maskImageValue || (computedStyle ? computedStyle.getPropertyValue('-webkit-mask-image') : null)
+
+        return finalMaskImageValue && urlSubstrings.every((sub) => finalMaskImageValue.includes(sub))
     })
     return results
 }
