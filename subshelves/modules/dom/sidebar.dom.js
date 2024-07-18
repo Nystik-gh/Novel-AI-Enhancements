@@ -2,7 +2,7 @@ const getSidebarEl = () => {
     return document.querySelector('.menubar:not(#sidebar-lock)')
 }
 
-const lockSideBar = (showLoader = true, forceLoader = false) => {
+const lockSideBar = (showLoader = true, forceLoader = false, positional = false) => {
     const sidebar = getSidebarEl()
 
     const storyListEl = getStoryListEl()
@@ -10,7 +10,30 @@ const lockSideBar = (showLoader = true, forceLoader = false) => {
 
     const clone = cloneSidebar(sidebar, scroll)
 
-    sidebar.style.display = 'none'
+    const hideSidebarWithPosition = () => {
+        sidebar.style.position = 'absolute'
+        sidebar.style.left = '-1000px'
+        sidebar.style.top = '-1000px'
+    }
+
+    const restoreSidebarWithPosition = () => {
+        sidebar.style.removeProperty('position')
+        sidebar.style.removeProperty('left')
+        sidebar.style.removeProperty('top')
+    }
+
+    const hideSidebarWithDisplay = () => {
+        sidebar.style.display = 'none'
+    }
+
+    const restoreSidebarWithDisplay = () => {
+        sidebar.style.removeProperty('display')
+    }
+
+    const hideSidebar = positional ? hideSidebarWithPosition : hideSidebarWithDisplay
+    const restoreSidebar = positional ? restoreSidebarWithPosition : restoreSidebarWithDisplay
+
+    hideSidebar()
 
     const sibling = sidebar.nextSibling
     sidebar.parentNode.insertBefore(clone, sibling)
@@ -45,14 +68,14 @@ const lockSideBar = (showLoader = true, forceLoader = false) => {
             const remainingTime = Math.max(500 - elapsedTime, 0)
 
             setTimeout(() => {
-                sidebar.style.removeProperty('display')
+                restoreSidebar()
                 if (currentClone) {
                     currentClone.remove()
                     sidebarLock = null
                 }
             }, remainingTime)
         } else {
-            sidebar.style.removeProperty('display')
+            restoreSidebar()
             if (currentClone) {
                 currentClone.remove()
                 sidebarLock = null
