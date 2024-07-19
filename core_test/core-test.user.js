@@ -25,3 +25,5 @@ const init = () => {
     naieGlobalFunc()
     window.naieGlobalFunc()
 }
+
+init()
