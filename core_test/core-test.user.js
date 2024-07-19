@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Novel AI TEST
 // @namespace    github.nystik-hg
-// @version      1.0.3
+// @version      0.0.1
 // @description  TEST
 // @match        https://novelai.net/*
 // @grant        none
