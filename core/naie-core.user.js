@@ -8,11 +8,14 @@
 // @author       Nystik (https://gitlab.com/Nystik)
 // ==/UserScript==
 
+const wRef = unsafeWindow ? unsafeWindow : window
+
 const init = () => {
     // Ensure window.NAIE_INSTANCE is set to a new NAIE instance if not already set
-    if (!window.NAIE_INSTANCE) {
+
+    if (!wRef.NAIE_INSTANCE) {
         console.log('creating naie instance')
-        window.NAIE_INSTANCE = createNAIEInstance()
+        wRef.NAIE_INSTANCE = createNAIEInstance()
     } else {
         console.log('naie instance already exists, skipping')
     }
