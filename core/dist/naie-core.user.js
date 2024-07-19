@@ -17,10 +17,11 @@ const init = () => {
     if (!wRef.NAIE_INSTANCE) {
         console.log('creating naie instance')
         wRef.NAIE_INSTANCE = createNAIEInstance()
-        NAIE = wRef.NAIE_INSTANCE
     } else {
         console.log('naie instance already exists, skipping')
     }
+
+    NAIE = wRef.NAIE_INSTANCE
 }
 
 const naieGlobalFunc = () => {
