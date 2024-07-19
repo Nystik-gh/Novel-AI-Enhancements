@@ -4,7 +4,6 @@
 // @namespace    github.nystik-hg
 // @version      0.1.0
 // @description  Core library
-// @require      ./modules/*
 // @author       Nystik (https://gitlab.com/Nystik)
 // ==/UserScript==
 
@@ -22,6 +21,26 @@ const naieGlobalFunc = () => {
     console.log('globally registered function')
 }
 
-// ;INJECT DEPENDENCIES;
+/* ########### naie-object.js ########## */
+
+const createNAIEInstance = () => {
+    return {
+        registerSettings: () => {
+            console.log('register settings')
+        },
+        registerFetchPreHook: () => {
+            console.log('register fetch pre hook')
+        },
+        registerFetchPostHook: () => {
+            console.log('register fetch post hook')
+        },
+    }
+}
+
+
+/* ------- end of naie-object.js ------- */
+
+
 
 init()
+
