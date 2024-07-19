@@ -7,11 +7,13 @@
 // @author       Nystik (https://gitlab.com/Nystik)
 // ==/UserScript==
 
+let NAIE_INSTANCE = null
+
 const init = () => {
     // Ensure window.NAIE_INSTANCE is set to a new NAIE instance if not already set
-    if (!window.NAIE_INSTANCE) {
+    if (!NAIE_INSTANCE) {
         console.log('creating naie instance')
-        window.NAIE_INSTANCE = createNAIEInstance()
+        NAIE_INSTANCE = createNAIEInstance()
     } else {
         console.log('naie instance already exists, skipping')
     }
