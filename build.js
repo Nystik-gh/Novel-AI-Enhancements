@@ -32,7 +32,14 @@ const mergeDependencies = (scriptDir, scriptFile) => {
 
     // Process @require directives
     while ((match = requireRegex.exec(scriptContent)) !== null) {
-        const requirePath = match[1]
+        const requirePath = match[1].trim()
+
+        // Check if the requirePath is a URL
+        if (/^https?:\/\//.test(requirePath)) {
+            // Ignore lines where the path is a URL
+            continue
+        }
+
         const wildcardPath = requirePath.replace('@require', '').trim().replace(/\*$/, '')
         const wildcardDir = path.join(scriptDir, wildcardPath)
 
@@ -72,8 +79,10 @@ const mergeDependencies = (scriptDir, scriptFile) => {
         }
 
         if (inMetaBlock && trimmedLine.startsWith('// @require')) {
-            // Skip @require lines within the meta block
-            return
+            if (!trimmedLine.includes('http://') && !trimmedLine.includes('https://')) {
+                // Skip @require lines within the meta block if they are not URLs
+                return
+            }
         }
 
         if (trimmedLine === '// ==/UserScript==') {
