@@ -1,3 +1,6 @@
+/***
+ * @return {NAIE}
+ */
 const createNAIEInstance = () => {
     return {
         registerSettings: () => {
@@ -9,5 +12,6 @@ const createNAIEInstance = () => {
         registerFetchPostHook: () => {
             console.log('register fetch post hook')
         },
+        COMMON: NAIE_COMMON_UTILS,
     }
 }

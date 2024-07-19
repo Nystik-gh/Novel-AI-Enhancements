@@ -10,6 +10,9 @@
 
 const wRef = unsafeWindow ? unsafeWindow : window
 
+/***
+ * @type {NAIE}
+ */
 let NAIE = null
 
 const init = () => {
