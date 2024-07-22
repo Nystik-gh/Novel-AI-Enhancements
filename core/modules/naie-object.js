@@ -12,6 +12,6 @@ const createNAIEInstance = () => {
         registerFetchPostHook: () => {
             console.log('register fetch post hook')
         },
-        COMMON: NAIE_COMMON_UTILS,
+        DOM: DOM_UTILS,
     }
 }
