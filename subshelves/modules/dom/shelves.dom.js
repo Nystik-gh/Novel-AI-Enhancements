@@ -8,7 +8,7 @@ const getStoryListEl = () => {
 
 const AreThereShelves = () => {
     const storyList = getStoryListEl()
-    return storyList.querySelectorAll(`${storyListSelector} > div:not([role])`).length > 0
+    return storyList && storyList.querySelectorAll(`${storyListSelector} > div:not([role])`).length > 0
 }
 
 const initStoryListObserver = (storyListEl) => {

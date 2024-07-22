@@ -23,21 +23,25 @@ const preflight = async () => {
 
         showIndicator('subshelves ready')
 
-        await waitForElement(storyListSelector)
+        if (AreThereShelves()) {
+            await waitForElement(storyListSelector)
 
-        if (!sidebarLock) {
-            sidebarLock = lockSideBar(true, true, true)
-            await sleep(100)
+            if (!sidebarLock) {
+                sidebarLock = lockSideBar(true, true, true)
+                await sleep(100)
+            }
+        } else {
+            emptyStoryListFlag = true
         }
 
         lock.unlock()
 
-        await preProcessSidebar()
-        await initGlobalObservers()
-
         if (AreThereShelves()) {
+            await preProcessSidebar()
             createContextMenuTemplate()
         }
+
+        await initGlobalObservers()
 
         if (sidebarLock) {
             sidebarLock.unlock()

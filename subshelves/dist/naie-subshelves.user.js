@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Novel AI Enhanced: Sub-shelves
 // @namespace    github.nystik-hg
-// @version      1.0.6
+// @version      1.0.7
 // @description  Adds nested shelves functionality
 // @match        https://novelai.net/*
 // @grant        none
@@ -1428,7 +1428,7 @@ const getStoryListEl = () => {
 
 const AreThereShelves = () => {
     const storyList = getStoryListEl()
-    return storyList.querySelectorAll(`${storyListSelector} > div:not([role])`).length > 0
+    return storyList && storyList.querySelectorAll(`${storyListSelector} > div:not([role])`).length > 0
 }
 
 const initStoryListObserver = (storyListEl) => {
@@ -2236,21 +2236,25 @@ const preflight = async () => {
 
         showIndicator('subshelves ready')
 
-        await waitForElement(storyListSelector)
+        if (AreThereShelves()) {
+            await waitForElement(storyListSelector)
 
-        if (!sidebarLock) {
-            sidebarLock = lockSideBar(true, true, true)
-            await sleep(100)
+            if (!sidebarLock) {
+                sidebarLock = lockSideBar(true, true, true)
+                await sleep(100)
+            }
+        } else {
+            emptyStoryListFlag = true
         }
 
         lock.unlock()
 
-        await preProcessSidebar()
-        await initGlobalObservers()
-
         if (AreThereShelves()) {
+            await preProcessSidebar()
             createContextMenuTemplate()
         }
+
+        await initGlobalObservers()
 
         if (sidebarLock) {
             sidebarLock.unlock()
