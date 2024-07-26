@@ -15,9 +15,7 @@ const wRef = unsafeWindow ? unsafeWindow : window
  */
 let NAIE = null
 
-const init = () => {
-    // Ensure window.NAIE_INSTANCE is set to a new NAIE instance if not already set
-
+const coreInit = () => {
     if (!wRef.NAIE_INSTANCE) {
         console.log('creating naie instance')
         wRef.NAIE_INSTANCE = createNAIEInstance()
@@ -28,10 +26,6 @@ const init = () => {
     NAIE = wRef.NAIE_INSTANCE
 }
 
-const naieGlobalFunc = () => {
-    console.log('globally registered function')
-}
-
 // ;INJECT DEPENDENCIES;
 
-init()
+coreInit()

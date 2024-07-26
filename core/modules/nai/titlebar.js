@@ -3,7 +3,7 @@ const nai_findTitleBar = () => {
     const sortSettingsButton = document.querySelector(filterButtonSelector)
 
     // manually traverse dom to expected home button
-    const titleBarCandidate = sortSettingsButton?.parentNode?.parentNode
+    const titleBarCandidate = sortSettingsButton?.parentNode?.parentElement
 
     if (titleBarCandidate && titleBarCandidate.tagName === 'DIV') {
         return titleBarCandidate
