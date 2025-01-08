@@ -8,12 +8,10 @@ const preflight = async () => {
     try {
         const app = await waitForElement(appSelector)
 
-        const lock = lockLoader(app)
+        const lock = NAIE.EXTENSIONS.Loader.lockLoader(app)
         //console.log('locked loader')
 
         await waitForElement(settingsButtonSelector)
-
-        preProcessIndicator()
 
         showIndicator('initializing subshelves...')
 
@@ -46,26 +44,4 @@ const preflight = async () => {
         console.error(e)
         throw new Error('preflight failed!')
     }
-}
-
-let loaderTemplate = null
-
-const lockLoader = (app) => {
-    if (loaderTemplate === null) {
-        loaderTemplate = app.firstChild.cloneNode(true)
-    }
-
-    const loader = loaderTemplate
-
-    const clone = loader.cloneNode(true)
-    clone.id = 'loader-lock'
-    clone.style.zIndex = '1000'
-
-    document.documentElement.append(clone)
-
-    const unlock = () => {
-        //console.log('unlocking loader')
-        document.documentElement.removeChild(clone)
-    }
-    return { unlock }
 }

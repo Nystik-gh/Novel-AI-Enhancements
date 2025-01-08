@@ -1,55 +1,89 @@
-const initModalObserver = () => {
-    if (modalObserver) {
-        //console.log('modal observer already initiated, aborting...')
+let shelfModalHandler = null
+
+const setupShelfModalHandler = () => {
+    if (shelfModalHandler) {
         return
     }
 
-    modalObserver = true
-
-    const observerOptions = {
-        childList: true,
-    }
-
-    const observerCallback = (mutationsList, observer) => {
-        // Trigger mapShelfMetadata when mutations indicate changes
-        for (const mutation of mutationsList) {
-            if (mutation.type === 'childList') {
-                const addedNodes = Array.from(mutation.addedNodes)
-                const hasProjectionId = addedNodes.some(
-                    (node) => node.nodeType === Node.ELEMENT_NODE && node.hasAttribute('data-projection-id'),
-                )
-
-                if (hasProjectionId) {
-                    modalObserver.disconnect()
-
-                    waitForShelfSettingsModal(100)
-                        .then((data) => {
-                            if (!data.modal?.dataset['proxied']) {
-                                constructShelfSettingModal(data)
-                            }
-                            observer.observe(document.body, observerOptions)
-                        })
-                        .catch((error) => {
-                            // Not a settingsModal
-                            // having an empty catch block doesn't feel great, should probably rework modal handling at some point.
-                            observer.observe(document.body, observerOptions)
-                        })
-                    break
-                }
-            }
-        }
-    }
-
-    modalObserver = new MutationObserver(observerCallback)
-    modalObserver.observe(document.body, observerOptions)
+    // Get the modal observer from core
+    const { emitter } = NAIE.NAI.initModalObserver()
+    
+    // Subscribe to modal events
+    emitter.on('modal', handlePotentialShelfModal)
+    shelfModalHandler = emitter
 }
 
-const waitForModal = async (timeout) => {
-    const modal = await waitForElement(modalSelector, timeout)
+const handlePotentialShelfModal = async ({ modal, overlay }) => {
+    // Skip if already handled
+    if (modal.dataset['proxied']) {
+        return
+    }
 
-    const overlay = modal?.parentNode?.parentNode?.hasAttribute('data-projection-id') ? modal?.parentNode?.parentNode : null
+    try {
+        const modalData = await identifyShelfSettingsModal(modal, overlay)
+        if (modalData) {
+            constructShelfSettingModal(modalData)
+        }
+    } catch (error) {
+        // Not a shelf settings modal, ignore
+    }
+}
 
-    const closeButton = modal ? findElementWithMaskImage(modal.querySelectorAll('button > div'), ['cross', '.svg'])?.[0] : null
+const identifyShelfSettingsModal = async (modal, overlay) => {
+    // Check if this is a shelf settings modal by looking for specific elements
+    const descriptionField = modal.querySelector('textarea[placeholder*="description"]')
+    if (!descriptionField) {
+        return null
+    }
 
-    return { modal, overlay, closeButton }
+    const titleField = modal.querySelector('input[placeholder*="title"]')
+    if (!titleField) {
+        return null
+    }
+
+    // If we found both fields, this is a shelf settings modal
+    return {
+        modal,
+        overlay,
+        fields: {
+            title: titleField,
+            description: descriptionField
+        }
+    }
+}
+
+// Helper function to create modal predicates
+const isShelfSettingsModal = ({ modal }) => {
+    const title = modal.querySelector('input[placeholder*="title"]')
+    const description = modal.querySelector('textarea[placeholder*="description"]')
+    return title && description
+}
+
+const isShelfDeleteModal = ({ modal }) => {
+    const buttons = modal.firstChild?.lastChild?.querySelectorAll('button')
+    return buttons?.length === 1 && modal.querySelector('button[aria-label="Close Modal"]')
+}
+
+// New wait functions using core modal observer
+const waitForShelfSettingsModal = async (timeout) => {
+    const { waitForSpecificModal } = NAIE.NAI.initModalObserver()
+    const modalData = await waitForSpecificModal(isShelfSettingsModal, timeout)
+    
+    return {
+        ...modalData,
+        fields: {
+            title: modalData.modal.querySelector('input'),
+            description: modalData.modal.querySelector('textarea')
+        }
+    }
+}
+
+const waitForShelfDeleteModal = async (timeout) => {
+    const { waitForSpecificModal } = NAIE.NAI.initModalObserver()
+    const modalData = await waitForSpecificModal(isShelfDeleteModal, timeout)
+
+    return {
+        ...modalData,
+        deleteButton: modalData.modal.firstChild.lastChild.querySelector('button'),
+    }
 }

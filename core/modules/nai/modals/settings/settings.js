@@ -60,8 +60,7 @@ const handleSettingsDesktop = async (modal, sidebar) => {
 
     const changelog = buttons[7]
     const logout = buttons[8]
-
-    const closeButton = findElementWithMaskImage(modal.querySelectorAll('button > div'), ['cross', '.svg'])?.[0]
+    const closeButton = sidebar.parentNode.parentNode.previousSibling
 
     return { tabs, changelog, logout, closeButton }
 }
@@ -74,28 +73,24 @@ const handleSettingsMobile = async (modal, sidebar) => {
     }
 
     const tabs = {
-        ai_settings: buttons[1],
-        interface: buttons[2],
-        theme: buttons[3],
-        account: buttons[4],
-        text_to_speech: buttons[5],
-        defaults: buttons[6],
+        ai_settings: buttons[0],
+        interface: buttons[1],
+        theme: buttons[2],
+        account: buttons[3],
+        text_to_speech: buttons[4],
+        defaults: buttons[5],
+        hotkeys: buttons[6],
     }
 
     const changelog = buttons[7]
     const logout = buttons[8]
-
-    const closeButton = findElementWithMaskImage(modal.querySelectorAll('button > div'), ['cross', '.svg'])?.[0]
+    const closeButton = modal.querySelector('button[aria-label="Close"]')
 
     return { tabs, changelog, logout, closeButton }
 }
 
 const getPanel = async (modal, button, waitForFunction) => {
-    const panelPromise = waitForFunction(modal)
-
-    simulateClick(button) // Simulate the click on the button to show the panel
-
-    const panel = await panelPromise
-
-    return panel
+    simulateClick(button)
+    await sleep(100)
+    return await waitForFunction(modal)
 }

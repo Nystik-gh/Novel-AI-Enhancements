@@ -3,15 +3,14 @@
  */
 const createNAIEInstance = () => {
     return {
-        registerSettings: () => {
-            console.log('register settings')
-        },
-        registerFetchPreHook: () => {
-            console.log('register fetch pre hook')
-        },
-        registerFetchPostHook: () => {
-            console.log('register fetch post hook')
-        },
+        HOOKS,
+        SETTINGS,
+        MISC: MISC_UTILS,
         DOM: DOM_UTILS,
+        NAI: NAI_UTILS,
+        EXTENSIONS,
+        LOGGING: LOGGING_UTILS,
+        PREFLIGHT: PREFLIGHT_UTILS,
+        statusIndicator: extensions_createNAIEIndicator()
     }
 }

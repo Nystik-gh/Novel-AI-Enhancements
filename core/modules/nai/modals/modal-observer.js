@@ -29,7 +29,26 @@ const naie_initModalObserver = () => {
     const modalObserver = new MutationObserver(observerCallback)
     modalObserver.observe(document.body, observerOptions)
 
-    return { emitter, observer: modalObserver }
+    const waitForSpecificModal = (predicate, timeout = 5000) => {
+        return new Promise((resolve, reject) => {
+            const timeoutId = setTimeout(() => {
+                emitter.off('modal', handler)
+                reject(new Error('Modal wait timeout'))
+            }, timeout)
+
+            const handler = (modalData) => {
+                if (predicate(modalData)) {
+                    clearTimeout(timeoutId)
+                    emitter.off('modal', handler)
+                    resolve(modalData)
+                }
+            }
+
+            emitter.on('modal', handler)
+        })
+    }
+
+    return { emitter, observer: modalObserver, waitForSpecificModal }
 }
 
 const naie_collectModal = async (candidate) => {
@@ -47,7 +66,7 @@ const naie_collectModal = async (candidate) => {
 }
 
 const naie_waitForModalCloseButton = (modal, timeout) => {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
         const checkCloseButton = () => {
             const closeButton = findElementWithMaskImage(modal.querySelectorAll('button, button > div'), ['cross', '.svg'])?.[0]
             if (closeButton !== null) {

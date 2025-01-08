@@ -49,12 +49,7 @@ const createSelectControlTemplate = (fontSelect) => {
 
     inputElement.id = ''
 
-    clone.classList.add('naie-select-box')
-    control.classList.add('naie-select-control')
-    selectedValueText.classList.add('naie-select-value')
-    inputElement.classList.add('naie-select-input')
-
-    selectedValueText.textContent = ''
-
-    return clone
+    return control
 }
+
+const getSelectControlTemplate = () => selectControlTemplate

@@ -71,13 +71,12 @@ const controls_createSelectDropdown = (options, selectedValue) => {
     return dropdownContainer
 }
 
-const controls_constructSelectControl = (options, selectedValue, callback) => {
-    const selectControl = selectControlTemplate.cloneNode(true)
-
-    const controlElement = selectControl.querySelector('.naie-select-control')
-    const singleValueElement = selectControl.querySelector('.naie-select-value')
-    const inputElement = selectControl.querySelector('.naie-select-input')
-    const inputWrapper = selectControl.querySelector('.naie-select-input-wrapper')
+const controls_constructSelectControl = (options, selectedValue, onChange) => {
+    const template = controls_getTemplate()
+    const controlElement = template.querySelector('.naie-select-control')
+    const singleValueElement = template.querySelector('.naie-select-value')
+    const inputElement = template.querySelector('.naie-select-input')
+    const inputWrapper = template.querySelector('.naie-select-input-wrapper')
 
     const selectedOption = options.find((option) => option.value === selectedValue)
     if (selectedOption) {
@@ -86,7 +85,7 @@ const controls_constructSelectControl = (options, selectedValue, callback) => {
 
     const dropdown = controls_createSelectDropdown(options, selectedValue)
     dropdown.style.display = 'none'
-    selectControl.appendChild(dropdown)
+    template.appendChild(dropdown)
 
     const updateDropdown = (filterText = '') => {
         let visibleOptionsCount = 0
@@ -121,7 +120,7 @@ const controls_constructSelectControl = (options, selectedValue, callback) => {
         inputElement.focus()
 
         outsideClickHandle = OnClickOutside(
-            selectControl,
+            template,
             () => {
                 hideDropdown()
             },
@@ -169,9 +168,9 @@ const controls_constructSelectControl = (options, selectedValue, callback) => {
                 el.style.backgroundColor = el === optionElement ? 'rgb(16, 18, 36)' : 'transparent'
             })
 
-            callback(newValue)
+            onChange(newValue)
         })
     })
 
-    return selectControl
+    return template
 }

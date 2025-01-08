@@ -6,6 +6,7 @@ interface NAIE {
     NAI
     EXTENSIONS
     LOGGING: LoggingUtils
+    PREFLIGHT: PreflightUtils
     statusIndicator: NAIEStatusIndicator
 }
 

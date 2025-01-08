@@ -1,8 +1,9 @@
 /***
  * @type {NAIEControls}
  */
-const CONTROLS = {
+const CONTROLS_UTILS = {
     Select: {
         constructSelectControl: controls_constructSelectControl,
-    },
+        initializeTemplate: controls_initSelectTemplate
+    }
 }
