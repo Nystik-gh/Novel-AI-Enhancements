@@ -86,3 +86,12 @@ interface NetworkManager {
      */
     initialize(): void;
 }
+
+/**
+ * Interface for accessing the network module
+ * 
+ * @interface
+ */
+interface NAIENetwork {
+    manager: NetworkManager
+}

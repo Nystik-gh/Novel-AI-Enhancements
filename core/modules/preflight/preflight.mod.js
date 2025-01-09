@@ -7,11 +7,11 @@ const PREFLIGHT_UTILS = {
 
 // Internal function, called by core when all scripts are ready
 const preflight_runStages = async () => {
-    const logger = NAIE.LOGGING.getLogger()
+    const logger = logging_getLogger()
     logger.debug('Starting NAIE preflight')
 
     const app = await waitForElement('#app')
-    const loader = NAIE.EXTENSIONS.Loader.lockLoader(app)
+    const loader = extensions_lockLoader(app)
     const errors = []
     
     try {
@@ -41,7 +41,7 @@ const preflight_runStages = async () => {
             )
 
             // Show user-friendly notification
-            NAIE.statusIndicator.displayMessage(
+            _statusIndicator.displayMessage(
                 `Some features failed to initialize: ${errors.map(e => e.hookId).join(', ')}`
             )
         } else {
