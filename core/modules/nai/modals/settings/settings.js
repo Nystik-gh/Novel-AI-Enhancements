@@ -2,37 +2,29 @@ const getSettingsButton = () => {
     return document.querySelector(settingsButtonSelector)
 }
 
-const waitForSettingsModal = async (timeout, hidden = false) => {
-    const { modal, overlay } = await waitForModal(timeout)
+const waitForSettingsModal = async (timeout = 5000, hidden = false) => {
+    const modalData = await _modalObserver.waitForSpecificModal(
+        (modal) => modal.modal.querySelector('.settings-sidebar'),
+        timeout
+    )
 
-    if (hidden) {
-        overlay.style.display = 'none'
+    if (hidden && modalData.overlay) {
+        modalData.overlay.style.display = 'none'
     }
 
-    const sidebar = await waitForElement('.settings-sidebar', 15000)
-
-    if (!sidebar) {
-        throw new Error('No settings sidebar found')
-    }
-
+    const sidebar = modalData.modal.querySelector('.settings-sidebar')
     const { tabs, changelog, logout, closeButton } = isMobileView()
-        ? await handleSettingsMobile(modal, sidebar)
-        : await handleSettingsDesktop(modal, sidebar)
+        ? await handleSettingsMobile(modalData.modal, sidebar)
+        : await handleSettingsDesktop(modalData.modal, sidebar)
 
     return {
-        modal,
-        overlay,
-        closeButton,
+        modal: modalData.modal,
+        overlay: modalData.overlay,
+        closeButton: modalData.closeButton,
         tabs,
         extra: { changelog, logout },
         panels: {
-            //getAISettingsPanel: () => getPanel(tabs.ai_settings, waitForAISettingsPanel),
-            //getInterfacePanel: () => getPanel(tabs.interface, waitForInterfacePanel),
-            getThemePanel: () => getPanel(modal, tabs.theme, waitForThemePanel),
-            //getAccountPanel: () => getPanel(tabs.account, waitForAccountPanel),
-            //getTextToSpeechPanel: () => getPanel(tabs.text_to_speech, waitForTextToSpeechPanel),
-            //getDefaultsPanel: () => getPanel(tabs.defaults, waitForDefaultsPanel),
-            //getHotkeysPanel: () => getPanel(tabs.hotkeys, waitForHotkeysPanel),
+            getThemePanel: () => getPanel(modalData.modal, tabs.theme, waitForThemePanel),
         },
     }
 }
@@ -90,7 +82,7 @@ const handleSettingsMobile = async (modal, sidebar) => {
 }
 
 const getPanel = async (modal, button, waitForFunction) => {
-    simulateClick(button)
+    dom_simulateClick(button)
     await sleep(100)
     return await waitForFunction(modal)
 }

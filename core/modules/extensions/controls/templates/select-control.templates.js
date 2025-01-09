@@ -2,22 +2,22 @@ let selectControlTemplate = null
 
 const controls_initSelectTemplate = async () => {
     try {
-        NAIE.DOM.simulateClick(NAIE.NAI.findSettingsButton())
+        nai_dom_simulateClick(nai_findSettingsButton())
 
-        const settingsModal = await NAIE.NAI.waitForSettingsModal()
+        const settingsModal = await nai_waitForSettingsModal()
         const { fontSelect } = await settingsModal.panels.getThemePanel()
         selectControlTemplate = controls_createSelectControlTemplate(fontSelect)
 
         // Add global style for focus override
-        NAIE.DOM.addGlobalStyle(`
+        nai_dom_addGlobalStyle(`
             .naie-focus-override:focus-within {
                 opacity: 1 !important;
             }
         `)
 
-        NAIE.DOM.simulateClick(settingsModal.closeButton)
+        nai_dom_simulateClick(settingsModal.closeButton)
     } catch (e) {
-        NAIE.LOGGING.getLogger().error('Failed to clone select element:', e)
+        nai_logging_getLogger().error('Failed to clone select element:', e)
         throw new Error('Failed to clone select element')
     }
 }

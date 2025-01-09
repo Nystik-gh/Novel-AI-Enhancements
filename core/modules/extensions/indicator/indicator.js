@@ -42,7 +42,7 @@ const extensions_createMessageManager = () => {
 
 const extensions_createIndicatorManager = (logContainer, maxRows, duration = 2000) => {
     //const logContainer = document.getElementById(logContainerId)
-    const messageManager = createMessageManager()
+    const messageManager = extensions_createMessageManager()
 
     const addMessageToLog = (message) => {
         const messageElement = document.createElement('div')

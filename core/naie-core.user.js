@@ -17,6 +17,9 @@ let NAIE = null
 
 const coreInit = () => {
     if (!wRef.NAIE_INSTANCE) {
+        // Initialize core components before creating NAIE instance
+        controls_initializeTemplates()
+        
         console.log('creating naie instance')
         wRef.NAIE_INSTANCE = createNAIEInstance()
     } else {

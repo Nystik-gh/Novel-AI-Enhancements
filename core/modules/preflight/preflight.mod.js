@@ -2,11 +2,11 @@
  * @type {PreflightUtils}
  */
 const PREFLIGHT_UTILS = {
-    registerHook: preflight_registerHook,
-    initialize: preflight_initialize
+    registerHook: preflight_registerHook
 }
 
-const preflight_initialize = async () => {
+// Internal function, called by core when all scripts are ready
+const preflight_runStages = async () => {
     const logger = NAIE.LOGGING.getLogger()
     logger.debug('Starting NAIE preflight')
 

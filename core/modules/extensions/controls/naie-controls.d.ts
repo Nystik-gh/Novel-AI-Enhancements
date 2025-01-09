@@ -20,13 +20,5 @@ interface NAIEControls {
          * @returns {HTMLElement} The custom select control element.
          */
         constructSelectControl(options: SelectOption[], selectedValue: string, onChange: (value: string) => void): HTMLElement
-
-        /**
-         * Initializes the select control template by cloning it from NAI's settings.
-         * Must be called during preflight before using constructSelectControl.
-         * 
-         * @returns {Promise<void>}
-         */
-        initializeTemplate(): Promise<void>
     }
 }

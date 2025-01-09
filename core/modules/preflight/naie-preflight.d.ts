@@ -36,11 +36,4 @@ interface PreflightUtils {
         callback: () => Promise<void>,
         timeout?: number
     ): void
-
-    /**
-     * Initialize NAIE and run all preflight hooks
-     * 
-     * @returns Promise<PreflightError[]> Any errors that occurred during preflight
-     */
-    initialize(): Promise<PreflightError[]>
 }

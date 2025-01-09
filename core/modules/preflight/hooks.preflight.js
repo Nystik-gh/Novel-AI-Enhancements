@@ -36,7 +36,7 @@ const runHookWithTimeout = async (hook) => {
 }
 
 const runStage = async (stage) => {
-    const logger = NAIE.LOGGING.getLogger()
+    const logger = logging_getLogger()
     currentStage = stage
     const stageHooks = hooks.get(stage)
     const errors = []
@@ -56,7 +56,7 @@ const runStage = async (stage) => {
 }
 
 const preflight_registerHook = (stage, id, priority, callback, timeout = DEFAULT_TIMEOUT) => {
-    const logger = NAIE.LOGGING.getLogger()
+    const logger = logging_getLogger()
 
     if (!hooks.has(stage)) {
         throw new Error(`Invalid preflight stage: ${stage}`)
