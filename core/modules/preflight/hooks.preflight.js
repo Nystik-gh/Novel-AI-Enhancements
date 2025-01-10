@@ -1,15 +1,23 @@
+// Internal stages not exposed to external scripts
+const INTERNAL_STAGES = {
+    INTERNAL: 'internal'
+}
+
+// Public stages that can be used by external scripts
 const STAGES = {
     EARLY: 'early',
     MAIN: 'main',
     LATE: 'late'
 }
 
+const ALL_STAGES = { ...INTERNAL_STAGES, ...STAGES }
+
 const DEFAULT_TIMEOUT = 10000 // 10 seconds
 let currentStage = null
 
 // Initialize hook storage
 const hooks = new Map()
-for (const stage of Object.values(STAGES)) {
+for (const stage of Object.values(ALL_STAGES)) {
     hooks.set(stage, [])
 }
 
@@ -38,8 +46,13 @@ const runHookWithTimeout = async (hook) => {
 const runStage = async (stage) => {
     const logger = logging_getLogger()
     currentStage = stage
-    const stageHooks = hooks.get(stage)
+    const stageHooks = hooks.get(stage) || []
     const errors = []
+
+    if (stageHooks.length === 0) {
+        logger.debug(`No hooks registered for stage: ${stage}`)
+        return errors
+    }
 
     logger.debug(`Running preflight stage: ${stage}`)
 
@@ -58,19 +71,30 @@ const runStage = async (stage) => {
 const preflight_registerHook = (stage, id, priority, callback, timeout = DEFAULT_TIMEOUT) => {
     const logger = logging_getLogger()
 
+    // Prevent external scripts from using internal stages
+    if (INTERNAL_STAGES[stage]) {
+        throw new Error(`Stage '${stage}' is reserved for internal use`)
+    }
+
     if (!hooks.has(stage)) {
-        throw new Error(`Invalid preflight stage: ${stage}`)
+        throw new Error(`Invalid stage: ${stage}`)
     }
 
-    // Prevent duplicate hook IDs
-    for (const [existingStage, existingHooks] of hooks.entries()) {
-        if (existingHooks.some(h => h.id === id)) {
-            throw new Error(`Hook ID ${id} already registered in stage ${existingStage}`)
-        }
+    const stageHooks = hooks.get(stage)
+    const hook = {
+        id,
+        priority: priority || 0,
+        callback,
+        timeout
     }
 
-    hooks.get(stage).push({ id, priority, callback, timeout })
-    hooks.get(stage).sort((a, b) => b.priority - a.priority)
-    
+    // Insert hook in priority order (higher priority first)
+    const index = stageHooks.findIndex(h => (h.priority || 0) < (hook.priority || 0))
+    if (index === -1) {
+        stageHooks.push(hook)
+    } else {
+        stageHooks.splice(index, 0, hook)
+    }
+
     logger.debug(`Registered preflight hook: ${id} in stage ${stage}`)
 }

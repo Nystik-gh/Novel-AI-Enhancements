@@ -4,7 +4,16 @@
 // @namespace    github.nystik-hg
 // @version      0.1.0
 // @description  Core library
-// @require      ./modules/*
+// @require      ./lib/*
+// @require      ./modules/misc/*
+// @require      ./modules/logging/*
+// @require      ./modules/dom/*
+// @require      ./modules/extensions/*
+// @require      ./modules/network/*
+// @require      ./modules/nai/*
+// @require      ./modules/preflight/*
+// @require      ./modules/internal/*
+// @require      ./modules/naie-object.js
 // @author       Nystik (https://gitlab.com/Nystik)
 // ==/UserScript==
 
@@ -17,14 +26,16 @@
     let NAIE = null
 
     const coreInit = () => {
+        const logger = logging_getLogger()
+        logging_setLogLevel("debug")
         if (!wRef.NAIE_INSTANCE) {
-            // Initialize core components before creating NAIE instance
-            controls_initializeTemplates()
-            
-            console.log('creating naie instance')
+            logger.info('creating naie instance')
             wRef.NAIE_INSTANCE = createNAIEInstance()
+            
+            // Start waiting for scripts to register and become ready
+            internal_startWaitingForScripts()
         } else {
-            console.log('naie instance already exists, skipping')
+            logger.info('naie instance already exists, skipping')
         }
 
         NAIE = wRef.NAIE_INSTANCE

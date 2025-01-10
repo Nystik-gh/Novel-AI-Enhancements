@@ -13,7 +13,8 @@ const waitForSettingsModal = async (timeout = 5000, hidden = false) => {
     }
 
     const sidebar = modalData.modal.querySelector('.settings-sidebar')
-    const { tabs, changelog, logout, closeButton } = isMobileView()
+    console.log("sidebar", sidebar, misc_isMobileView())
+    const { tabs, changelog, logout, closeButton } = misc_isMobileView()
         ? await handleSettingsMobile(modalData.modal, sidebar)
         : await handleSettingsDesktop(modalData.modal, sidebar)
 
@@ -31,7 +32,7 @@ const waitForSettingsModal = async (timeout = 5000, hidden = false) => {
 
 const handleSettingsDesktop = async (modal, sidebar) => {
     do {
-        await sleep(50)
+        await misc_sleep(50)
     } while (sidebar?.parentNode?.parentNode?.previousSibling?.tagName?.toLowerCase() !== 'button')
 
     const buttons = sidebar.querySelectorAll('button')
@@ -65,13 +66,12 @@ const handleSettingsMobile = async (modal, sidebar) => {
     }
 
     const tabs = {
-        ai_settings: buttons[0],
-        interface: buttons[1],
-        theme: buttons[2],
-        account: buttons[3],
-        text_to_speech: buttons[4],
-        defaults: buttons[5],
-        hotkeys: buttons[6],
+        ai_settings: buttons[1],
+        interface: buttons[2],
+        theme: buttons[3],
+        account: buttons[4],
+        text_to_speech: buttons[5],
+        defaults: buttons[6],
     }
 
     const changelog = buttons[7]
@@ -83,6 +83,6 @@ const handleSettingsMobile = async (modal, sidebar) => {
 
 const getPanel = async (modal, button, waitForFunction) => {
     dom_simulateClick(button)
-    await sleep(100)
+    await misc_sleep(100)
     return await waitForFunction(modal)
 }

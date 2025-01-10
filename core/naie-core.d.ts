@@ -27,7 +27,6 @@ interface NAIE {
     PREFLIGHT: NAIEPreflight
     CORE: NAIECore
     SERVICES: NAIEServices
-    _internal: NAIEInternal
 }
 
 interface Window {

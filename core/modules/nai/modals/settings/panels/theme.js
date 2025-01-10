@@ -1,5 +1,7 @@
 const waitForThemePanel = async (modal) => {
+    logging_getLogger().debug('waitForThemePanel')
     const content = modal.querySelector('.settings-content')
+    logging_getLogger().debug('content', content)
 
     if (!content) {
         throw new Error('settings content not found')

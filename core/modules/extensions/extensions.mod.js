@@ -3,5 +3,5 @@
  */
 const EXTENSIONS = {
     Loader: LOADER,
-    Controls: CONTROLS,
+    Controls: CONTROLS_UTILS,
 }

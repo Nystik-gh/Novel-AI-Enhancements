@@ -1,5 +1,5 @@
 const _modalObserver = naie_initModalObserver()
-const _statusIndicator = extensions_createNAIEIndicator()
+let _statusIndicator = null;
 
 /***
  * @type {NAIEServices}
@@ -14,7 +14,7 @@ const NAIE_SERVICES = {
  */
 const createNAIEInstance = () => {
     return {
-        NETWORK,
+        NETWORK: NERWORK_UTILS,
         //SETTINGS,
         MISC: MISC_UTILS,
         DOM: DOM_UTILS,
@@ -24,6 +24,5 @@ const createNAIEInstance = () => {
         PREFLIGHT: PREFLIGHT_UTILS,
         CORE: CORE_UTILS,
         SERVICES: NAIE_SERVICES,
-        _internal: NAIE_INTERNAL
     }
 }

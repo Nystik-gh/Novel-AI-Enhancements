@@ -20,6 +20,11 @@ interface NAIEInternal {
     isPreflightStarted: boolean
 
     /**
+     * Whether we are currently waiting for scripts to become ready
+     */
+    isWaitingForScripts: boolean
+
+    /**
      * Preflight management
      */
     preflight: {
@@ -38,6 +43,7 @@ interface NAIECore {
      * Must be called before markScriptReady
      * 
      * @param scriptId Unique identifier for the script
+     * @throws {Error} If script tries to register after preflight started
      */
     registerScript(scriptId: string): void
 
@@ -46,6 +52,7 @@ interface NAIECore {
      * Script must be registered first
      * 
      * @param scriptId Unique identifier for the script
+     * @throws {Error} If script is not registered
      */
     markScriptReady(scriptId: string): Promise<void>
 }

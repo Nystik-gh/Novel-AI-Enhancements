@@ -19,15 +19,37 @@ const mergeDependencies = (scriptDir, scriptFile) => {
 
     const findJavaScriptFiles = (dir) => {
         const files = fs.readdirSync(dir)
+        const result = {
+            regular: [],
+            mods: []
+        }
+
+        // First process all subdirectories
         files.forEach((file) => {
             const filePath = path.join(dir, file)
             const stat = fs.statSync(filePath)
             if (stat.isDirectory()) {
-                findJavaScriptFiles(filePath)
-            } else if (file.endsWith('.js')) {
-                dependencies.push(filePath)
+                const subResults = findJavaScriptFiles(filePath)
+                result.regular.push(...subResults.regular)
+                result.mods.push(...subResults.mods)
             }
         })
+
+        // Then process all files in the current directory
+        files.forEach((file) => {
+            const filePath = path.join(dir, file)
+            const stat = fs.statSync(filePath)
+            if (!stat.isDirectory() && file.endsWith('.js')) {
+                // Separate .mod.js files from regular .js files
+                if (file.endsWith('.mod.js')) {
+                    result.mods.push(filePath)
+                } else {
+                    result.regular.push(filePath)
+                }
+            }
+        })
+
+        return result
     }
 
     // Process @require directives
@@ -41,12 +63,20 @@ const mergeDependencies = (scriptDir, scriptFile) => {
         }
 
         const wildcardPath = requirePath.replace('@require', '').trim().replace(/\*$/, '')
-        const wildcardDir = path.join(scriptDir, wildcardPath)
+        const fullPath = path.join(scriptDir, wildcardPath)
 
-        if (fs.existsSync(wildcardDir)) {
-            findJavaScriptFiles(wildcardDir)
+        if (fs.existsSync(fullPath)) {
+            const stat = fs.statSync(fullPath)
+            if (stat.isFile() && fullPath.endsWith('.js')) {
+                // If it's a JavaScript file, add it directly to dependencies
+                dependencies.push(fullPath)
+            } else if (stat.isDirectory()) {
+                // If it's a directory, recursively find JavaScript files
+                const results = findJavaScriptFiles(fullPath)
+                dependencies.push(...results.regular, ...results.mods)
+            }
         } else {
-            console.error(`Error: Directory ${wildcardDir} specified in @require directive does not exist.`)
+            console.error(`Error: Path ${fullPath} specified in @require directive does not exist.`)
         }
     }
 

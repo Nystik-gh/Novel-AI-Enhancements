@@ -10,5 +10,3 @@ const MISC_UTILS = {
     decodeBase64: misc_decodeBase64,
     encodeBase64: misc_encodeBase64,
 }
-
-module.exports = MISC_UTILS;

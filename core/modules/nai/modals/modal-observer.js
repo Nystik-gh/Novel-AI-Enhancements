@@ -54,23 +54,28 @@ const naie_initModalObserver = () => {
 const naie_collectModal = async (candidate) => {
     const modal = candidate.querySelector(modalSelector)
 
-    if (modal) {
-        try {
-            const closeButton = await naie_waitForModalCloseButton(modal, 1000)
+    if (!modal) {return null}
 
-            return { overlay: candidate, modal, closeButton }
-        } catch (e) {}
+    try {
+        const closeButton = await naie_waitForModalCloseButton(modal, 1000)
+        return { 
+            overlay: candidate, 
+            modal, 
+            closeButton 
+        }
+    } catch (e) {
+        logging_getLogger().debug('failed to find close button', e)
+        return null
     }
-
-    return null
 }
 
 const naie_waitForModalCloseButton = (modal, timeout) => {
     return new Promise((resolve, reject) => {
         const checkCloseButton = () => {
-            const closeButton = findElementWithMaskImage(modal.querySelectorAll('button, button > div'), ['cross', '.svg'])?.[0]
-            if (closeButton !== null) {
-                resolve(closeButton)
+            const matches = dom_findElementWithMaskImage(modal.querySelectorAll('button > div'), ['cross', '.svg'])
+            
+            if (matches.length > 0) {
+                resolve(matches[0])
             } else {
                 requestAnimationFrame(checkCloseButton)
             }
