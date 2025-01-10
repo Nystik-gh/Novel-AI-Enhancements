@@ -29,7 +29,7 @@ const checkAllScriptsReady = () => {
  * @returns {Promise<void>} Promise that resolves when preflight starts
  */
 const internal_startWaitingForScripts = async () => {
-    const logger = logging_getLogger()
+    const logger = LOGGING_UTILS.getLogger()
     if (NAIE_INTERNAL.isWaitingForScripts || NAIE_INTERNAL.isPreflightStarted) return
 
     NAIE_INTERNAL.isWaitingForScripts = true
@@ -68,7 +68,7 @@ const registerScript = (scriptId) => {
     if (NAIE_INTERNAL.isPreflightStarted) {
         throw new Error(`Script ${scriptId} tried to register after preflight started`)
     }
-    logging_getLogger().info("registering script", scriptId)
+    LOGGING_UTILS.getLogger().info("registering script", scriptId)
     NAIE_INTERNAL.registeredScripts.add(scriptId)
 }
 
@@ -83,7 +83,7 @@ const markScriptReady = async (scriptId) => {
     if (!NAIE_INTERNAL.registeredScripts.has(scriptId)) {
         throw new Error(`Script ${scriptId} not registered`)
     }
-    logging_getLogger().info("script reports ready", scriptId)
+    LOGGING_UTILS.getLogger().info("script reports ready", scriptId)
     NAIE_INTERNAL.readyScripts.add(scriptId)
 }
 

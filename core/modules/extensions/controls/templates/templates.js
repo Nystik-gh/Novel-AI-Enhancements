@@ -3,7 +3,7 @@
  * Each template's initialization is self-contained and independent
  */
 const controls_initializeTemplates = async () => {
-    const logger = logging_getLogger()
+    const logger = LOGGING_UTILS.getLogger()
     logger.debug('Initializing control templates')
 
     try {

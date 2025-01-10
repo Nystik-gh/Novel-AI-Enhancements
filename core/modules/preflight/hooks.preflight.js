@@ -44,7 +44,7 @@ const runHookWithTimeout = async (hook) => {
 }
 
 const runStage = async (stage) => {
-    const logger = logging_getLogger()
+    const logger = LOGGING_UTILS.getLogger()
     currentStage = stage
     const stageHooks = hooks.get(stage) || []
     const errors = []
@@ -69,7 +69,7 @@ const runStage = async (stage) => {
 }
 
 const preflight_registerHook = (stage, id, priority, callback, timeout = DEFAULT_TIMEOUT) => {
-    const logger = logging_getLogger()
+    const logger = LOGGING_UTILS.getLogger()
 
     // Prevent external scripts from using internal stages
     if (INTERNAL_STAGES[stage]) {

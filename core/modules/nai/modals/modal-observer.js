@@ -1,7 +1,7 @@
 const modalSelector = 'div[role="dialog"][aria-modal="true"]'
 
 const naie_initModalObserver = () => {
-    const emitter = new misc_Emitter()
+    const emitter = new MISC_UTILS.Emitter()
     const observerOptions = {
         childList: true,
     }
@@ -64,7 +64,7 @@ const naie_collectModal = async (candidate) => {
             closeButton 
         }
     } catch (e) {
-        logging_getLogger().debug('failed to find close button', e)
+        LOGGING_UTILS.getLogger().debug('failed to find close button', e)
         return null
     }
 }
@@ -72,7 +72,7 @@ const naie_collectModal = async (candidate) => {
 const naie_waitForModalCloseButton = (modal, timeout) => {
     return new Promise((resolve, reject) => {
         const checkCloseButton = () => {
-            const matches = dom_findElementWithMaskImage(modal.querySelectorAll('button > div'), ['cross', '.svg'])
+            const matches = DOM_UTILS.findElementWithMaskImage(modal.querySelectorAll('button > div'), ['cross', '.svg'])
             
             if (matches.length > 0) {
                 resolve(matches[0])

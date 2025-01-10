@@ -3,7 +3,7 @@ const getSettingsButton = () => {
 }
 
 const waitForSettingsModal = async (timeout = 5000, hidden = false) => {
-    const modalData = await _modalObserver.waitForSpecificModal(
+    const modalData = await NAIE_SERVICES.modalObserver.waitForSpecificModal(
         (modal) => modal.modal.querySelector('.settings-sidebar'),
         timeout
     )
@@ -13,8 +13,8 @@ const waitForSettingsModal = async (timeout = 5000, hidden = false) => {
     }
 
     const sidebar = modalData.modal.querySelector('.settings-sidebar')
-    console.log("sidebar", sidebar, misc_isMobileView())
-    const { tabs, changelog, logout, closeButton } = misc_isMobileView()
+
+    const { tabs, changelog, logout, closeButton } = MISC_UTILS.isMobileView()
         ? await handleSettingsMobile(modalData.modal, sidebar)
         : await handleSettingsDesktop(modalData.modal, sidebar)
 
@@ -32,7 +32,7 @@ const waitForSettingsModal = async (timeout = 5000, hidden = false) => {
 
 const handleSettingsDesktop = async (modal, sidebar) => {
     do {
-        await misc_sleep(50)
+        await MISC_UTILS.sleep(50)
     } while (sidebar?.parentNode?.parentNode?.previousSibling?.tagName?.toLowerCase() !== 'button')
 
     const buttons = sidebar.querySelectorAll('button')
@@ -82,7 +82,7 @@ const handleSettingsMobile = async (modal, sidebar) => {
 }
 
 const getPanel = async (modal, button, waitForFunction) => {
-    dom_simulateClick(button)
-    await misc_sleep(100)
+    DOM_UTILS.simulateClick(button)
+    await MISC_UTILS.sleep(100)
     return await waitForFunction(modal)
 }

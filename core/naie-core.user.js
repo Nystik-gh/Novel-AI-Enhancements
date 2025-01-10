@@ -26,7 +26,7 @@
     let NAIE = null
 
     const coreInit = () => {
-        const logger = logging_getLogger()
+        const logger = LOGGING_UTILS.getLogger()
         logging_setLogLevel("debug")
         if (!wRef.NAIE_INSTANCE) {
             logger.info('creating naie instance')

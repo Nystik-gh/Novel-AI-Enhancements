@@ -30,31 +30,31 @@ const registerCoreInit = () => {
         'core-initialization',
         100, // High priority to run first
         async () => {
-            const logger = logging_getLogger()
+            const logger = LOGGING_UTILS.getLogger()
             logger.debug('core-initialization')
             await controls_initializeTemplates()
-            _statusIndicator = extensions_createNAIEIndicator()
+            NAIE_SERVICES.statusIndicator = INDICATOR_UTILS.createNAIEIndicator()
         }
     )
 }
 
 // Internal function, called by core when all scripts are ready
 const preflight_runStages = async () => {
-    const logger = logging_getLogger()
+    const logger = LOGGING_UTILS.getLogger()
     logger.debug('Starting NAIE preflight')
 
     registerCoreInit()
 
-    const app = await dom_waitForElement('#app')
+    const app = await DOM_UTILS.waitForElement('#app')
     logger.debug('app element', app)
-    const loader = extensions_lockLoader(app)
+    const loader = LOADER.lockLoader(app)
 
     const errors = []
     
     try {
         // Run each stage, collecting errors
         errors.push(...await runStage(INTERNAL_STAGES.INTERNAL))
-        _statusIndicator.displayMessage(
+        NAIE_SERVICES.statusIndicator.displayMessage(
             `Initializing NAIE scripts...`
         )
 
@@ -83,12 +83,12 @@ const preflight_runStages = async () => {
             )
 
             // Show user-friendly notification
-            _statusIndicator.displayMessage(
+            NAIE_SERVICES.statusIndicator.displayMessage(
                 `Some features failed to initialize: ${errors.map(e => e.hookId).join(', ')}`
             )
         } else {
             logger.debug('Preflight completed successfully')
-            _statusIndicator.displayMessage(
+            NAIE_SERVICES.statusIndicator.displayMessage(
                 `NAIE scripts initialized successfully`
             )
         }

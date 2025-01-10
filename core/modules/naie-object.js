@@ -1,12 +1,11 @@
-const _modalObserver = naie_initModalObserver()
-let _statusIndicator = null;
+
 
 /***
  * @type {NAIEServices}
  */
 const NAIE_SERVICES = {
-    statusIndicator: _statusIndicator,
-    modalObserver: _modalObserver,
+    statusIndicator: null,
+    modalObserver: naie_initModalObserver(),
 }
 
 /***

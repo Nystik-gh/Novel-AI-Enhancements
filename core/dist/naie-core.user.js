@@ -16,7 +16,7 @@
     let NAIE = null
 
     const coreInit = () => {
-        const logger = logging_getLogger()
+        const logger = LOGGING_UTILS.getLogger()
         logging_setLogLevel("debug")
         if (!wRef.NAIE_INSTANCE) {
             logger.info('creating naie instance')
@@ -813,26 +813,26 @@ const DOM_UTILS = {
 let selectControlTemplate = null
 
 const controls_initSelectTemplate = async () => {
-    logging_getLogger().debug('controls_initSelectTemplate')
+    LOGGING_UTILS.getLogger().debug('controls_initSelectTemplate')
     try {
-        await dom_waitForElement(settingsButtonSelector)
+        await DOM_UTILS.waitForElement(settingsButtonSelector)
 
-        dom_simulateClick(getSettingsButton())
+        DOM_UTILS.simulateClick(getSettingsButton())
 
         const settingsModal = await waitForSettingsModal()
         const { fontSelect } = await settingsModal.panels.getThemePanel()
         selectControlTemplate = controls_createSelectControlTemplate(fontSelect)
 
         // Add global style for focus override
-        misc_addGlobalStyle(`
+        MISC_UTILS.addGlobalStyle(`
             .naie-focus-override:focus-within {
                 opacity: 1 !important;
             }
         `)
 
-        dom_simulateClick(settingsModal.closeButton)
+        DOM_UTILS.simulateClick(settingsModal.closeButton)
     } catch (e) {
-        logging_getLogger().error('Failed to clone select element:', e)
+        LOGGING_UTILS.getLogger().error('Failed to clone select element:', e)
         throw new Error('Failed to clone select element')
     }
 }
@@ -882,7 +882,7 @@ const controls_getTemplate = () => {
  * Each template's initialization is self-contained and independent
  */
 const controls_initializeTemplates = async () => {
-    const logger = logging_getLogger()
+    const logger = LOGGING_UTILS.getLogger()
     logger.debug('Initializing control templates')
 
     try {
@@ -1414,14 +1414,11 @@ const network_createNetworkManager = () => {
 
 /* ########### network.mod.js ########## */
 
-
-const _networkManager = network_createNetworkManager()
-
 /**
  * @type {NAIENetwork}
  */
 const NERWORK_UTILS = {
-    manager: _networkManager
+    manager: network_createNetworkManager()
 }
 
 /* ------- end of network.mod.js ------- */
@@ -1430,15 +1427,15 @@ const NERWORK_UTILS = {
 /* ############## theme.js ############# */
 
 const waitForThemePanel = async (modal) => {
-    logging_getLogger().debug('waitForThemePanel')
+    LOGGING_UTILS.getLogger().debug('waitForThemePanel')
     const content = modal.querySelector('.settings-content')
-    logging_getLogger().debug('content', content)
+    LOGGING_UTILS.getLogger().debug('content', content)
 
     if (!content) {
         throw new Error('settings content not found')
     }
 
-    const themeIndicator = await dom_waitForElement('button[aria-label="Import Theme File"]', 15000)
+    const themeIndicator = await DOM_UTILS.waitForElement('button[aria-label="Import Theme File"]', 15000)
 
     if (!themeIndicator) {
         throw new Error('cannot identify theme panel')
@@ -1460,7 +1457,7 @@ const getSettingsButton = () => {
 }
 
 const waitForSettingsModal = async (timeout = 5000, hidden = false) => {
-    const modalData = await _modalObserver.waitForSpecificModal(
+    const modalData = await NAIE_SERVICES.modalObserver.waitForSpecificModal(
         (modal) => modal.modal.querySelector('.settings-sidebar'),
         timeout
     )
@@ -1470,8 +1467,8 @@ const waitForSettingsModal = async (timeout = 5000, hidden = false) => {
     }
 
     const sidebar = modalData.modal.querySelector('.settings-sidebar')
-    console.log("sidebar", sidebar, misc_isMobileView())
-    const { tabs, changelog, logout, closeButton } = misc_isMobileView()
+
+    const { tabs, changelog, logout, closeButton } = MISC_UTILS.isMobileView()
         ? await handleSettingsMobile(modalData.modal, sidebar)
         : await handleSettingsDesktop(modalData.modal, sidebar)
 
@@ -1489,7 +1486,7 @@ const waitForSettingsModal = async (timeout = 5000, hidden = false) => {
 
 const handleSettingsDesktop = async (modal, sidebar) => {
     do {
-        await misc_sleep(50)
+        await MISC_UTILS.sleep(50)
     } while (sidebar?.parentNode?.parentNode?.previousSibling?.tagName?.toLowerCase() !== 'button')
 
     const buttons = sidebar.querySelectorAll('button')
@@ -1539,8 +1536,8 @@ const handleSettingsMobile = async (modal, sidebar) => {
 }
 
 const getPanel = async (modal, button, waitForFunction) => {
-    dom_simulateClick(button)
-    await misc_sleep(100)
+    DOM_UTILS.simulateClick(button)
+    await MISC_UTILS.sleep(100)
     return await waitForFunction(modal)
 }
 
@@ -1553,7 +1550,7 @@ const getPanel = async (modal, button, waitForFunction) => {
 const modalSelector = 'div[role="dialog"][aria-modal="true"]'
 
 const naie_initModalObserver = () => {
-    const emitter = new misc_Emitter()
+    const emitter = new MISC_UTILS.Emitter()
     const observerOptions = {
         childList: true,
     }
@@ -1616,7 +1613,7 @@ const naie_collectModal = async (candidate) => {
             closeButton 
         }
     } catch (e) {
-        logging_getLogger().debug('failed to find close button', e)
+        LOGGING_UTILS.getLogger().debug('failed to find close button', e)
         return null
     }
 }
@@ -1624,7 +1621,7 @@ const naie_collectModal = async (candidate) => {
 const naie_waitForModalCloseButton = (modal, timeout) => {
     return new Promise((resolve, reject) => {
         const checkCloseButton = () => {
-            const matches = dom_findElementWithMaskImage(modal.querySelectorAll('button > div'), ['cross', '.svg'])
+            const matches = DOM_UTILS.findElementWithMaskImage(modal.querySelectorAll('button > div'), ['cross', '.svg'])
             
             if (matches.length > 0) {
                 resolve(matches[0])
@@ -1727,7 +1724,7 @@ const runHookWithTimeout = async (hook) => {
 }
 
 const runStage = async (stage) => {
-    const logger = logging_getLogger()
+    const logger = LOGGING_UTILS.getLogger()
     currentStage = stage
     const stageHooks = hooks.get(stage) || []
     const errors = []
@@ -1752,7 +1749,7 @@ const runStage = async (stage) => {
 }
 
 const preflight_registerHook = (stage, id, priority, callback, timeout = DEFAULT_TIMEOUT) => {
-    const logger = logging_getLogger()
+    const logger = LOGGING_UTILS.getLogger()
 
     // Prevent external scripts from using internal stages
     if (INTERNAL_STAGES[stage]) {
@@ -1820,31 +1817,31 @@ const registerCoreInit = () => {
         'core-initialization',
         100, // High priority to run first
         async () => {
-            const logger = logging_getLogger()
+            const logger = LOGGING_UTILS.getLogger()
             logger.debug('core-initialization')
             await controls_initializeTemplates()
-            _statusIndicator = extensions_createNAIEIndicator()
+            NAIE_SERVICES.statusIndicator = INDICATOR_UTILS.createNAIEIndicator()
         }
     )
 }
 
 // Internal function, called by core when all scripts are ready
 const preflight_runStages = async () => {
-    const logger = logging_getLogger()
+    const logger = LOGGING_UTILS.getLogger()
     logger.debug('Starting NAIE preflight')
 
     registerCoreInit()
 
-    const app = await dom_waitForElement('#app')
+    const app = await DOM_UTILS.waitForElement('#app')
     logger.debug('app element', app)
-    const loader = extensions_lockLoader(app)
+    const loader = LOADER.lockLoader(app)
 
     const errors = []
     
     try {
         // Run each stage, collecting errors
         errors.push(...await runStage(INTERNAL_STAGES.INTERNAL))
-        _statusIndicator.displayMessage(
+        NAIE_SERVICES.statusIndicator.displayMessage(
             `Initializing NAIE scripts...`
         )
 
@@ -1873,12 +1870,12 @@ const preflight_runStages = async () => {
             )
 
             // Show user-friendly notification
-            _statusIndicator.displayMessage(
+            NAIE_SERVICES.statusIndicator.displayMessage(
                 `Some features failed to initialize: ${errors.map(e => e.hookId).join(', ')}`
             )
         } else {
             logger.debug('Preflight completed successfully')
-            _statusIndicator.displayMessage(
+            NAIE_SERVICES.statusIndicator.displayMessage(
                 `NAIE scripts initialized successfully`
             )
         }
@@ -1927,7 +1924,7 @@ const checkAllScriptsReady = () => {
  * @returns {Promise<void>} Promise that resolves when preflight starts
  */
 const internal_startWaitingForScripts = async () => {
-    const logger = logging_getLogger()
+    const logger = LOGGING_UTILS.getLogger()
     if (NAIE_INTERNAL.isWaitingForScripts || NAIE_INTERNAL.isPreflightStarted) return
 
     NAIE_INTERNAL.isWaitingForScripts = true
@@ -1966,7 +1963,7 @@ const registerScript = (scriptId) => {
     if (NAIE_INTERNAL.isPreflightStarted) {
         throw new Error(`Script ${scriptId} tried to register after preflight started`)
     }
-    logging_getLogger().info("registering script", scriptId)
+    LOGGING_UTILS.getLogger().info("registering script", scriptId)
     NAIE_INTERNAL.registeredScripts.add(scriptId)
 }
 
@@ -1981,7 +1978,7 @@ const markScriptReady = async (scriptId) => {
     if (!NAIE_INTERNAL.registeredScripts.has(scriptId)) {
         throw new Error(`Script ${scriptId} not registered`)
     }
-    logging_getLogger().info("script reports ready", scriptId)
+    LOGGING_UTILS.getLogger().info("script reports ready", scriptId)
     NAIE_INTERNAL.readyScripts.add(scriptId)
 }
 
@@ -1997,15 +1994,14 @@ const CORE_UTILS = {
 
 /* ########### naie-object.js ########## */
 
-const _modalObserver = naie_initModalObserver()
-let _statusIndicator = null;
+
 
 /***
  * @type {NAIEServices}
  */
 const NAIE_SERVICES = {
-    statusIndicator: _statusIndicator,
-    modalObserver: _modalObserver,
+    statusIndicator: null,
+    modalObserver: naie_initModalObserver(),
 }
 
 /***
