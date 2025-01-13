@@ -48,7 +48,7 @@ const lockSideBar = (showLoader = true, forceLoader = false, positional = false)
         loaderShownTime = Date.now()
     }
 
-    forceLoader = isMobileView() ? true : forceLoader
+    forceLoader = NAIE.MISC.isMobileView() ? true : forceLoader
 
     const timeout = forceLoader ? 0 : 250
 
@@ -119,7 +119,7 @@ const createSidebarLoader = (lockedSidebar) => {
         loaderSidebar.removeChild(loaderSidebar.lastChild)
     }
 
-    const container = createElement('div', {
+    const container = NAIE.DOM.createElement('div', {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -127,7 +127,7 @@ const createSidebarLoader = (lockedSidebar) => {
         width: '100%',
     })
 
-    const spinner = loaderTemplate.firstChild.cloneNode(true)
+    const spinner = NAIE.EXTENSIONS.Loader.getSpinner() //loaderTemplate.firstChild.cloneNode(true)
     container.append(spinner)
 
     loaderSidebar.append(container)

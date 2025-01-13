@@ -72,7 +72,7 @@ const naie_collectModal = async (candidate) => {
 const naie_waitForModalCloseButton = (modal, timeout) => {
     return new Promise((resolve, reject) => {
         const checkCloseButton = () => {
-            const matches = DOM_UTILS.findElementWithMaskImage(modal.querySelectorAll('button > div'), ['cross', '.svg'])
+            const matches = DOM_UTILS.findElementWithMaskImage(modal.querySelectorAll('button, button > div'), ['cross', '.svg'])
             
             if (matches.length > 0) {
                 resolve(matches[0])

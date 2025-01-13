@@ -2,12 +2,12 @@ const preShelfPatch = (request) => {
     const options = getFetchOptions(request)
 
     const body = JSON.parse(options.body)
-    const data = JSON.parse(decodeBase64(body.data))
+    const data = JSON.parse(NAIE.MISC.decodeBase64(body.data))
     const shelf_id = body.meta
 
     data.description = stripTransientMetadataFromText(data.description)
 
-    body.data = encodeBase64(JSON.stringify(data))
+    body.data = NAIE.MISC.encodeBase64(JSON.stringify(data))
 
     options.body = JSON.stringify(body)
 

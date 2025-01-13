@@ -49,6 +49,14 @@ const controls_createClonedSelectTemplate = (fontSelect) => {
     const inputElement = control.firstChild.querySelector('input')
 
     inputElement.id = ''
+
+    clone.classList.add('naie-select-box')
+    control.classList.add('naie-select-control')
+    selectedValueText.classList.add('naie-select-value')
+    inputElement.classList.add('naie-select-input')
+
+    selectedValueText.textContent = ''
+
     return clone
 }
 
@@ -56,7 +64,7 @@ const controls_createClonedSelectTemplate = (fontSelect) => {
 const controls_createCustomSelectTemplate = () => {
     // Create main container
     const container = document.createElement('div');
-    container.className = 'custom-select select';
+    container.className = 'custom-select select naie-select-box';
     Object.assign(container.style, {
         position: 'relative',
         boxSizing: 'border-box',
@@ -104,6 +112,8 @@ const controls_createCustomSelectTemplate = () => {
     // Create single value display
     const singleValue = document.createElement('div');
     const valueSpan = document.createElement('span');
+    valueSpan.className = 'naie-select-value';
+    valueSpan.textContent = '';
     Object.assign(valueSpan.style, {
         color: 'rgb(255, 255, 255)',
         width: '100%'
@@ -113,6 +123,7 @@ const controls_createCustomSelectTemplate = () => {
     // Create input container
     const inputContainer = document.createElement('div');
     const input = document.createElement('input');
+    input.className = 'naie-select-input';
     Object.assign(input.style, {
         color: 'inherit',
         background: '0',
@@ -201,9 +212,4 @@ const controls_getTemplate = () => {
         throw new Error('Select control template not initialized')
     }
     return selectControlTemplate.cloneNode(true)
-}
-
-export {
-    controls_initSelectTemplate,
-    controls_getTemplate
 }

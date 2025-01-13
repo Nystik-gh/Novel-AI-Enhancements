@@ -1,13 +1,14 @@
 // ==UserScript==
-// @name         Novel AI Enhanced: Sub-shelves
+// @name         DEV Novel AI Enhanced: Sub-shelves
 // @namespace    github.nystik-hg
-// @version      1.0.6
+// @version      2.0.0
 // @description  Adds nested shelves functionality
 // @match        https://novelai.net/*
 // @grant        none
 // @run-at       document-start
 // @require      ./modules/*
 // @require      ./lib/*
+// @require      https://pastebin.com/raw/J6Q2uQGT
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=novelai.net
 // @author       Nystik (https://gitlab.com/Nystik)
 // @downloadUrl  https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/main/subshelves/dist/naie-subshelves.user.js
@@ -21,11 +22,8 @@ const persistent_metadata_key = 'naie_persistent_metadata'
 const shelfElementKey = 'naie_element'
 const shelfChildCountKey = 'naie_child_count'
 
-const appSelector = '#app'
-const settingsButtonSelector = 'button[aria-label="Open Settings"]'
 const menubarSelector = '.menubar'
 const storyListSelector = '.story-list:not(#sidebar-lock .story-list)'
-const filterButtonSelector = 'button[aria-label="Open Sort Settings"]' // used to find the title bar
 const newShelfButtonSelector = 'button[aria-label="create a new shelf"]'
 const contextMenusSelector = 'button[aria-disabled]'
 const modalSelector = 'div[role="dialog"][aria-modal="true"]'
@@ -34,7 +32,7 @@ const breadcrumbsBarSelector = '#breadcrumbs-bar' // created by this script
 // State vars
 let activeShelf = null
 let storyListObserver = null
-let modalObserver = null
+//let modalObserver = null
 let shelfState = null
 let updateInProgress = false
 let sidebarLock = null
@@ -44,14 +42,30 @@ let activeContextMenu = null
 // elements
 let homeButton = null
 
+let scriptInit = false
+
+const wRef = unsafeWindow ? unsafeWindow : window
+    /***
+     * @type {NAIE}
+     */
+    let NAIE = wRef.NAIE_INSTANCE
+
 const init = () => {
     loadXhookScript()
 
     document.addEventListener('DOMContentLoaded', async () => {
-        try {
-            await preflight()
-        } catch (e) {
-            alert('Failed to initialize NAI Enhanced: Subshelves.\n\nDisable the script and create an issue on github for support.')
+        if (!scriptInit) {
+            try {
+                console.log("regstering subshelves")
+                NAIE.CORE.registerScript('naie-subshelves')
+                await preflight()
+                console.log("marking subshelves ready")
+                NAIE.CORE.markScriptReady('naie-subshelves')
+                scriptInit = true
+            } catch (e) {
+                console.log(e)
+                alert('Failed to initialize NAI Enhanced: Subshelves.\n\nDisable the script and create an issue on github for support.')
+            }
         }
     })
 }
@@ -83,5 +97,6 @@ handleUrlChange() // Initial check
 
 // Check if the current path is /stories before initializing
 if (window.location.pathname.startsWith('/stories')) {
+    console.log("href trigger")
     init()
 }

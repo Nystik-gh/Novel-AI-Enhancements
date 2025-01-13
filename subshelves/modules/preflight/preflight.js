@@ -6,42 +6,56 @@ const preflight = async () => {
     preflightRun = true
 
     try {
-        const app = await waitForElement(appSelector)
+        const registerSubshelvesHooks = () => {
+            // Early stage - Basic UI elements and controls
+            /*NAIE.PREFLIGHT.registerHook(
+                'early',
+                'subshelves-controls',
+                10,
+                async () => {
+                    
+                }
+            )*/
 
-        const lock = NAIE.EXTENSIONS.Loader.lockLoader(app)
-        //console.log('locked loader')
+            // Main stage - Core functionality
+            NAIE.PREFLIGHT.registerHook(
+                'main',
+                'subshelves-core',
+                10,
+                async () => {
+                    console.log("subshelves main hook")
+                    //await NAIE.DOM.waitForElement(menubarSelector)
+                    await NAIE.DOM.waitForElement(storyListSelector)
+                    if (!sidebarLock) {
+                        sidebarLock = lockSideBar(true, true, true)
+                        await NAIE.MISC.sleep(100)
+                    }
+                    await preProcessSidebar()
+                    await initGlobalObservers() // implement core
+                }
+            )
 
-        await waitForElement(settingsButtonSelector)
-
-        showIndicator('initializing subshelves...')
-
-        await cloneSelectControl()
-
-        await waitForElement(menubarSelector)
-
-        showIndicator('subshelves ready')
-
-        await waitForElement(storyListSelector)
-
-        if (!sidebarLock) {
-            sidebarLock = lockSideBar(true, true, true)
-            await sleep(100)
+            // Late stage - Final setup
+            NAIE.PREFLIGHT.registerHook(
+                'late',
+                'subshelves-final',
+                10,
+                async () => {
+                    console.log("subshelves late hook")
+                    if (AreThereShelves()) {
+                        createContextMenuTemplate()
+                    }
+                    if (sidebarLock) {
+                        sidebarLock.unlock()
+                    }
+                    NAIE.SERVICES.statusIndicator.displayMessage("Subshelves initialized")
+                }
+            )
         }
 
-        lock.unlock()
-
-        await preProcessSidebar()
-        await initGlobalObservers()
-
-        if (AreThereShelves()) {
-            createContextMenuTemplate()
-        }
-
-        if (sidebarLock) {
-            sidebarLock.unlock()
-        }
+        registerSubshelvesHooks()
     } catch (e) {
-        console.error(e)
-        throw new Error('preflight failed!')
+        console.error('Failed to register subshelves preflight hooks:', e)
+        throw new Error('Subshelves preflight initialization failed!')
     }
 }

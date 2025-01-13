@@ -12,4 +12,11 @@ interface NAIELoader {
      * @returns {{ unlock: () => void }} lock object
      */
     lockLoader(app: HTMLElement): { unlock(): void }
+
+    /**
+     * Returns a spinner element based on the page loader
+     *
+     * @returns {HTMLElement} spinner 
+     */
+    getSpinner(): HTMLElement
 }

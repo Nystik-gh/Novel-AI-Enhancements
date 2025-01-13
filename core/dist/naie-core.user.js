@@ -821,7 +821,7 @@ const controls_initSelectTemplate = async () => {
 
         const settingsModal = await waitForSettingsModal()
         const { fontSelect } = await settingsModal.panels.getThemePanel()
-        selectControlTemplate = controls_createSelectControlTemplate(fontSelect)
+        selectControlTemplate = controls_createCustomSelectTemplate() //controls_createClonedSelectTemplate(fontSelect)
 
         // Add global style for focus override
         MISC_UTILS.addGlobalStyle(`
@@ -837,7 +837,8 @@ const controls_initSelectTemplate = async () => {
     }
 }
 
-const controls_createSelectControlTemplate = (fontSelect) => {
+// Original clone-based template creation
+const controls_createClonedSelectTemplate = (fontSelect) => {
     const clone = fontSelect.cloneNode(true)
     const control = clone.children[2]
 
@@ -860,17 +861,170 @@ const controls_createSelectControlTemplate = (fontSelect) => {
     const inputElement = control.firstChild.querySelector('input')
 
     inputElement.id = ''
+
+    clone.classList.add('naie-select-box')
+    control.classList.add('naie-select-control')
+    selectedValueText.classList.add('naie-select-value')
+    inputElement.classList.add('naie-select-input')
+
+    selectedValueText.textContent = ''
+
     return clone
 }
 
-// Internal function, not exposed through API
+// New custom template creation
+const controls_createCustomSelectTemplate = () => {
+    // Create main container
+    const container = document.createElement('div');
+    container.className = 'custom-select select naie-select-box';
+    Object.assign(container.style, {
+        position: 'relative',
+        boxSizing: 'border-box',
+        flex: '1 1 auto',
+        overflow: 'visible',
+        boxShadow: '0 0 1px 0 rgba(255, 255, 255, 0.6)'
+    });
+
+    // Create control container
+    const control = document.createElement('div');
+    control.className = 'naie-select-control';
+    Object.assign(control.style, {
+        alignItems: 'center',
+        cursor: 'pointer',
+        display: 'flex',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        minHeight: '24px',
+        outline: 'none',
+        position: 'relative',
+        transition: 'all 100ms',
+        backgroundColor: 'transparent',
+        borderColor: '#13152C',
+        borderRadius: '0',
+        borderStyle: 'solid',
+        borderWidth: '0',
+        boxShadow: 'none',
+        boxSizing: 'border-box',
+        border: 'none'
+    });
+
+    // Create value container
+    const valueContainer = document.createElement('div');
+    valueContainer.className = 'naie-select-input-wrapper';
+    Object.assign(valueContainer.style, {
+        alignItems: 'center',
+        display: 'flex',
+        flex: '1',
+        flexWrap: 'wrap',
+        padding: '0px 8px 0 10px',
+        boxSizing: 'border-box',
+        height: '24px'
+    });
+
+    // Create single value display
+    const singleValue = document.createElement('div');
+    const valueSpan = document.createElement('span');
+    valueSpan.className = 'naie-select-value';
+    valueSpan.textContent = '';
+    Object.assign(valueSpan.style, {
+        color: 'rgb(255, 255, 255)',
+        width: '100%'
+    });
+    singleValue.appendChild(valueSpan);
+
+    // Create input container
+    const inputContainer = document.createElement('div');
+    const input = document.createElement('input');
+    input.className = 'naie-select-input';
+    Object.assign(input.style, {
+        color: 'inherit',
+        background: '0',
+        opacity: '1',
+        width: '100%',
+        grid: '1 / 2',
+        font: 'inherit',
+        minWidth: '2px',
+        border: '0',
+        margin: '0',
+        outline: '0',
+        padding: '0'
+    });
+    input.setAttribute('autocapitalize', 'none');
+    input.setAttribute('autocomplete', 'off');
+    input.setAttribute('autocorrect', 'off');
+    input.setAttribute('spellcheck', 'false');
+    input.setAttribute('tabindex', '0');
+    input.setAttribute('type', 'text');
+    input.setAttribute('aria-autocomplete', 'list');
+    input.setAttribute('aria-expanded', 'false');
+    input.setAttribute('aria-haspopup', 'true');
+    input.setAttribute('role', 'combobox');
+    inputContainer.appendChild(input);
+
+    // Create indicators container
+    const indicatorsContainer = document.createElement('div');
+    Object.assign(indicatorsContainer.style, {
+        alignItems: 'center',
+        alignSelf: 'stretch',
+        display: 'flex',
+        flexShrink: '0',
+        boxSizing: 'border-box',
+        padding: '0',
+        height: '22px'
+    });
+
+    // Create separator
+    const separator = document.createElement('span');
+    Object.assign(separator.style, {
+        alignSelf: 'stretch',
+        width: '1px',
+        backgroundColor: '#13152C',
+        marginBottom: '8px',
+        marginTop: '8px',
+        boxSizing: 'border-box'
+    });
+
+    // Create dropdown indicator
+    const dropdownIndicator = document.createElement('div');
+    dropdownIndicator.setAttribute('aria-hidden', 'true');
+    Object.assign(dropdownIndicator.style, {
+        display: 'flex',
+        transition: 'color 150ms',
+        color: '#FFFFFF',
+        padding: '8px',
+        boxSizing: 'border-box'
+    });
+
+    // Create dropdown arrow SVG
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('height', '20');
+    svg.setAttribute('width', '20');
+    svg.setAttribute('viewBox', '0 0 20 20');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('focusable', 'false');
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'M4.516 7.548c0.436-0.446 1.043-0.481 1.576 0l3.908 3.747 3.908-3.747c0.533-0.481 1.141-0.446 1.574 0 0.436 0.445 0.408 1.197 0 1.615-0.406 0.418-4.695 4.502-4.695 4.502-0.217 0.223-0.502 0.335-0.787 0.335s-0.57-0.112-0.789-0.335c0 0-4.287-4.084-4.695-4.502s-0.436-1.17 0-1.615z');
+    svg.appendChild(path);
+    dropdownIndicator.appendChild(svg);
+
+    // Assemble the component
+    indicatorsContainer.appendChild(separator);
+    indicatorsContainer.appendChild(dropdownIndicator);
+    valueContainer.appendChild(singleValue);
+    valueContainer.appendChild(inputContainer);
+    control.appendChild(valueContainer);
+    control.appendChild(indicatorsContainer);
+    container.appendChild(control);
+
+    return container;
+}
+
 const controls_getTemplate = () => {
     if (!selectControlTemplate) {
         throw new Error('Select control template not initialized')
     }
-    return selectControlTemplate.cloneNode(true) // Always return a clone
+    return selectControlTemplate.cloneNode(true)
 }
-
 
 /* - end of select-control.templates.js  */
 
@@ -947,12 +1101,12 @@ const DROPDOWN_NO_OPTIONS_STYLES = {
 }
 
 const controls_createSelectDropdown = (options, selectedValue) => {
-    const dropdownContainer = createElement('div', DROPDOWN_CONTAINER_STYLES)
-    const optionsList = createElement('div', DROPDOWN_LIST_STYLES)
+    const dropdownContainer = NAIE.DOM.createElement('div', DROPDOWN_CONTAINER_STYLES)
+    const optionsList = NAIE.DOM.createElement('div', DROPDOWN_LIST_STYLES)
     dropdownContainer.appendChild(optionsList)
 
     options.forEach(({ title, value }) => {
-        const optionElement = createElement('div', {
+        const optionElement = NAIE.DOM.createElement('div', {
             ...DROPDOWN_OPTION_STYLES,
             backgroundColor: value === selectedValue ? 'rgb(16, 18, 36)' : 'transparent',
         })
@@ -961,14 +1115,14 @@ const controls_createSelectDropdown = (options, selectedValue) => {
         optionElement.setAttribute('tabindex', '-1')
         optionElement.setAttribute('data-option-value', value)
 
-        const optionText = createElement('span')
+        const optionText = NAIE.DOM.createElement('span')
         optionText.textContent = title
         optionElement.appendChild(optionText)
 
         optionsList.appendChild(optionElement)
     })
 
-    const noOptions = createElement('div', DROPDOWN_NO_OPTIONS_STYLES)
+    const noOptions = NAIE.DOM.createElement('div', DROPDOWN_NO_OPTIONS_STYLES)
     noOptions.classList.add('naie-select-no-options')
     noOptions.textContent = 'No options'
     optionsList.appendChild(noOptions)
@@ -1226,6 +1380,9 @@ const extensions_lockLoader = (app) => {
     return { unlock }
 }
 
+const extensions_getSpinner = () => {
+    return loaderTemplate.firstChild.cloneNode(true)
+}
 
 /* ------- end of page-loader.js ------- */
 
@@ -1269,6 +1426,7 @@ const INDICATOR_UTILS = {
  */
 const LOADER = {
     lockLoader: extensions_lockLoader,
+    getSpinner: extensions_getSpinner
 }
 
 
@@ -1621,7 +1779,7 @@ const naie_collectModal = async (candidate) => {
 const naie_waitForModalCloseButton = (modal, timeout) => {
     return new Promise((resolve, reject) => {
         const checkCloseButton = () => {
-            const matches = DOM_UTILS.findElementWithMaskImage(modal.querySelectorAll('button > div'), ['cross', '.svg'])
+            const matches = DOM_UTILS.findElementWithMaskImage(modal.querySelectorAll('button, button > div'), ['cross', '.svg'])
             
             if (matches.length > 0) {
                 resolve(matches[0])
@@ -1894,9 +2052,14 @@ const preflight_runStages = async () => {
 /* #### scripts-manager.internal.js #### */
 
 /**
- * Maximum time to wait for scripts to become ready
+ * Maximum time to wait for initial script registration
  */
-const SCRIPT_READY_TIMEOUT = 1000 // Max wait time for scripts
+const SCRIPT_REGISTRATION_TIMEOUT = 1000 // Max wait time for scripts to register
+
+/**
+ * Maximum time to wait for registered scripts to become ready
+ */
+const SCRIPT_READY_TIMEOUT = 4000 // Max wait time for scripts to become ready
 
 /** @type {NAIEInternal} */
 const NAIE_INTERNAL = {
@@ -1915,12 +2078,14 @@ const NAIE_INTERNAL = {
  */
 const checkAllScriptsReady = () => {
     const { readyScripts, registeredScripts } = NAIE_INTERNAL
-    return readyScripts.size === registeredScripts.size
+    return readyScripts.size === registeredScripts.size && registeredScripts.size > 0
 }
 
 /**
  * Start waiting for scripts to register and become ready
- * After SCRIPT_READY_TIMEOUT, preflight will run even if not all scripts are ready
+ * Two-phase process:
+ * 1. Wait up to SCRIPT_REGISTRATION_TIMEOUT for scripts to register
+ * 2. Wait up to SCRIPT_READY_TIMEOUT for registered scripts to become ready
  * @returns {Promise<void>} Promise that resolves when preflight starts
  */
 const internal_startWaitingForScripts = async () => {
@@ -1928,13 +2093,33 @@ const internal_startWaitingForScripts = async () => {
     if (NAIE_INTERNAL.isWaitingForScripts || NAIE_INTERNAL.isPreflightStarted) return
 
     NAIE_INTERNAL.isWaitingForScripts = true
-    logger.debug('Starting to wait for scripts')
+    logger.debug('Starting to wait for script registration', Date.now())
 
-    const startTime = Date.now()
-    
-    while (Date.now() - startTime < SCRIPT_READY_TIMEOUT) {
+    // Phase 1: Wait for scripts to register
+    const registrationStartTime = Date.now()
+    while (Date.now() - registrationStartTime < SCRIPT_REGISTRATION_TIMEOUT) {
+        if (NAIE_INTERNAL.registeredScripts.size > 0) {
+            break // At least one script has registered
+        }
+        await new Promise(r => setTimeout(r, 50))
+    }
+
+    // Log registration phase results
+    logger.debug('Script registration phase complete', {
+        registered: Array.from(NAIE_INTERNAL.registeredScripts),
+        timeElapsed: Date.now() - registrationStartTime
+    })
+
+    // Phase 2: Wait for registered scripts to become ready
+    logger.debug('Starting to wait for scripts to become ready', Date.now())
+    const readyStartTime = Date.now()
+    while (Date.now() - readyStartTime < SCRIPT_READY_TIMEOUT) {
         if (checkAllScriptsReady()) {
             NAIE_INTERNAL.isPreflightStarted = true
+            logger.debug('All scripts ready, starting preflight', {
+                registered: Array.from(NAIE_INTERNAL.registeredScripts),
+                ready: Array.from(NAIE_INTERNAL.readyScripts)
+            })
             await NAIE_INTERNAL.preflight.runStages()
             return
         }
@@ -1943,10 +2128,11 @@ const internal_startWaitingForScripts = async () => {
 
     // Timeout reached, run preflight anyway
     logger.warn(
-        'Script registration timeout reached. Some scripts may not be ready:',
+        'Script ready timeout reached. Some scripts may not be ready:',
         {
             registered: Array.from(NAIE_INTERNAL.registeredScripts),
-            ready: Array.from(NAIE_INTERNAL.readyScripts)
+            ready: Array.from(NAIE_INTERNAL.readyScripts),
+            timeElapsed: Date.now() - readyStartTime
         }
     )
     NAIE_INTERNAL.isPreflightStarted = true

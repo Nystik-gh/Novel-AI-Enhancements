@@ -1,16 +1,35 @@
-const waitForShelfSettingsModal = async (timeout) => {
-    let { modal, overlay, closeButton } = await waitForModal(timeout)
-
+// Predicate for identifying shelf settings modals
+const isShelfSettingsModal = ({ modal }) => {
     const title = modal.querySelector('input')
     const description = modal.querySelector('textarea')
-
-    if (!title || !description) {
-        throw new Error('Title or description is null')
-    }
-
-    return { modal, overlay, closeButton, fields: { title, description } }
+    console.log("isShelfSettingsModal", title, description)
+    return title && description
 }
 
+// Handle shelf settings modal event
+const handleShelfSettingsModal = ({ modal, overlay }) => {
+    const fields = {
+        title: modal.querySelector('input'),
+        description: modal.querySelector('textarea')
+    }
+    constructShelfSettingModal({ modal, overlay, fields })
+}
+
+// Wait for a shelf settings modal to appear
+const waitForShelfSettingsModal = async (timeout) => {
+    const { waitForSpecificModal } = NAIE.SERVICES.modalObserver
+    const modalData = await waitForSpecificModal(isShelfSettingsModal, timeout)
+    
+    return {
+        ...modalData,
+        fields: {
+            title: modalData.modal.querySelector('input'),
+            description: modalData.modal.querySelector('textarea')
+        }
+    }
+}
+
+// Construct the shelf settings modal UI
 const constructShelfSettingModal = ({ fields: { title, description }, modal, ...rest }) => {
     const cleanMetadata = (text) => {
         return writeMetadata(text, {})
@@ -34,8 +53,8 @@ const constructShelfSettingModal = ({ fields: { title, description }, modal, ...
     const descriptionMetadata = parseMetadata(description.value)
 
     const updateNativeTextbox = (text) => {
-        setNativeValue(description, restoreMetadata(text, descriptionMetadata))
-        simulateInputEvent(description)
+        NAIE.DOM.setNativeValue(description, restoreMetadata(text, descriptionMetadata))
+        NAIE.DOM.simulateInputEvent(description)
     }
 
     // Initialize the cloned textarea with sanitized content
@@ -59,7 +78,7 @@ const constructShelfSettingModal = ({ fields: { title, description }, modal, ...
         descriptionMetadata.parent_id && shelfState?.getMap()?.has(descriptionMetadata.parent_id)
             ? descriptionMetadata.parent_id
             : 'noshelf'
-    const dropdown = constructSelectControl(selectableShelves, selectedValue, (value) => {
+    const dropdown = NAIE.EXTENSIONS.Controls.Select.constructSelectControl(selectableShelves, selectedValue, (value) => {
         if (value === 'noshelf') {
             delete descriptionMetadata.parent_id
         } else {
@@ -73,6 +92,7 @@ const constructShelfSettingModal = ({ fields: { title, description }, modal, ...
     return { ...rest, modal, fields: { title, description: clonedTextarea, rawDescription: description } }
 }
 
+// Helper functions for shelf settings modal
 const getTitleHeader = (titleInputElement, newTitle) => {
     const clone = titleInputElement.previousSibling.cloneNode(true)
     clone.textContent = newTitle

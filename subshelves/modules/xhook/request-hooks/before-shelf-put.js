@@ -3,7 +3,7 @@ const activePutShelfRequests = new Map()
 const preShelfPut = (request) => {
     const options = getFetchOptions(request)
     const body = JSON.parse(options.body)
-    const data = JSON.parse(decodeBase64(body.data))
+    const data = JSON.parse(NAIE.MISC.decodeBase64(body.data))
     const shelf_id = body.meta
 
     // Check if this is the first request for this meta
@@ -18,7 +18,7 @@ const preShelfPut = (request) => {
 
     data.description = stripTransientMetadataFromText(data.description)
 
-    body.data = encodeBase64(JSON.stringify(data))
+    body.data = NAIE.MISC.encodeBase64(JSON.stringify(data))
 
     options.body = JSON.stringify(body)
 

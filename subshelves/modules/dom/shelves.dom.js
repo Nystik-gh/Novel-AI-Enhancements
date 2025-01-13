@@ -196,7 +196,7 @@ const mapShelfMetadata = async () => {
         spans.forEach((span) => {
             const metadata = parseMetadata(span.textContent)
 
-            if (!isObjEmpty(metadata)) {
+            if (!NAIE.MISC.isObjEmpty(metadata)) {
                 Object.keys(metadata).forEach((key) => {
                     div.setAttribute(`data-metadata-${key}`, metadata[key])
                 })
@@ -208,11 +208,11 @@ const mapShelfMetadata = async () => {
                 // store element for cloning for subshelves
                 shelfState.setShelfElement(metadata.shelf_id, div.cloneNode(true))
 
-                addEventListenerOnce(div, 'click', () => {
+                NAIE.DOM.addEventListenerOnce(div, 'click', () => {
                     activeShelf = metadata.shelf_id
                 })
 
-                promises.push(waitForElement(`[data-metadata-shelf_id="${metadata.shelf_id}"]`, 1000))
+                promises.push(NAIE.DOM.waitForElement(`[data-metadata-shelf_id="${metadata.shelf_id}"]`, 1000))
             }
         })
     })
@@ -242,7 +242,7 @@ const processStoryList = () => {
 const cleanShelfDescriptions = (spans) => {
     spans.forEach((span) => {
         const metadata = parseMetadata(span.textContent)
-        if (!isObjEmpty(metadata)) {
+        if (!NAIE.MISC.isObjEmpty(metadata)) {
             span.textContent = writeMetadata(span.textContent, {})
         }
     })
@@ -322,10 +322,10 @@ const insertSubshelves = () => {
             shelf.style.display = 'block'
             shelf.setAttribute(`data-metadata-subshelf`, true)
             updateShelfEntry(shelf, subshelf.data)
-            addEventListenerOnce(shelf, 'click', () => {
+            NAIE.DOM.addEventListenerOnce(shelf, 'click', () => {
                 handleSubSubshelfClick(shelf_id)
             })
-            addEventListenerOnce(shelf, 'contextmenu', (e) => {
+            NAIE.DOM.addEventListenerOnce(shelf, 'contextmenu', (e) => {
                 e.preventDefault()
                 createContextMenu(shelf_id, e.pageX, e.pageY)
             })
@@ -348,7 +348,7 @@ const updateShelfEntry = (element, data) => {
     const metadata = parseMetadata(descriptionEl.textContent)
 
     // Update/set data annotations with the extracted metadata
-    if (!isObjEmpty(metadata)) {
+    if (!NAIE.MISC.isObjEmpty(metadata)) {
         Object.keys(metadata).forEach((key) => {
             element.setAttribute(`data-metadata-${key}`, metadata[key])
         })
@@ -419,10 +419,10 @@ const navigateToShelf = async (shelf_id, lockSidebar = true) => {
     if (shelf_id) {
         // Wait for the shelf to appear in the DOM
         const selector = `div[data-metadata-shelf_id="${shelf_id}"]:not([data-metadata-subshelf])`
-        const shelfElement = await waitForElement(selector, 1000)
+        const shelfElement = await NAIE.DOM.waitForElement(selector, 1000)
 
         // Simulate click on the shelf
-        simulateClick(shelfElement)
+        NAIE.DOM.simulateClick(shelfElement)
     }
     setTimeout(() => {
         if (sidebarLock && lockSidebar) {
@@ -441,11 +441,11 @@ const navigateToHome = async () => {
         // avoids a race condition in event queue
         await setTimeoutPromise(0)
 
-        simulateClick(homeButton)
+        NAIE.DOM.simulateClick(homeButton)
         await waitForHome()
 
         const selector = `div[data-metadata-shelf_id="${shelf_id}"]:not([data-metadata-subshelf])`
-        await waitForElement(selector)
+        await NAIE.DOM.waitForElement(selector)
     }
 }
 
@@ -465,7 +465,7 @@ const createNewShelf = async () => {
     let newShelfButton = findNewShelfButton()
     if (newShelfButton.dataset['newSubShelf'] !== 'true') {
         activeShelf = parent_id
-        simulateClick(newShelfButton)
+        NAIE.DOM.simulateClick(newShelfButton)
     }
 }
 
@@ -473,7 +473,7 @@ const updateShelfStateViaDescription = async (shelfElement, metadata) => {
     let contextMenuPromise = waitForNewContextMenu(true)
 
     setTimeout(() => {
-        simulateRightClick(shelfElement)
+        NAIE.DOM.simulateRightClick(shelfElement)
     }, 0)
 
     const { contextMenu, editButton, deleteButton } = await contextMenuPromise
@@ -482,13 +482,13 @@ const updateShelfStateViaDescription = async (shelfElement, metadata) => {
     }
     contextMenu.style.visibility = 'hidden'
 
-    simulateClick(editButton)
+    NAIE.DOM.simulateClick(editButton)
     let { modal, overlay, closeButton, fields } = await waitForShelfSettingsModal(100)
 
-    setNativeValue(fields.description, writeMetadata('', metadata))
-    simulateInputEvent(fields.description)
+    NAIE.DOM.setNativeValue(fields.description, writeMetadata('', metadata))
+    NAIE.DOM.simulateInputEvent(fields.description)
 
-    simulateClick(closeButton)
+    NAIE.DOM.simulateClick(closeButton)
 }
 
 const processNewShelf = async (shelf_id) => {
@@ -499,12 +499,12 @@ const processNewShelf = async (shelf_id) => {
     let parent_id = null
     if (inSubshelf) {
         parent_id = activeShelf
-        simulateClick(homeButton)
+        NAIE.DOM.simulateClick(homeButton)
     }
 
     const contextMenuPromise = waitForNewContextMenu(false, 1000)
 
-    let newShelf = await waitForElement(`${storyListSelector} > div:not([data-metadata-processed]):not([role]):not([data-locked-shelf])`)
+    let newShelf = await NAIE.DOM.waitForElement(`${storyListSelector} > div:not([data-metadata-processed]):not([role]):not([data-locked-shelf])`)
 
     let ctx = await contextMenuPromise
 

@@ -33,7 +33,7 @@ const createContextMenu = (shelf_id, x, y) => {
     menu.style.left = `${x}px`
     menu.style.visibility = 'visible'
 
-    const handle = OnClickOutside(
+    const handle = NAIE.DOM.onClickOutside(
         menu,
         () => {
             if (document.body.contains(menu)) {
@@ -53,11 +53,11 @@ const createContextMenu = (shelf_id, x, y) => {
         activeContextMenu = null
     }
 
-    addEventListenerOnce(editButton, 'click', () => {
+    NAIE.DOM.addEventListenerOnce(editButton, 'click', () => {
         destroy()
         simulateContextEdit(shelf_id)
     })
-    addEventListenerOnce(deleteButton, 'click', () => {
+    NAIE.DOM.addEventListenerOnce(deleteButton, 'click', () => {
         destroy()
         simulateContextDelete(shelf_id)
     })
@@ -131,9 +131,9 @@ const identifyContextMenu = (node) => {
 
         buttons.forEach((button) => {
             const iconDiv = button.querySelector('div > div')
-            if (findElementWithMaskImage([iconDiv], ['edit', '.svg']).length > 0) {
+            if (NAIE.DOM.findElementWithMaskImage([iconDiv], ['edit', '.svg']).length > 0) {
                 editButton = button
-            } else if (findElementWithMaskImage([iconDiv], ['trash', '.svg']).length > 0) {
+            } else if (NAIE.DOM.findElementWithMaskImage([iconDiv], ['trash', '.svg']).length > 0) {
                 deleteButton = button
             }
         })
@@ -153,11 +153,11 @@ const simulateContextForShelf = async (shelf_id) => {
 
     //find shelf
     const selector = `div[data-metadata-shelf_id="${shelf_id}"]:not([data-metadata-subshelf])`
-    const shelfElement = await waitForElement(selector, 1000)
+    const shelfElement = await NAIE.DOM.waitForElement(selector, 1000)
 
     let contextMenuPromise = waitForNewContextMenu(true)
     setTimeout(() => {
-        simulateRightClick(shelfElement)
+        NAIE.DOM.simulateRightClick(shelfElement)
     }, 0)
 
     const { contextMenu, editButton, deleteButton } = await contextMenuPromise
@@ -177,14 +177,14 @@ const simulateContextEdit = async (shelf_id) => {
     const parent_id = getMetadataObject(shelfState?.getShelf(shelf_id) || {})?.parent_id
 
     const { contextMenu, editButton, deleteButton } = await simulateContextForShelf(shelf_id)
-    simulateClick(editButton)
+    NAIE.DOM.simulateClick(editButton)
 
     const { modal, overlay, closeButton, ...rest } = await waitForShelfSettingsModal()
 
-    const handle = OnClickOutside(
+    const handle = NAIE.DOM.onClickOutside(
         modal,
         async () => {
-            await sleep(100) //sleep as no to block patch request
+            await NAIE.MISC.sleep(100) //sleep as no to block patch request
             await navigateToShelf(parent_id)
             navigateToShelf(parent_id) // dirty fix to ensure subshelf element is updated
             if (sidebarLock) {
@@ -194,9 +194,9 @@ const simulateContextEdit = async (shelf_id) => {
         true,
     )
 
-    addEventListenerOnce(closeButton, 'click', async () => {
+    NAIE.DOM.addEventListenerOnce(closeButton, 'click', async () => {
         handle.remove()
-        await sleep(100) //sleep as no to block patch request
+        await NAIE.MISC.sleep(100) //sleep as no to block patch request
         await navigateToShelf(parent_id)
         navigateToShelf(parent_id) // dirty fix to ensure subshelf element is updated
         if (sidebarLock) {
@@ -213,11 +213,11 @@ const simulateContextDelete = async (shelf_id) => {
     const parent_id = getMetadataObject(shelfState?.getShelf(shelf_id) || {})?.parent_id
 
     const { contextMenu, editButton, deleteButton } = await simulateContextForShelf(shelf_id)
-    simulateClick(deleteButton)
+    NAIE.DOM.simulateClick(deleteButton)
 
     const { modal, overlay, closeButton, ...rest } = await waitForShelfDeleteModal()
 
-    const handle = OverlayClickListener(
+    const handle = createOverlayClickListener(
         overlay,
         modal,
         () => {
@@ -229,7 +229,7 @@ const simulateContextDelete = async (shelf_id) => {
         true,
     )
 
-    addEventListenerOnce(closeButton, 'click', () => {
+    NAIE.DOM.addEventListenerOnce(closeButton, 'click', () => {
         handle.remove()
         navigateToShelf(parent_id)
         if (sidebarLock) {

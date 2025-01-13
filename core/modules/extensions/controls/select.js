@@ -42,12 +42,12 @@ const DROPDOWN_NO_OPTIONS_STYLES = {
 }
 
 const controls_createSelectDropdown = (options, selectedValue) => {
-    const dropdownContainer = createElement('div', DROPDOWN_CONTAINER_STYLES)
-    const optionsList = createElement('div', DROPDOWN_LIST_STYLES)
+    const dropdownContainer = NAIE.DOM.createElement('div', DROPDOWN_CONTAINER_STYLES)
+    const optionsList = NAIE.DOM.createElement('div', DROPDOWN_LIST_STYLES)
     dropdownContainer.appendChild(optionsList)
 
     options.forEach(({ title, value }) => {
-        const optionElement = createElement('div', {
+        const optionElement = NAIE.DOM.createElement('div', {
             ...DROPDOWN_OPTION_STYLES,
             backgroundColor: value === selectedValue ? 'rgb(16, 18, 36)' : 'transparent',
         })
@@ -56,14 +56,14 @@ const controls_createSelectDropdown = (options, selectedValue) => {
         optionElement.setAttribute('tabindex', '-1')
         optionElement.setAttribute('data-option-value', value)
 
-        const optionText = createElement('span')
+        const optionText = NAIE.DOM.createElement('span')
         optionText.textContent = title
         optionElement.appendChild(optionText)
 
         optionsList.appendChild(optionElement)
     })
 
-    const noOptions = createElement('div', DROPDOWN_NO_OPTIONS_STYLES)
+    const noOptions = NAIE.DOM.createElement('div', DROPDOWN_NO_OPTIONS_STYLES)
     noOptions.classList.add('naie-select-no-options')
     noOptions.textContent = 'No options'
     optionsList.appendChild(noOptions)

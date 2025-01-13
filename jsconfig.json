@@ -9,5 +9,5 @@
         }
     },
     "include": ["**/*.js", "**/*.d.ts"],
-    "exclude": ["node_modules", "**/node_modules/*", "**/dist/*", "subshelves"]
+    "exclude": ["node_modules", "**/node_modules/*", "**/dist/*"]
 }

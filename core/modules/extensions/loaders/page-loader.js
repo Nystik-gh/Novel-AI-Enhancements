@@ -18,3 +18,7 @@ const extensions_lockLoader = (app) => {
     }
     return { unlock }
 }
+
+const extensions_getSpinner = () => {
+    return loaderTemplate.firstChild.cloneNode(true)
+}

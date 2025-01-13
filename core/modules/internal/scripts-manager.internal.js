@@ -1,7 +1,12 @@
 /**
- * Maximum time to wait for scripts to become ready
+ * Maximum time to wait for initial script registration
  */
-const SCRIPT_READY_TIMEOUT = 1000 // Max wait time for scripts
+const SCRIPT_REGISTRATION_TIMEOUT = 1000 // Max wait time for scripts to register
+
+/**
+ * Maximum time to wait for registered scripts to become ready
+ */
+const SCRIPT_READY_TIMEOUT = 4000 // Max wait time for scripts to become ready
 
 /** @type {NAIEInternal} */
 const NAIE_INTERNAL = {
@@ -20,12 +25,14 @@ const NAIE_INTERNAL = {
  */
 const checkAllScriptsReady = () => {
     const { readyScripts, registeredScripts } = NAIE_INTERNAL
-    return readyScripts.size === registeredScripts.size
+    return readyScripts.size === registeredScripts.size && registeredScripts.size > 0
 }
 
 /**
  * Start waiting for scripts to register and become ready
- * After SCRIPT_READY_TIMEOUT, preflight will run even if not all scripts are ready
+ * Two-phase process:
+ * 1. Wait up to SCRIPT_REGISTRATION_TIMEOUT for scripts to register
+ * 2. Wait up to SCRIPT_READY_TIMEOUT for registered scripts to become ready
  * @returns {Promise<void>} Promise that resolves when preflight starts
  */
 const internal_startWaitingForScripts = async () => {
@@ -33,13 +40,33 @@ const internal_startWaitingForScripts = async () => {
     if (NAIE_INTERNAL.isWaitingForScripts || NAIE_INTERNAL.isPreflightStarted) return
 
     NAIE_INTERNAL.isWaitingForScripts = true
-    logger.debug('Starting to wait for scripts')
+    logger.debug('Starting to wait for script registration', Date.now())
 
-    const startTime = Date.now()
-    
-    while (Date.now() - startTime < SCRIPT_READY_TIMEOUT) {
+    // Phase 1: Wait for scripts to register
+    const registrationStartTime = Date.now()
+    while (Date.now() - registrationStartTime < SCRIPT_REGISTRATION_TIMEOUT) {
+        if (NAIE_INTERNAL.registeredScripts.size > 0) {
+            break // At least one script has registered
+        }
+        await new Promise(r => setTimeout(r, 50))
+    }
+
+    // Log registration phase results
+    logger.debug('Script registration phase complete', {
+        registered: Array.from(NAIE_INTERNAL.registeredScripts),
+        timeElapsed: Date.now() - registrationStartTime
+    })
+
+    // Phase 2: Wait for registered scripts to become ready
+    logger.debug('Starting to wait for scripts to become ready', Date.now())
+    const readyStartTime = Date.now()
+    while (Date.now() - readyStartTime < SCRIPT_READY_TIMEOUT) {
         if (checkAllScriptsReady()) {
             NAIE_INTERNAL.isPreflightStarted = true
+            logger.debug('All scripts ready, starting preflight', {
+                registered: Array.from(NAIE_INTERNAL.registeredScripts),
+                ready: Array.from(NAIE_INTERNAL.readyScripts)
+            })
             await NAIE_INTERNAL.preflight.runStages()
             return
         }
@@ -48,10 +75,11 @@ const internal_startWaitingForScripts = async () => {
 
     // Timeout reached, run preflight anyway
     logger.warn(
-        'Script registration timeout reached. Some scripts may not be ready:',
+        'Script ready timeout reached. Some scripts may not be ready:',
         {
             registered: Array.from(NAIE_INTERNAL.registeredScripts),
-            ready: Array.from(NAIE_INTERNAL.readyScripts)
+            ready: Array.from(NAIE_INTERNAL.readyScripts),
+            timeElapsed: Date.now() - readyStartTime
         }
     )
     NAIE_INTERNAL.isPreflightStarted = true
