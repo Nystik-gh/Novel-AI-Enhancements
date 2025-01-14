@@ -2,7 +2,7 @@
 // THIS IS NOT A STANDALONE USER SCRIPT! DO NO INSTALL THIS SCRIPT DIRECTLY.
 // @name         Novel AI Enhanced: Core
 // @namespace    github.nystik-hg
-// @version      1.0.2
+// @version      1.0.3
 // @description  Core library
 // @author       Nystik (https://gitlab.com/Nystik)
 // ==/UserScript==
@@ -2079,7 +2079,7 @@ const preflight_runStages = async () => {
 /**
  * Maximum time to wait for initial script registration
  */
-const SCRIPT_REGISTRATION_TIMEOUT = 1000 // Max wait time for scripts to register
+const SCRIPT_REGISTRATION_TIMEOUT = 4000 // Max wait time for scripts to register
 
 /**
  * Maximum time to wait for registered scripts to become ready
@@ -2093,8 +2093,8 @@ const NAIE_INTERNAL = {
     isPreflightStarted: false,
     isWaitingForScripts: false,
     preflight: {
-        runStages: preflight_runStages
-    }
+        runStages: preflight_runStages,
+    },
 }
 
 /**
@@ -2126,13 +2126,13 @@ const internal_startWaitingForScripts = async () => {
         if (NAIE_INTERNAL.registeredScripts.size > 0) {
             break // At least one script has registered
         }
-        await new Promise(r => setTimeout(r, 50))
+        await new Promise((r) => setTimeout(r, 50))
     }
 
     // Log registration phase results
     logger.debug('Script registration phase complete', {
         registered: Array.from(NAIE_INTERNAL.registeredScripts),
-        timeElapsed: Date.now() - registrationStartTime
+        timeElapsed: Date.now() - registrationStartTime,
     })
 
     // Phase 2: Wait for registered scripts to become ready
@@ -2143,23 +2143,20 @@ const internal_startWaitingForScripts = async () => {
             NAIE_INTERNAL.isPreflightStarted = true
             logger.debug('All scripts ready, starting preflight', {
                 registered: Array.from(NAIE_INTERNAL.registeredScripts),
-                ready: Array.from(NAIE_INTERNAL.readyScripts)
+                ready: Array.from(NAIE_INTERNAL.readyScripts),
             })
             await NAIE_INTERNAL.preflight.runStages()
             return
         }
-        await new Promise(r => setTimeout(r, 50))
+        await new Promise((r) => setTimeout(r, 50))
     }
 
     // Timeout reached, run preflight anyway
-    logger.warn(
-        'Script ready timeout reached. Some scripts may not be ready:',
-        {
-            registered: Array.from(NAIE_INTERNAL.registeredScripts),
-            ready: Array.from(NAIE_INTERNAL.readyScripts),
-            timeElapsed: Date.now() - readyStartTime
-        }
-    )
+    logger.warn('Script ready timeout reached. Some scripts may not be ready:', {
+        registered: Array.from(NAIE_INTERNAL.registeredScripts),
+        ready: Array.from(NAIE_INTERNAL.readyScripts),
+        timeElapsed: Date.now() - readyStartTime,
+    })
     NAIE_INTERNAL.isPreflightStarted = true
     await NAIE_INTERNAL.preflight.runStages()
 }
@@ -2174,7 +2171,7 @@ const registerScript = (scriptId) => {
     if (NAIE_INTERNAL.isPreflightStarted) {
         throw new Error(`Script ${scriptId} tried to register after preflight started`)
     }
-    LOGGING_UTILS.getLogger().info("registering script", scriptId)
+    LOGGING_UTILS.getLogger().info('registering script', scriptId)
     NAIE_INTERNAL.registeredScripts.add(scriptId)
 }
 
@@ -2189,14 +2186,14 @@ const markScriptReady = async (scriptId) => {
     if (!NAIE_INTERNAL.registeredScripts.has(scriptId)) {
         throw new Error(`Script ${scriptId} not registered`)
     }
-    LOGGING_UTILS.getLogger().info("script reports ready", scriptId)
+    LOGGING_UTILS.getLogger().info('script reports ready', scriptId)
     NAIE_INTERNAL.readyScripts.add(scriptId)
 }
 
 /** @type {NAIECore} */
 const CORE_UTILS = {
     registerScript,
-    markScriptReady
+    markScriptReady,
 }
 
 
