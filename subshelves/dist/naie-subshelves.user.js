@@ -2268,6 +2268,7 @@ const initializeNetworkHooks = () => {
 
 // Check if the current path is /stories before initializing
 if (window.location.pathname.startsWith('/stories')) {
+    scriptInit = false
     init()
 }
 

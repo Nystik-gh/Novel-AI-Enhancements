@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Novel AI Enhanced: Sub-shelves
 // @namespace    github.nystik-gh
-// @version      2.0.2
+// @version      2.0.3
 // @description  Adds nested shelves functionality
 // @match        https://novelai.net/*
 // @grant        none
@@ -70,5 +70,6 @@ const init = () => {
 
 // Check if the current path is /stories before initializing
 if (window.location.pathname.startsWith('/stories')) {
+    scriptInit = false
     init()
 }
