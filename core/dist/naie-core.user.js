@@ -2254,6 +2254,7 @@ const createNAIEInstance = () => {
             (previousPath.startsWith('/stories') && !currentPath.startsWith('/stories')) ||
             (!previousPath.startsWith('/stories') && currentPath.startsWith('/stories'))
         ) {
+            console.log('reloading')
             window.location.reload()
         }
 
