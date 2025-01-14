@@ -43,10 +43,10 @@ let homeButton = null
 let scriptInit = false
 
 const wRef = unsafeWindow ? unsafeWindow : window
-    /***
-     * @type {NAIE}
-     */
-    let NAIE = wRef.NAIE_INSTANCE
+/***
+ * @type {NAIE}
+ */
+let NAIE = wRef.NAIE_INSTANCE
 
 const init = () => {
     // Must be run as early as possible in order to be able to hook initial shelf request
@@ -67,29 +67,6 @@ const init = () => {
 }
 
 // ;INJECT DEPENDENCIES;
-
-// Force a reload when the app navigates to or from /stories
-// This is to make sure we only load the script when we access /stories
-
-let previousPath = window.location.pathname
-const handleUrlChange = () => {
-    const currentPath = window.location.pathname
-
-    if (
-        (previousPath.startsWith('/stories') && !currentPath.startsWith('/stories')) ||
-        (!previousPath.startsWith('/stories') && currentPath.startsWith('/stories'))
-    ) {
-        window.location.reload()
-    }
-
-    previousPath = currentPath
-}
-
-const observer = new MutationObserver(handleUrlChange)
-
-observer.observe(document, { childList: true, subtree: true })
-
-handleUrlChange() // Initial check
 
 // Check if the current path is /stories before initializing
 if (window.location.pathname.startsWith('/stories')) {
