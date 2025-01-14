@@ -17,15 +17,14 @@
 
     const coreInit = () => {
         const logger = LOGGING_UTILS.getLogger()
-        logging_setLogLevel("debug")
         if (!wRef.NAIE_INSTANCE) {
-            logger.info('creating naie instance')
+            logger.info('creating NAIE instance')
             wRef.NAIE_INSTANCE = createNAIEInstance()
             
             // Start waiting for scripts to register and become ready
             internal_startWaitingForScripts()
         } else {
-            logger.info('naie instance already exists, skipping')
+            logger.info('NAIE instance already exists, skipping')
         }
 
         NAIE = wRef.NAIE_INSTANCE
@@ -821,7 +820,7 @@ const controls_initSelectTemplate = async () => {
 
         const settingsModal = await waitForSettingsModal()
         const { fontSelect } = await settingsModal.panels.getThemePanel()
-        selectControlTemplate = controls_createCustomSelectTemplate() //controls_createClonedSelectTemplate(fontSelect)
+        selectControlTemplate = controls_createClonedSelectTemplate(fontSelect)
 
         // Add global style for focus override
         MISC_UTILS.addGlobalStyle(`
@@ -1297,8 +1296,9 @@ const extensions_createMessageManager = () => {
 
 const extensions_createIndicatorManager = (logContainer, maxRows, duration = 2000) => {
     const messageManager = extensions_createMessageManager()
-    const staggerDelay = 500 // Delay between message insertions
+    const staggerDelay = 300 // Minimum delay between message insertions
     let isInserting = false
+    let lastInsertTime = 0
 
     const processMessageQueue = async () => {
         if (isInserting || !messageManager.hasMessages() || logContainer.children.length >= maxRows) {
@@ -1312,9 +1312,18 @@ const extensions_createIndicatorManager = (logContainer, maxRows, duration = 200
         messageElement.className = 'notification'
         messageElement.textContent = message
         
-        // Wait for stagger delay before inserting
-        await new Promise(r => setTimeout(r, staggerDelay))
+        // Calculate time since last insert
+        const now = Date.now()
+        const timeSinceLastInsert = now - lastInsertTime
+        const delayNeeded = Math.max(0, staggerDelay - timeSinceLastInsert)
+        
+        // Only wait if we need to
+        if (delayNeeded > 0) {
+            await new Promise(r => setTimeout(r, delayNeeded))
+        }
+
         logContainer.appendChild(messageElement)
+        lastInsertTime = Date.now() // Update after any delay
         isInserting = false
 
         setTimeout(() => {
@@ -1450,6 +1459,11 @@ const EXTENSIONS = {
 /* ######### manager.network.js ######## */
 
 /**
+ * Base URL for the NovelAI API
+ */
+const API_BASE_URL = 'https://api.novelai.net';
+
+/**
  * Creates a network manager for intercepting and modifying requests
  * 
  * @returns {NetworkManager} The network manager instance
@@ -1466,14 +1480,20 @@ const network_createNetworkManager = () => {
      * @param {string} method - The method of the request
      * @returns {RequestHook[]} The matching hooks
      */
-    const getMatchingHooks = (hooks, url, method) => 
-        hooks.filter(hook => 
+    const getMatchingHooks = (hooks, url, method) => {
+        // Skip data URLs and requests without methods
+        if (!method || url.startsWith('data:')) {
+            return [];
+        }
+        
+        return hooks.filter(hook => 
             hook.enabled && 
             (hook.methods.length === 0 || hook.methods.includes(method.toUpperCase())) &&
             (typeof hook.urlPattern === 'string' 
-                ? url.startsWith(hook.urlPattern)
+                ? url.startsWith(API_BASE_URL + hook.urlPattern)
                 : hook.urlPattern.test(url))
         );
+    }
 
     /**
      * Processes a request by chaining modifications from matching hooks
@@ -1483,6 +1503,11 @@ const network_createNetworkManager = () => {
      * @returns {function} The request processing function
      */
     const processRequest = (hooks, nativeFetch) => async (request) => {
+        // Skip data URLs and requests without methods
+        if (!request.method || request.url.startsWith('data:')) {
+            return nativeFetch(request.url, request);
+        }
+
         const matchingHooks = getMatchingHooks(hooks, request.url, request.method);
         
         // Chain request modifications
@@ -1490,10 +1515,12 @@ const network_createNetworkManager = () => {
         for (const hook of matchingHooks) {
             if (hook.modifyRequest) {
                 const result = await hook.modifyRequest(modifiedRequest);
-                if ('status' in result) {
-                    return new Response('{}', result);
+                // If the hook returns a Response directly, return it without making the request
+                if (result.type === 'response') {
+                    return result.value;
                 }
-                modifiedRequest = result;
+                // Otherwise, use the modified request
+                modifiedRequest = result.value;
             }
         }
 
@@ -1519,7 +1546,7 @@ const network_createNetworkManager = () => {
             processRequest(hooks, nativeFetch)(request)
                 .then(callback)
                 .catch(error => {
-                    console.error('Hook processing error:', error);
+                    LOGGING_UTILS.getLogger().error('Hook processing error:', error);
                     nativeFetch(request.url, request).then(callback);
                 });
         });
@@ -1562,7 +1589,8 @@ const network_createNetworkManager = () => {
             const hook = hooks.find(h => h.id === id);
             if (hook) hook.enabled = false;
         },
-        initialize
+        initialize,
+        API_BASE_URL
     };
 };
 
@@ -1977,6 +2005,7 @@ const registerCoreInit = () => {
         async () => {
             const logger = LOGGING_UTILS.getLogger()
             logger.debug('core-initialization')
+            NERWORK_UTILS.manager.initialize()
             await controls_initializeTemplates()
             NAIE_SERVICES.statusIndicator = INDICATOR_UTILS.createNAIEIndicator()
         }
@@ -2038,6 +2067,7 @@ const preflight_runStages = async () => {
             )
         }
     } finally {
+        logger.info('NAIE Initialization Complete')
         logger.debug('unlocking loader')
         loader.unlock()
     }

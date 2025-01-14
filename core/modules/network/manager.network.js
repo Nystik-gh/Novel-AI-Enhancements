@@ -1,4 +1,9 @@
 /**
+ * Base URL for the NovelAI API
+ */
+const API_BASE_URL = 'https://api.novelai.net';
+
+/**
  * Creates a network manager for intercepting and modifying requests
  * 
  * @returns {NetworkManager} The network manager instance
@@ -15,14 +20,20 @@ const network_createNetworkManager = () => {
      * @param {string} method - The method of the request
      * @returns {RequestHook[]} The matching hooks
      */
-    const getMatchingHooks = (hooks, url, method) => 
-        hooks.filter(hook => 
+    const getMatchingHooks = (hooks, url, method) => {
+        // Skip data URLs and requests without methods
+        if (!method || url.startsWith('data:')) {
+            return [];
+        }
+        
+        return hooks.filter(hook => 
             hook.enabled && 
             (hook.methods.length === 0 || hook.methods.includes(method.toUpperCase())) &&
             (typeof hook.urlPattern === 'string' 
-                ? url.startsWith(hook.urlPattern)
+                ? url.startsWith(API_BASE_URL + hook.urlPattern)
                 : hook.urlPattern.test(url))
         );
+    }
 
     /**
      * Processes a request by chaining modifications from matching hooks
@@ -32,6 +43,11 @@ const network_createNetworkManager = () => {
      * @returns {function} The request processing function
      */
     const processRequest = (hooks, nativeFetch) => async (request) => {
+        // Skip data URLs and requests without methods
+        if (!request.method || request.url.startsWith('data:')) {
+            return nativeFetch(request.url, request);
+        }
+
         const matchingHooks = getMatchingHooks(hooks, request.url, request.method);
         
         // Chain request modifications
@@ -39,10 +55,12 @@ const network_createNetworkManager = () => {
         for (const hook of matchingHooks) {
             if (hook.modifyRequest) {
                 const result = await hook.modifyRequest(modifiedRequest);
-                if ('status' in result) {
-                    return new Response('{}', result);
+                // If the hook returns a Response directly, return it without making the request
+                if (result.type === 'response') {
+                    return result.value;
                 }
-                modifiedRequest = result;
+                // Otherwise, use the modified request
+                modifiedRequest = result.value;
             }
         }
 
@@ -68,7 +86,7 @@ const network_createNetworkManager = () => {
             processRequest(hooks, nativeFetch)(request)
                 .then(callback)
                 .catch(error => {
-                    console.error('Hook processing error:', error);
+                    LOGGING_UTILS.getLogger().error('Hook processing error:', error);
                     nativeFetch(request.url, request).then(callback);
                 });
         });
@@ -111,6 +129,7 @@ const network_createNetworkManager = () => {
             const hook = hooks.find(h => h.id === id);
             if (hook) hook.enabled = false;
         },
-        initialize
+        initialize,
+        API_BASE_URL
     };
 };

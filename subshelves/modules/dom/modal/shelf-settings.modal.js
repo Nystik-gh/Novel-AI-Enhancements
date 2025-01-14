@@ -2,7 +2,6 @@
 const isShelfSettingsModal = ({ modal }) => {
     const title = modal.querySelector('input')
     const description = modal.querySelector('textarea')
-    console.log("isShelfSettingsModal", title, description)
     return title && description
 }
 

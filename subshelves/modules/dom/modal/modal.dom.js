@@ -5,7 +5,6 @@ const initModalObserver = () => {
 }
 
 const handlePotentialShelfModal = async ({ modal, overlay }) => {
-    console.log("modal event triggered", modal, overlay)
     // Skip if already handled
     if (modal.dataset['proxied']) {
         return
@@ -18,7 +17,7 @@ const handlePotentialShelfModal = async ({ modal, overlay }) => {
             return
         }
     } catch (error) {
-        console.error("Error handling shelf modal:", error)
+        NAIE.LOGGING.getLogger().error("Error handling shelf modal:", error)
         // Not a shelf settings modal, ignore
     }
 }

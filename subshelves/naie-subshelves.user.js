@@ -8,7 +8,7 @@
 // @run-at       document-start
 // @require      ./modules/*
 // @require      ./lib/*
-// @require      https://pastebin.com/raw/J6Q2uQGT
+// @require      https://pastebin.com/raw/XrVY5s6p
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=novelai.net
 // @author       Nystik (https://gitlab.com/Nystik)
 // @downloadUrl  https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/main/subshelves/dist/naie-subshelves.user.js
@@ -25,8 +25,7 @@ const shelfChildCountKey = 'naie_child_count'
 const menubarSelector = '.menubar'
 const storyListSelector = '.story-list:not(#sidebar-lock .story-list)'
 const newShelfButtonSelector = 'button[aria-label="create a new shelf"]'
-const contextMenusSelector = 'button[aria-disabled]'
-const modalSelector = 'div[role="dialog"][aria-modal="true"]'
+//const contextMenusSelector = 'button[aria-disabled]'
 const breadcrumbsBarSelector = '#breadcrumbs-bar' // created by this script
 
 // State vars
@@ -51,19 +50,17 @@ const wRef = unsafeWindow ? unsafeWindow : window
     let NAIE = wRef.NAIE_INSTANCE
 
 const init = () => {
-    loadXhookScript()
-
+    // Must be run as early as possible in order to be able to hook initial shelf request
+    initializeNetworkHooks()
     document.addEventListener('DOMContentLoaded', async () => {
         if (!scriptInit) {
             try {
-                console.log("regstering subshelves")
                 NAIE.CORE.registerScript('naie-subshelves')
                 await preflight()
-                console.log("marking subshelves ready")
                 NAIE.CORE.markScriptReady('naie-subshelves')
                 scriptInit = true
             } catch (e) {
-                console.log(e)
+                NAIE.LOGGING.getLogger().error(e)
                 alert('Failed to initialize NAI Enhanced: Subshelves.\n\nDisable the script and create an issue on github for support.')
             }
         }
@@ -97,6 +94,5 @@ handleUrlChange() // Initial check
 
 // Check if the current path is /stories before initializing
 if (window.location.pathname.startsWith('/stories')) {
-    console.log("href trigger")
     init()
 }

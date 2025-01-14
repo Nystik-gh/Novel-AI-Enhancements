@@ -25,7 +25,7 @@ interface Logger {
  * Core logging utilities
  * @interface
  */
-interface LoggingUtils {
+interface NAIELogging {
     /**
      * Sets the global log level in localStorage
      * @throws {Error} If level is invalid

@@ -262,7 +262,7 @@ const updateMetadata = () => {
 
             updateShelfEntry(subShelf, shelf.data)
         } catch (e) {
-            console.log('metadata error', e)
+            NAIE.LOGGING.getLogger().error('metadata error', e)
         }
     })
 }

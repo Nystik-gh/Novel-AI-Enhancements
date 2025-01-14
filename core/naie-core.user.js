@@ -27,15 +27,14 @@
 
     const coreInit = () => {
         const logger = LOGGING_UTILS.getLogger()
-        logging_setLogLevel("debug")
         if (!wRef.NAIE_INSTANCE) {
-            logger.info('creating naie instance')
+            logger.info('creating NAIE instance')
             wRef.NAIE_INSTANCE = createNAIEInstance()
             
             // Start waiting for scripts to register and become ready
             internal_startWaitingForScripts()
         } else {
-            logger.info('naie instance already exists, skipping')
+            logger.info('NAIE instance already exists, skipping')
         }
 
         NAIE = wRef.NAIE_INSTANCE

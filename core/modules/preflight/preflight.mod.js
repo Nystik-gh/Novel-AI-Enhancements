@@ -32,6 +32,7 @@ const registerCoreInit = () => {
         async () => {
             const logger = LOGGING_UTILS.getLogger()
             logger.debug('core-initialization')
+            NERWORK_UTILS.manager.initialize()
             await controls_initializeTemplates()
             NAIE_SERVICES.statusIndicator = INDICATOR_UTILS.createNAIEIndicator()
         }
@@ -93,6 +94,7 @@ const preflight_runStages = async () => {
             )
         }
     } finally {
+        logger.info('NAIE Initialization Complete')
         logger.debug('unlocking loader')
         loader.unlock()
     }

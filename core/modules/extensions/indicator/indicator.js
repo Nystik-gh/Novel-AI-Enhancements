@@ -55,8 +55,9 @@ const extensions_createMessageManager = () => {
 
 const extensions_createIndicatorManager = (logContainer, maxRows, duration = 2000) => {
     const messageManager = extensions_createMessageManager()
-    const staggerDelay = 500 // Delay between message insertions
+    const staggerDelay = 300 // Minimum delay between message insertions
     let isInserting = false
+    let lastInsertTime = 0
 
     const processMessageQueue = async () => {
         if (isInserting || !messageManager.hasMessages() || logContainer.children.length >= maxRows) {
@@ -70,9 +71,18 @@ const extensions_createIndicatorManager = (logContainer, maxRows, duration = 200
         messageElement.className = 'notification'
         messageElement.textContent = message
         
-        // Wait for stagger delay before inserting
-        await new Promise(r => setTimeout(r, staggerDelay))
+        // Calculate time since last insert
+        const now = Date.now()
+        const timeSinceLastInsert = now - lastInsertTime
+        const delayNeeded = Math.max(0, staggerDelay - timeSinceLastInsert)
+        
+        // Only wait if we need to
+        if (delayNeeded > 0) {
+            await new Promise(r => setTimeout(r, delayNeeded))
+        }
+
         logContainer.appendChild(messageElement)
+        lastInsertTime = Date.now() // Update after any delay
         isInserting = false
 
         setTimeout(() => {

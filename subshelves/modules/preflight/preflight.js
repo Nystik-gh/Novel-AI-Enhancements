@@ -10,10 +10,10 @@ const preflight = async () => {
             // Early stage - Basic UI elements and controls
             /*NAIE.PREFLIGHT.registerHook(
                 'early',
-                'subshelves-controls',
+                'subshelves-network',
                 10,
                 async () => {
-                    
+                    initializeNetworkHooks()
                 }
             )*/
 
@@ -23,7 +23,6 @@ const preflight = async () => {
                 'subshelves-core',
                 10,
                 async () => {
-                    console.log("subshelves main hook")
                     //await NAIE.DOM.waitForElement(menubarSelector)
                     await NAIE.DOM.waitForElement(storyListSelector)
                     if (!sidebarLock) {
@@ -41,7 +40,6 @@ const preflight = async () => {
                 'subshelves-final',
                 10,
                 async () => {
-                    console.log("subshelves late hook")
                     if (AreThereShelves()) {
                         createContextMenuTemplate()
                     }

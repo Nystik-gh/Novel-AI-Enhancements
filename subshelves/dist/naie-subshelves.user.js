@@ -6,7 +6,7 @@
 // @match        https://novelai.net/*
 // @grant        none
 // @run-at       document-start
-// @require      https://pastebin.com/raw/J6Q2uQGT
+// @require      https://pastebin.com/raw/XrVY5s6p
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=novelai.net
 // @author       Nystik (https://gitlab.com/Nystik)
 // @downloadUrl  https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/main/subshelves/dist/naie-subshelves.user.js
@@ -23,8 +23,7 @@ const shelfChildCountKey = 'naie_child_count'
 const menubarSelector = '.menubar'
 const storyListSelector = '.story-list:not(#sidebar-lock .story-list)'
 const newShelfButtonSelector = 'button[aria-label="create a new shelf"]'
-const contextMenusSelector = 'button[aria-disabled]'
-const modalSelector = 'div[role="dialog"][aria-modal="true"]'
+//const contextMenusSelector = 'button[aria-disabled]'
 const breadcrumbsBarSelector = '#breadcrumbs-bar' // created by this script
 
 // State vars
@@ -49,19 +48,17 @@ const wRef = unsafeWindow ? unsafeWindow : window
     let NAIE = wRef.NAIE_INSTANCE
 
 const init = () => {
-    loadXhookScript()
-
+    // Must be run as early as possible in order to be able to hook initial shelf request
+    initializeNetworkHooks()
     document.addEventListener('DOMContentLoaded', async () => {
         if (!scriptInit) {
             try {
-                console.log("regstering subshelves")
                 NAIE.CORE.registerScript('naie-subshelves')
                 await preflight()
-                console.log("marking subshelves ready")
                 NAIE.CORE.markScriptReady('naie-subshelves')
                 scriptInit = true
             } catch (e) {
-                console.log(e)
+                NAIE.LOGGING.getLogger().error(e)
                 alert('Failed to initialize NAI Enhanced: Subshelves.\n\nDisable the script and create an issue on github for support.')
             }
         }
@@ -570,7 +567,6 @@ const initModalObserver = () => {
 }
 
 const handlePotentialShelfModal = async ({ modal, overlay }) => {
-    console.log("modal event triggered", modal, overlay)
     // Skip if already handled
     if (modal.dataset['proxied']) {
         return
@@ -583,7 +579,7 @@ const handlePotentialShelfModal = async ({ modal, overlay }) => {
             return
         }
     } catch (error) {
-        console.error("Error handling shelf modal:", error)
+        NAIE.LOGGING.getLogger().error("Error handling shelf modal:", error)
         // Not a shelf settings modal, ignore
     }
 }
@@ -638,7 +634,6 @@ const waitForShelfDeleteModal = async (timeout) => {
 const isShelfSettingsModal = ({ modal }) => {
     const title = modal.querySelector('input')
     const description = modal.querySelector('textarea')
-    console.log("isShelfSettingsModal", title, description)
     return title && description
 }
 
@@ -1222,7 +1217,7 @@ const updateMetadata = () => {
 
             updateShelfEntry(subShelf, shelf.data)
         } catch (e) {
-            console.log('metadata error', e)
+            NAIE.LOGGING.getLogger().error('metadata error', e)
         }
     })
 }
@@ -1743,6 +1738,291 @@ const lockSideBar = (showLoader = true, forceLoader = false, positional = false)
 /* ------- end of sidebar.dom.js ------- */
 
 
+/* ########## delete.hooks.js ########## */
+
+/**
+ * Hooks for handling DELETE requests to the shelves API endpoint
+ */
+
+const registerShelfDeleteHooks = () => {
+    NAIE.NETWORK.manager.registerHook({
+        id: 'shelf-delete',
+        priority: 10,
+        urlPattern: '/user/objects/shelf',
+        methods: ['DELETE'],
+        modifyRequest: async (request) => {
+            const remoteId = request.url.split('/').pop();
+
+            if (shelfState) {
+                try {
+                    const shelf = shelfState.getShelfByRemoteId(remoteId);
+                    const parent = getMetadataObject(shelf)?.parent_id;
+                    shelfState.deleteShelf(shelf.meta);
+
+                    if (activeShelf === null) {
+                        // we are deleting from the home shelf, manually restore hidden children of deleted parent
+                        restoreSubshelvesOfParent(shelf.meta);
+                    }
+
+                    // we know delete sends us back to home if we're not, correct activeShelf to reflect that
+                    activeShelf = null;
+
+                    navigateToShelf(parent);
+                    if (sidebarLock) {
+                        sidebarLock.unlock();
+                    }
+                } catch (e) {
+                    console.error('Error in delete request hook:', e);
+                }
+            }
+
+            return {
+                type: 'request',
+                value: request
+            };
+        }
+    });
+};
+
+
+/* ------- end of delete.hooks.js ------ */
+
+
+/* ############ get.hooks.js ########### */
+
+/**
+ * Hooks for handling GET requests to the shelves API endpoint
+ */
+
+const registerShelfGetHooks = () => {
+    NAIE.NETWORK.manager.registerHook({
+        id: 'shelf-get-all',
+        priority: 10,
+        urlPattern: '/user/objects/shelf',
+        methods: ['GET'],
+        modifyResponse: async (response, request) => {
+            const copy = response.clone();
+            let data = await copy.json();
+            shelfState = createShelfState(buildShelfMap(data.objects));
+            const modifiedData = { objects: InjectShelfTransientMeta(data.objects) };
+            
+            return new Response(JSON.stringify(modifiedData), {
+                status: response.status,
+                statusText: response.statusText,
+                headers: response.headers,
+            });
+        }
+    });
+};
+
+
+/* -------- end of get.hooks.js -------- */
+
+
+/* ########### patch.hooks.js ########## */
+
+/**
+ * Hooks for handling PATCH requests to the shelves API endpoint
+ */
+
+const registerShelfPatchHooks = () => {
+    NAIE.NETWORK.manager.registerHook({
+        id: 'shelf-patch',
+        priority: 10,
+        urlPattern: '/user/objects/shelf',
+        methods: ['PATCH'],
+        modifyRequest: async (request) => {
+            const options = getFetchOptions(request);
+            const body = JSON.parse(options.body);
+            const data = JSON.parse(NAIE.MISC.decodeBase64(body.data));
+            const shelf_id = body.meta;
+
+            // Strip transient metadata from description
+            data.description = stripTransientMetadataFromText(data.description);
+            body.data = NAIE.MISC.encodeBase64(JSON.stringify(data));
+            options.body = JSON.stringify(body);
+
+            // Update shelf state
+            if (shelfState) {
+                try {
+                    shelfState.upsertShelf(shelf_id, decodeShelf(body));
+                    processStoryList();
+                } catch (e) {
+                    console.error('Error updating shelf state:', e);
+                }
+            }
+
+            return {
+                type: 'request',
+                value: new Request(request.url, options)
+            };
+        },
+        modifyResponse: async (response, request) => {
+            const copy = response.clone();
+            let shelf = await copy.json();
+
+            // Update shelf state with response data
+            if (shelfState) {
+                try {
+                    shelfState.upsertShelf(shelf.meta, decodeShelf(shelf));
+                } catch (e) {
+                    // Silently handle error as per original implementation
+                }
+            }
+
+            // Inject transient metadata and create modified response
+            const modifiedData = InjectShelfTransientMetaSingle(shelf);
+
+            // Force refresh story list after patch
+            forceStoryListRefresh();
+
+            return new Response(JSON.stringify(modifiedData), {
+                status: response.status,
+                statusText: response.statusText,
+                headers: response.headers,
+            });
+        }
+    });
+};
+
+
+/* ------- end of patch.hooks.js ------- */
+
+
+/* ############ put.hooks.js ########### */
+
+/**
+ * Hooks for handling PUT requests to the shelves API endpoint
+ */
+
+// Track active PUT requests to handle double-PUT pattern
+const activePutShelfRequests = new Map();
+
+/**
+ * Register hooks for PUT operations on the shelves endpoint
+ */
+const registerShelfPutHooks = () => {
+    NAIE.NETWORK.manager.registerHook({
+        id: 'shelf-put',
+        priority: 10,
+        urlPattern: '/user/objects/shelf',
+        methods: ['PUT'],
+        modifyRequest: async (request) => {
+            const options = getFetchOptions(request);
+            const body = JSON.parse(options.body);
+            const data = JSON.parse(NAIE.MISC.decodeBase64(body.data));
+            const shelf_id = body.meta;
+
+            // Handle first PUT request
+            if (!activePutShelfRequests.has(shelf_id)) {
+            
+                activePutShelfRequests.set(shelf_id, 1);
+                processNewShelf(shelf_id); // This will trigger a new PUT request
+                return {
+                    type: 'response',
+                    value: new Response('{}', { 
+                        status: 204, 
+                        statusText: 'No Content' 
+                    })
+                };
+            }
+
+            // Process second PUT request (the one triggered by processNewShelf)
+            data.description = stripTransientMetadataFromText(data.description);
+            body.data = NAIE.MISC.encodeBase64(JSON.stringify(data));
+            options.body = JSON.stringify(body);
+
+            if (shelfState) {
+                try {
+                    shelfState.upsertShelf(shelf_id, decodeShelf(body));
+                } catch (e) {
+                    console.error('Error updating shelf state:', e);
+                }
+            }
+
+            // Reset the state for this entity's requests after processing the second request
+            if (activePutShelfRequests.has(shelf_id)) {
+                activePutShelfRequests.delete(shelf_id);
+            }
+
+            // not sure why this is here but likely necessary due to some race condition
+            createContextMenuTemplate();
+
+            return {
+                type: 'request',
+                value: new Request(request.url, options)
+            };
+        },
+        modifyResponse: async (response, request) => {
+            const copy = response.clone();
+            let shelf = await copy.json();
+
+            if (shelfState) {
+                try {
+                    shelfState.upsertShelf(shelf.meta, decodeShelf(shelf));
+                } catch (e) {
+                    // Silently handle error as per original implementation
+                }
+            }
+
+            const modifiedData = InjectShelfTransientMetaSingle(shelf);
+
+            return new Response(JSON.stringify(modifiedData), {
+                status: response.status,
+                statusText: response.statusText,
+                headers: response.headers,
+            });
+        }
+    });
+};
+
+
+/* -------- end of put.hooks.js -------- */
+
+
+/* ########## shelves.hooks.js ######### */
+
+/**
+ * Main registration point for all shelf-related hooks
+ */
+
+const registerShelfHooks = () => {
+    registerShelfGetHooks();
+    registerShelfPutHooks();
+    registerShelfPatchHooks();
+    registerShelfDeleteHooks();
+};
+
+
+/* ------ end of shelves.hooks.js ------ */
+
+
+/* ########## request.utils.js ######### */
+
+/**
+ * Utility functions for handling requests
+ */
+
+/**
+ * Extracts fetch options from a request object
+ * 
+ * @param {Request} request - The request to extract options from
+ * @returns {Object} The fetch options
+ */
+const getFetchOptions = (request) => {
+    return {
+        method: request.method,
+        headers: request.headers,
+        body: request.body,
+        timeout: request.timeout,
+        credentials: request.withCredentials ? 'include' : 'same-origin',
+    }
+};
+
+
+/* ------ end of request.utils.js ------ */
+
+
 /* #### init-observers.preflight.js #### */
 
 const initGlobalObservers = () => {
@@ -1772,10 +2052,10 @@ const preflight = async () => {
             // Early stage - Basic UI elements and controls
             /*NAIE.PREFLIGHT.registerHook(
                 'early',
-                'subshelves-controls',
+                'subshelves-network',
                 10,
                 async () => {
-                    
+                    initializeNetworkHooks()
                 }
             )*/
 
@@ -1785,7 +2065,6 @@ const preflight = async () => {
                 'subshelves-core',
                 10,
                 async () => {
-                    console.log("subshelves main hook")
                     //await NAIE.DOM.waitForElement(menubarSelector)
                     await NAIE.DOM.waitForElement(storyListSelector)
                     if (!sidebarLock) {
@@ -1803,7 +2082,6 @@ const preflight = async () => {
                 'subshelves-final',
                 10,
                 async () => {
-                    console.log("subshelves late hook")
                     if (AreThereShelves()) {
                         createContextMenuTemplate()
                     }
@@ -1967,330 +2245,24 @@ const createShelfState = (shelfData) => {
 /* ------- end of shelf.state.js ------- */
 
 
-/* ####### before-shelf-delete.js ###### */
-
-const preShelfDelete = (request) => {
-    const options = getFetchOptions(request)
-    const remoteId = request.url.split('/').pop()
-
-    if (shelfState) {
-        try {
-            /*if (!sidebarLock) {
-                sidebarLock = lockSideBar()
-            }*/
-            const shelf = shelfState.getShelfByRemoteId(remoteId)
-            const parent = getMetadataObject(shelf)?.parent_id
-            shelfState.deleteShelf(shelf.meta)
-
-            if (activeShelf === null) {
-                // we are deleting from the home shelf, manually restore hidden children of deleted parent
-                restoreSubshelvesOfParent(shelf.meta)
-            }
-
-            // we know delete sends us back to home if we're not, correct activeShelf to reflect that
-            activeShelf = null
-
-            navigateToShelf(parent)
-            if (sidebarLock) {
-                sidebarLock.unlock()
-            }
-
-            /*setTimeout(async () => {
-                await 
-            }, 100)*/
-        } catch (e) {}
-    }
-
-    return options
-}
-
-
-/* --- end of before-shelf-delete.js --- */
-
-
-/* ####### before-shelf-patch.js ####### */
-
-const preShelfPatch = (request) => {
-    const options = getFetchOptions(request)
-
-    const body = JSON.parse(options.body)
-    const data = JSON.parse(NAIE.MISC.decodeBase64(body.data))
-    const shelf_id = body.meta
-
-    data.description = stripTransientMetadataFromText(data.description)
-
-    body.data = NAIE.MISC.encodeBase64(JSON.stringify(data))
-
-    options.body = JSON.stringify(body)
-
-    if (shelfState) {
-        try {
-            shelfState.upsertShelf(shelf_id, decodeShelf(body))
-            processStoryList()
-        } catch (e) {
-            console.error('Error updating shelf state:', e)
-        }
-    }
-
-    return options
-}
-
-
-/* ---- end of before-shelf-patch.js --- */
-
-
-/* ######## before-shelf-put.js ######## */
-
-const activePutShelfRequests = new Map()
-
-const preShelfPut = (request) => {
-    const options = getFetchOptions(request)
-    const body = JSON.parse(options.body)
-    const data = JSON.parse(NAIE.MISC.decodeBase64(body.data))
-    const shelf_id = body.meta
-
-    // Check if this is the first request for this meta
-    if (!activePutShelfRequests.has(shelf_id)) {
-        processNewShelf(shelf_id) // This will trigger a new PUT request
-        activePutShelfRequests.set(shelf_id, 1)
-
-        options.shouldBlock = true
-
-        return options
-    }
-
-    data.description = stripTransientMetadataFromText(data.description)
-
-    body.data = NAIE.MISC.encodeBase64(JSON.stringify(data))
-
-    options.body = JSON.stringify(body)
-
-    if (shelfState) {
-        try {
-            shelfState.upsertShelf(shelf_id, decodeShelf(body))
-        } catch (e) {
-            console.error('Error updating shelf state:', e)
-        }
-    }
-
-    // Reset the state for this entity's requests after processing the second request
-    if (activePutShelfRequests.has(shelf_id)) {
-        activePutShelfRequests.delete(shelf_id)
-    }
-
-    createContextMenuTemplate()
-
-    return options
-}
-
-
-/* ----- end of before-shelf-put.js ---- */
-
-
-/* ########## request-hooks.js ######### */
-
-const preRequestHandlers = (request) => {
-    const baseShelfUrl = 'https://api.novelai.net/user/objects/shelf'
-    const method = request.method?.toLowerCase()
-
-    if (request.url.startsWith(baseShelfUrl)) {
-        switch (method) {
-            case 'put':
-                return preShelfPut(request)
-            case 'patch':
-                return preShelfPatch(request)
-            case 'delete':
-                return preShelfDelete(request)
-            default:
-                return getFetchOptions(request)
-        }
-    } else {
-        return getFetchOptions(request)
-    }
-}
-
-
-/* ------ end of request-hooks.js ------ */
-
-
-/* ####### after-shelf-delete.js ####### */
-
-const postShelfDelete = async (response) => {
-    //const copy = response.clone()
-    //let shelf = await copy.json()
-
-    /*if (shelfState) {
-        try {
-            shelfState.delete(shelf.meta)
-        } catch (e) {}
-    }*/
-
-    return response
-}
-
-
-/* ---- end of after-shelf-delete.js --- */
-
-
-/* ####### after-shelf-get-all.js ###### */
-
-const postShelfGetAll = async (response) => {
-    const copy = response.clone()
-    let data = await copy.json()
-    shelfState = createShelfState(buildShelfMap(data.objects))
-    const modifiedData = { objects: InjectShelfTransientMeta(data.objects) }
-    const modifiedText = JSON.stringify(modifiedData)
-    const modifiedResponse = new Response(modifiedText, {
-        status: response.status,
-        statusText: response.statusText,
-        headers: response.headers,
-    })
-
-    return modifiedResponse
-}
-
-
-/* --- end of after-shelf-get-all.js --- */
-
-
-/* ######## after-shelf-patch.js ####### */
-
-const postShelfPatch = async (response) => {
-    const copy = response.clone()
-    let shelf = await copy.json()
-
-    if (shelfState) {
-        try {
-            shelfState.upsertShelf(shelf.meta, decodeShelf(shelf))
-        } catch (e) {}
-    }
-
-    const modifiedData = InjectShelfTransientMetaSingle(shelf)
-
-    const modifiedText = JSON.stringify(modifiedData)
-    const modifiedResponse = new Response(modifiedText, {
-        status: response.status,
-        statusText: response.statusText,
-        headers: response.headers,
-    })
-
-    forceStoryListRefresh()
-
-    return modifiedResponse
-}
-
-
-/* ---- end of after-shelf-patch.js ---- */
-
-
-/* ######### after-shelf-put.js ######## */
-
-const postShelfPut = async (response) => {
-    const copy = response.clone()
-    let shelf = await copy.json()
-
-    if (shelfState) {
-        try {
-            shelfState.upsertShelf(shelf.meta, decodeShelf(shelf))
-        } catch (e) {}
-    }
-
-    const modifiedData = InjectShelfTransientMetaSingle(shelf)
-
-    const modifiedText = JSON.stringify(modifiedData)
-    const modifiedResponse = new Response(modifiedText, {
-        status: response.status,
-        statusText: response.statusText,
-        headers: response.headers,
-    })
-
-    return modifiedResponse
-}
-
-
-/* ----- end of after-shelf-put.js ----- */
-
-
-/* ######### response-hooks.js ######### */
-
-const postRequestHandler = async (request, response) => {
-    const baseShelfUrl = 'https://api.novelai.net/user/objects/shelf'
-    const method = request.method?.toLowerCase()
-
-    if (request.url.startsWith(baseShelfUrl)) {
-        switch (method) {
-            case 'get':
-                return await postShelfGetAll(response)
-            case 'patch':
-                return await postShelfPatch(response)
-            case 'put':
-                return await postShelfPut(response)
-            case 'delete':
-                return await postShelfDelete(response)
-            default:
-                return response
-        }
-    } else {
-        return response
-    }
-}
-
-
-/* ------ end of response-hooks.js ----- */
-
-
-/* ############# helpers.js ############ */
-
-const getFetchOptions = (request) => {
-    return {
-        method: request.method,
-        headers: request.headers,
-        body: request.body,
-        timeout: request.timeout,
-        credentials: request.withCredentials ? 'include' : 'same-origin',
-    }
-}
-
-
-/* --------- end of helpers.js --------- */
-
-
-/* ############## hooks.js ############# */
-
-const loadXhookScript = () => {
-    //const script = document.createElement('script')
-    //script.src = 'https://unpkg.com/xhook@latest/dist/xhook.min.js'
-    //script.onload = initializeXhook
-    //document.documentElement.prepend(script)
-    initializeXhook()
-}
-
-const initializeXhook = () => {
-    //xhook.after(responseModifier);
-    const nativeFetch = xhook.fetch.bind(window)
-    xhook.before(beforeHook(nativeFetch))
-}
-
-const beforeHook = (nativeFetch) => async (request, callback) => {
-    const fetchOptions = preRequestHandlers(request)
-
-    try {
-        if (fetchOptions.shouldBlock) {
-            callback(new Response('{}', { status: 418, statusText: 'Blocked by client' }))
-            return
-        }
-
-        const raw_response = await nativeFetch(request.url, fetchOptions)
-
-        const response = await postRequestHandler(request, raw_response)
-        callback(response)
-    } catch (error) {
-        console.error('Error fetching:', error)
-    }
-}
-
-
-/* ---------- end of hooks.js ---------- */
+/* ########### network.mod.js ########## */
+
+/**
+ * Network module for handling API requests
+ * Registers hooks with NAIE.NETWORK for intercepting and modifying requests/responses
+ */
+
+const initializeNetworkHooks = () => {
+    // Initialize hooks for each endpoint group
+    registerShelfHooks();
+    
+    // Future endpoint groups can be initialized here
+    // initializeStoryHooks();
+    // initializeContextHooks();
+};
+
+
+/* ------- end of network.mod.js ------- */
 
 
 /* ############## xhook.js ############# */
@@ -2725,7 +2697,6 @@ handleUrlChange() // Initial check
 
 // Check if the current path is /stories before initializing
 if (window.location.pathname.startsWith('/stories')) {
-    console.log("href trigger")
     init()
 }
 
