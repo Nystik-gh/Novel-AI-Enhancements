@@ -1,11 +1,9 @@
-
-
 /***
  * @type {NAIEServices}
  */
 const NAIE_SERVICES = {
     statusIndicator: null,
-    modalObserver: naie_initModalObserver(),
+    modalObserver: null,
 }
 
 /***

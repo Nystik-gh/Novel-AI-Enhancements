@@ -2,7 +2,7 @@
  * @type {PreflightUtils}
  */
 const PREFLIGHT_UTILS = {
-    registerHook: preflight_registerHook
+    registerHook: preflight_registerHook,
 }
 
 // Internal function to register hooks in internal stages
@@ -12,11 +12,11 @@ const registerInternalHook = (id, priority, callback, timeout = DEFAULT_TIMEOUT)
         id,
         priority: priority || 0,
         callback,
-        timeout
+        timeout,
     }
 
     // Insert hook in priority order (higher priority first)
-    const index = stageHooks.findIndex(h => (h.priority || 0) < (hook.priority || 0))
+    const index = stageHooks.findIndex((h) => (h.priority || 0) < (hook.priority || 0))
     if (index === -1) {
         stageHooks.push(hook)
     } else {
@@ -33,9 +33,10 @@ const registerCoreInit = () => {
             const logger = LOGGING_UTILS.getLogger()
             logger.debug('core-initialization')
             NERWORK_UTILS.manager.initialize()
+            NAIE_SERVICES.modalObserver = naie_initModalObserver()
             await controls_initializeTemplates()
             NAIE_SERVICES.statusIndicator = INDICATOR_UTILS.createNAIEIndicator()
-        }
+        },
     )
 }
 
@@ -51,47 +52,38 @@ const preflight_runStages = async () => {
     const loader = LOADER.lockLoader(app)
 
     const errors = []
-    
+
     try {
         // Run each stage, collecting errors
-        errors.push(...await runStage(INTERNAL_STAGES.INTERNAL))
-        NAIE_SERVICES.statusIndicator.displayMessage(
-            `Initializing NAIE scripts...`
-        )
+        errors.push(...(await runStage(INTERNAL_STAGES.INTERNAL)))
+        NAIE_SERVICES.statusIndicator.displayMessage(`Initializing NAIE scripts...`)
 
-        errors.push(...await runStage(STAGES.EARLY))
-        errors.push(...await runStage(STAGES.MAIN))
-        errors.push(...await runStage(STAGES.LATE))
+        errors.push(...(await runStage(STAGES.EARLY)))
+        errors.push(...(await runStage(STAGES.MAIN)))
+        errors.push(...(await runStage(STAGES.LATE)))
 
         // Report errors if any occurred
         if (errors.length > 0) {
-            const timeouts = errors.filter(e => e.timeoutError)
-            const failures = errors.filter(e => !e.timeoutError)
-            
-            logger.error(
-                'Preflight completed with errors:',
-                {
-                    total: errors.length,
-                    timeouts: timeouts.length,
-                    failures: failures.length,
-                    errors: errors.map(e => ({
-                        id: e.hookId,
-                        stage: e.stage,
-                        type: e.timeoutError ? 'timeout' : 'error',
-                        message: e.error.message
-                    }))
-                }
-            )
+            const timeouts = errors.filter((e) => e.timeoutError)
+            const failures = errors.filter((e) => !e.timeoutError)
+
+            logger.error('Preflight completed with errors:', {
+                total: errors.length,
+                timeouts: timeouts.length,
+                failures: failures.length,
+                errors: errors.map((e) => ({
+                    id: e.hookId,
+                    stage: e.stage,
+                    type: e.timeoutError ? 'timeout' : 'error',
+                    message: e.error.message,
+                })),
+            })
 
             // Show user-friendly notification
-            NAIE_SERVICES.statusIndicator.displayMessage(
-                `Some features failed to initialize: ${errors.map(e => e.hookId).join(', ')}`
-            )
+            NAIE_SERVICES.statusIndicator.displayMessage(`Some features failed to initialize: ${errors.map((e) => e.hookId).join(', ')}`)
         } else {
             logger.debug('Preflight completed successfully')
-            NAIE_SERVICES.statusIndicator.displayMessage(
-                `NAIE scripts initialized successfully`
-            )
+            NAIE_SERVICES.statusIndicator.displayMessage(`NAIE scripts initialized successfully`)
         }
     } finally {
         logger.info('NAIE Initialization Complete')
