@@ -28,7 +28,7 @@ const getDtsFiles = (dir, files = []) => {
 const runTypedoc = (files) => {
     const version = getCoreVersion()
     const fileList = files.join(' ')
-    const command = `npx typedoc --out docs ${fileList} --name "NAIE Core API v${version}"`
+    const command = `npx typedoc --out core/docs ${fileList} --name "NAIE Core API v${version}"`
     console.log(`Running command: ${command}`)
     exec(command, (error, stdout, stderr) => {
         if (error) {
@@ -45,7 +45,7 @@ const runTypedoc = (files) => {
 
 // Get directory from command-line arguments
 const args = process.argv.slice(2)
-const directoryToTraverse = args[0] || 'src' // Default to 'src' if no argument provided
+const directoryToTraverse = args[0] || 'core' // Default to 'src' if no argument provided
 
 if (!fs.existsSync(directoryToTraverse)) {
     console.error(`Directory ${directoryToTraverse} does not exist.`)
