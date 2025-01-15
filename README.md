@@ -43,7 +43,8 @@ More feature scripts may be added over time.
 
 ## Mobile Installation (Android)
 
-Note: For information about iOS support, please refer to the [iOS Compatibility](#ios-compatibility) section below.
+> [!Note]
+> For information about iOS support, please refer to the [iOS Compatibility](#ios-compatibility) section below.
 
 ### Firefox Nightly with Violentmonkey
 
@@ -75,7 +76,8 @@ The script has been tested and confirmed to work on:
 -   Violentmonkey for Chrome
 -   Violentmonkey for Firefox
 
-Note: Greasemonkey is not currently supported. The script does not work on Greasemonkey, and I have very little interest in figuring out why. If you're a Greasemonkey user and want to make it work, you're welcome to investigate and contribute fixes.
+> [!Note]
+> Greasemonkey is not currently supported. The script does not work on Greasemonkey, and I have very little interest in figuring out why. If you're a Greasemonkey user and want to make it work, you're welcome to investigate and contribute fixes.
 
 ## Mobile Compatibility
 

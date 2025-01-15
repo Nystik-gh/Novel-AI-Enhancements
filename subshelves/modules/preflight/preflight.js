@@ -18,37 +18,27 @@ const preflight = async () => {
             )*/
 
             // Main stage - Core functionality
-            NAIE.PREFLIGHT.registerHook(
-                'main',
-                'subshelves-core',
-                10,
-                async () => {
-                    //await NAIE.DOM.waitForElement(menubarSelector)
-                    await NAIE.DOM.waitForElement(storyListSelector)
-                    if (!sidebarLock) {
-                        sidebarLock = lockSideBar(true, true, true)
-                        await NAIE.MISC.sleep(100)
-                    }
-                    await preProcessSidebar()
-                    await initGlobalObservers() // implement core
+            NAIE.PREFLIGHT.registerHook('main', 'subshelves-core', 10, async () => {
+                //await NAIE.DOM.waitForElement(menubarSelector)
+                await NAIE.DOM.waitForElement(storyListSelector)
+                if (!sidebarLock) {
+                    sidebarLock = lockSideBar(true, true, true)
+                    await NAIE.MISC.sleep(100)
                 }
-            )
+                await preProcessSidebar()
+                await initGlobalObservers() // implement core
+            })
 
             // Late stage - Final setup
-            NAIE.PREFLIGHT.registerHook(
-                'late',
-                'subshelves-final',
-                10,
-                async () => {
-                    if (AreThereShelves()) {
-                        createContextMenuTemplate()
-                    }
-                    if (sidebarLock) {
-                        sidebarLock.unlock()
-                    }
-                    NAIE.SERVICES.statusIndicator.displayMessage("Subshelves initialized")
+            NAIE.PREFLIGHT.registerHook('late', 'subshelves-final', 10, async () => {
+                if (AreThereShelves()) {
+                    createContextMenuTemplate()
                 }
-            )
+                if (sidebarLock) {
+                    sidebarLock.unlock()
+                }
+                NAIE.SERVICES.statusIndicator.displayMessage('Subshelves initialized')
+            })
         }
 
         registerSubshelvesHooks()
