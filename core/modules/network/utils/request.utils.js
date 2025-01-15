@@ -1,14 +1,10 @@
 /**
- * Utility functions for handling requests
- */
-
-/**
  * Extracts fetch options from a request object
- * 
+ *
  * @param {Request} request - The request to extract options from
  * @returns {Object} The fetch options
  */
-const getFetchOptions = (request) => {
+const network_getFetchOptions = (request) => {
     return {
         method: request.method,
         headers: request.headers,
@@ -16,4 +12,11 @@ const getFetchOptions = (request) => {
         timeout: request.timeout,
         credentials: request.withCredentials ? 'include' : 'same-origin',
     }
-};
+}
+
+const REQUEST_UTILS = {
+    getFetchOptions,
+}
+
+// Export for use in network manager
+const network_request_utils = REQUEST_UTILS

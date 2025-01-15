@@ -3,14 +3,24 @@
 All notable changes to NAIE Subshelves will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+and loosely follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-> [!Note]
-> Semantic Versioning follows the pattern of `MAJOR.MINOR.PATCH`.
+> [!IMPORTANT]
+> Version numbers follow the pattern of `MAJOR.MINOR.PATCH`, but with some adaptations for end-user scripts:
 >
-> -   **MAJOR** version increments when the update includes changes that are not backward-compatible and may cause existing subshelves to break. Even if code to migrate from an old version is included, it is still considered a breaking change and that should be considered before updating.
-> -   **MINOR** version increments for new features or significant changes that are backward-compatible. If something breaks with a minor update, it is unintended and a bug.
-> -   **PATCH** version increments for minor changes and bug fixes.
+> -   **MAJOR** version increments indicate significant changes to functionality or architecture, not necessarily breaking changes. Since feature scripts don't expose an API, major versions may be bumped for substantial updates that change how the script operates internally.
+> -   **MINOR** version increments for new features and enhancements.
+> -   **PATCH** version increments for bug fixes and minor improvements.
+
+## [v2.0.4] - 2025-01-15
+
+### Changed
+
+-   Major architectural refactor: Split the script into core and feature components
+-   Moved common functionality into a shared core script
+-   Improved code organization and maintainability
+-   Updated dependency management
+-   Fixed various code style inconsistencies
 
 ## [v1.0.7] - 2024-07-23
 
@@ -43,6 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 -   Fixed issue in contextmenu setup
 
+[v2.0.4]: https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/<commitid>/subshelves/dist/naie-subshelves.user.js
 [v1.0.7]: https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/9ea64294c1b5510bbe2623fd90f65a2631df8dd0/subshelves/dist/naie-subshelves.user.js
 [v1.0.6]: https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/8db1fdc374e508ffb35163ae5b98099ac15f59c8/subshelves/dist/naie-subshelves.user.js
 [v1.0.5]: https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/48cf18749f5347339e5d1d60bd201683abafa916/subshelves/dist/naie-subshelves.user.js

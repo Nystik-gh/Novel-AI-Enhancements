@@ -48,6 +48,27 @@ interface RequestHook {
 }
 
 /**
+ * Utility functions for working with requests
+ * 
+ * @interface
+ */
+interface RequestUtils {
+    /**
+     * Extracts fetch options from a request object
+     * 
+     * @param {Request} request - The request to extract options from
+     * @returns {Object} The fetch options
+     */
+    getFetchOptions: (request: Request) => {
+        method: string;
+        headers: Headers;
+        body: any;
+        timeout: number;
+        credentials: string;
+    };
+}
+
+/**
  * Network manager interface for registering and managing request hooks
  * 
  * @interface
@@ -85,6 +106,11 @@ interface NetworkManager {
      * Initializes the network manager and starts intercepting requests
      */
     initialize(): void;
+
+    /**
+     * Utility functions for working with requests
+     */
+    utils: RequestUtils;
 }
 
 /**
