@@ -1,14 +1,15 @@
 // ==UserScript==
 // @name         Novel AI Enhanced: Sub-shelves
-// @namespace    github.nystik-hg
-// @version      1.0.7
+// @namespace    github.nystik-gh
+// @version      2.0.4
 // @description  Adds nested shelves functionality
 // @match        https://novelai.net/*
 // @grant        none
 // @run-at       document-start
+// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/main/core/dist/naie-core.user.js
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=novelai.net
 // @author       Nystik (https://gitlab.com/Nystik)
-// @downloadUrl  https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/main/subshelves/dist/naie-subshelves.user.js
+// @downloadUrl  hhttps://github.com/Nystik-gh/Novel-AI-Enhancements/raw/main/subshelves/dist/naie-subshelves.user.js
 // @homepageUrl  https://github.com/Nystik-gh/Novel-AI-Enhancements
 // @supportUrl   https://github.com/Nystik-gh/Novel-AI-Enhancements/issues
 // ==/UserScript==
@@ -19,20 +20,16 @@ const persistent_metadata_key = 'naie_persistent_metadata'
 const shelfElementKey = 'naie_element'
 const shelfChildCountKey = 'naie_child_count'
 
-const appSelector = '#app'
-const settingsButtonSelector = 'button[aria-label="Open Settings"]'
 const menubarSelector = '.menubar'
 const storyListSelector = '.story-list:not(#sidebar-lock .story-list)'
-const filterButtonSelector = 'button[aria-label="Open Sort Settings"]' // used to find the title bar
 const newShelfButtonSelector = 'button[aria-label="create a new shelf"]'
-const contextMenusSelector = 'button[aria-disabled]'
-const modalSelector = 'div[role="dialog"][aria-modal="true"]'
+//const contextMenusSelector = 'button[aria-disabled]'
 const breadcrumbsBarSelector = '#breadcrumbs-bar' // created by this script
 
 // State vars
 let activeShelf = null
 let storyListObserver = null
-let modalObserver = null
+//let modalObserver = null
 let shelfState = null
 let updateInProgress = false
 let sidebarLock = null
@@ -42,14 +39,28 @@ let activeContextMenu = null
 // elements
 let homeButton = null
 
-const init = () => {
-    loadXhookScript()
+let scriptInit = false
 
+const wRef = unsafeWindow ? unsafeWindow : window
+/***
+ * @type {NAIE}
+ */
+let NAIE = wRef.NAIE_INSTANCE
+
+const init = () => {
+    // Must be run as early as possible in order to be able to hook initial shelf request
+    initializeNetworkHooks()
     document.addEventListener('DOMContentLoaded', async () => {
-        try {
-            await preflight()
-        } catch (e) {
-            alert('Failed to initialize NAI Enhanced: Subshelves.\n\nDisable the script and create an issue on github for support.')
+        if (!scriptInit) {
+            try {
+                NAIE.CORE.registerScript('naie-subshelves')
+                await preflight()
+                NAIE.CORE.markScriptReady('naie-subshelves')
+                scriptInit = true
+            } catch (e) {
+                NAIE.LOGGING.getLogger().error(e)
+                alert('Failed to initialize NAI Enhanced: Subshelves.\n\nDisable the script and create an issue on github for support.')
+            }
         }
     })
 }
@@ -73,9 +84,7 @@ const makeBreadcrumbs = (id, map) => {
     return breadcrumbs
 }
 
-
 /* ----- end of breadcrumbs.data.js ---- */
-
 
 /* ########## metadata.data.js ######### */
 
@@ -181,14 +190,12 @@ const stripTransientMetadataFromText = (text) => {
     return writeMetadata(cleanText, cleanMeta)
 }
 
-
 /* ------ end of metadata.data.js ------ */
-
 
 /* ########## shelves.data.js ########## */
 
 const decodeShelf = (shelf) => {
-    const decodedData = JSON.parse(decodeBase64(shelf.data))
+    const decodedData = JSON.parse(NAIE.MISC.decodeBase64(shelf.data))
     if (decodedData.children === undefined) {
         decodedData.children = []
     }
@@ -210,7 +217,7 @@ const encodeShelf = (item) => {
             }
         }
 
-        const encodedData = encodeBase64(JSON.stringify(item.data))
+        const encodedData = NAIE.MISC.encodeBase64(JSON.stringify(item.data))
         item.data = encodedData
     }
 
@@ -297,119 +304,7 @@ const getShelfStoryTotal = (shelf_id) => {
     return total
 }
 
-
 /* ------- end of shelves.data.js ------ */
-
-
-/* ######### breadcrumbs.dom.js ######## */
-
-const getBreadcrumbBarEl = () => {
-    return document.querySelector(breadcrumbsBarSelector)
-}
-
-const toggleBreadcrumbBar = () => {
-    if (activeShelf === null) {
-        // on home shelf
-        let breadcrumbBar = getBreadcrumbBarEl()
-        if (breadcrumbBar) {
-            breadcrumbBar.style.display = 'none'
-        }
-    } else {
-        let breadcrumbBar = getBreadcrumbBarEl()
-        if (breadcrumbBar) {
-            breadcrumbBar.style.display = 'flex'
-        }
-    }
-}
-
-const createBreadcrumbBar = () => {
-    if (getBreadcrumbBarEl()) {
-        return
-    }
-    let titlebar = findTitleBar()
-
-    if (titlebar && !document.querySelector(breadcrumbsBarSelector)) {
-        let clone = titlebar.cloneNode(false)
-        clone.id = breadcrumbsBarSelector.substring(1) // remove '#' to set correct id
-        clone.style.fontSize = '0.8rem'
-        clone.style.color = 'var(--loader-color)'
-
-        clone.style.display = 'flex'
-        clone.style.flexDirection = 'row'
-        clone.style.flexWrap = 'wrap'
-        clone.style.height = 'auto'
-        clone.style.padding = '0 20px 5px 20px'
-
-        titlebar.parentNode.insertBefore(clone, titlebar.nextSibling)
-    }
-}
-
-const createCrumb = (title, onClick) => {
-    const crumbStyles = {
-        whiteSpace: 'nowrap',
-        cursor: onClick ? 'pointer' : 'default',
-    }
-
-    const crumbEl = createElement('span', crumbStyles)
-    crumbEl.textContent = title
-
-    if (onClick) {
-        crumbEl.addEventListener('click', onClick)
-    }
-
-    return crumbEl
-}
-
-const createCrumbSeparator = () => {
-    // original separator html
-    const svgHTML = `<svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg" style="display: inline-block; height: 22px; width: 22px;"><path fill="none" d="M0 0h24v24H0V0z"></path><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"></path></svg>`
-    const template = document.createElement('template')
-    template.innerHTML = svgHTML.trim()
-    let separator = template.content.firstChild
-    separator.style.transform = 'scale(.8)'
-    return separator
-}
-
-const insertBreadcrumbs = (shelf_id) => {
-    const breadcrumbBar = getBreadcrumbBarEl()
-
-    if (breadcrumbBar) {
-        // Clear existing breadcrumbs
-        breadcrumbBar.innerHTML = ''
-
-        if (activeShelf) {
-            const crumbData = makeBreadcrumbs(shelf_id, shelfState.getMap())
-
-            const homeCrumb = createCrumb('Home', () => {
-                navigateToHome()
-            })
-            breadcrumbBar.appendChild(homeCrumb)
-            const separator = createCrumbSeparator()
-            breadcrumbBar.appendChild(separator)
-
-            // Create breadcrumb elements
-            const crumbs = crumbData.reduce((acc, crumb, index) => {
-                const crumbEl = createCrumb(
-                    crumb.data.title,
-                    index < crumbData.length - 1 ? () => handleSubSubshelfClick(crumb.meta) : null,
-                )
-
-                acc.appendChild(crumbEl)
-                if (index < crumbData.length - 1) {
-                    acc.appendChild(separator.cloneNode(true))
-                }
-
-                return acc
-            }, document.createDocumentFragment())
-
-            breadcrumbBar.appendChild(crumbs)
-        }
-    }
-}
-
-
-/* ----- end of breadcrumbs.dom.js ----- */
-
 
 /* ######### contextMenu.dom.js ######## */
 
@@ -448,7 +343,7 @@ const createContextMenu = (shelf_id, x, y) => {
     menu.style.left = `${x}px`
     menu.style.visibility = 'visible'
 
-    const handle = OnClickOutside(
+    const handle = NAIE.DOM.onClickOutside(
         menu,
         () => {
             if (document.body.contains(menu)) {
@@ -468,11 +363,11 @@ const createContextMenu = (shelf_id, x, y) => {
         activeContextMenu = null
     }
 
-    addEventListenerOnce(editButton, 'click', () => {
+    NAIE.DOM.addEventListenerOnce(editButton, 'click', () => {
         destroy()
         simulateContextEdit(shelf_id)
     })
-    addEventListenerOnce(deleteButton, 'click', () => {
+    NAIE.DOM.addEventListenerOnce(deleteButton, 'click', () => {
         destroy()
         simulateContextDelete(shelf_id)
     })
@@ -546,9 +441,9 @@ const identifyContextMenu = (node) => {
 
         buttons.forEach((button) => {
             const iconDiv = button.querySelector('div > div')
-            if (findElementWithMaskImage([iconDiv], ['edit', '.svg']).length > 0) {
+            if (NAIE.DOM.findElementWithMaskImage([iconDiv], ['edit', '.svg']).length > 0) {
                 editButton = button
-            } else if (findElementWithMaskImage([iconDiv], ['trash', '.svg']).length > 0) {
+            } else if (NAIE.DOM.findElementWithMaskImage([iconDiv], ['trash', '.svg']).length > 0) {
                 deleteButton = button
             }
         })
@@ -568,11 +463,11 @@ const simulateContextForShelf = async (shelf_id) => {
 
     //find shelf
     const selector = `div[data-metadata-shelf_id="${shelf_id}"]:not([data-metadata-subshelf])`
-    const shelfElement = await waitForElement(selector, 1000)
+    const shelfElement = await NAIE.DOM.waitForElement(selector, 1000)
 
     let contextMenuPromise = waitForNewContextMenu(true)
     setTimeout(() => {
-        simulateRightClick(shelfElement)
+        NAIE.DOM.simulateRightClick(shelfElement)
     }, 0)
 
     const { contextMenu, editButton, deleteButton } = await contextMenuPromise
@@ -592,14 +487,14 @@ const simulateContextEdit = async (shelf_id) => {
     const parent_id = getMetadataObject(shelfState?.getShelf(shelf_id) || {})?.parent_id
 
     const { contextMenu, editButton, deleteButton } = await simulateContextForShelf(shelf_id)
-    simulateClick(editButton)
+    NAIE.DOM.simulateClick(editButton)
 
     const { modal, overlay, closeButton, ...rest } = await waitForShelfSettingsModal()
 
-    const handle = OnClickOutside(
+    const handle = NAIE.DOM.onClickOutside(
         modal,
         async () => {
-            await sleep(100) //sleep as no to block patch request
+            await NAIE.MISC.sleep(100) //sleep as no to block patch request
             await navigateToShelf(parent_id)
             navigateToShelf(parent_id) // dirty fix to ensure subshelf element is updated
             if (sidebarLock) {
@@ -609,9 +504,9 @@ const simulateContextEdit = async (shelf_id) => {
         true,
     )
 
-    addEventListenerOnce(closeButton, 'click', async () => {
+    NAIE.DOM.addEventListenerOnce(closeButton, 'click', async () => {
         handle.remove()
-        await sleep(100) //sleep as no to block patch request
+        await NAIE.MISC.sleep(100) //sleep as no to block patch request
         await navigateToShelf(parent_id)
         navigateToShelf(parent_id) // dirty fix to ensure subshelf element is updated
         if (sidebarLock) {
@@ -628,11 +523,11 @@ const simulateContextDelete = async (shelf_id) => {
     const parent_id = getMetadataObject(shelfState?.getShelf(shelf_id) || {})?.parent_id
 
     const { contextMenu, editButton, deleteButton } = await simulateContextForShelf(shelf_id)
-    simulateClick(deleteButton)
+    NAIE.DOM.simulateClick(deleteButton)
 
     const { modal, overlay, closeButton, ...rest } = await waitForShelfDeleteModal()
 
-    const handle = OverlayClickListener(
+    const handle = createOverlayClickListener(
         overlay,
         modal,
         () => {
@@ -644,7 +539,7 @@ const simulateContextDelete = async (shelf_id) => {
         true,
     )
 
-    addEventListenerOnce(closeButton, 'click', () => {
+    NAIE.DOM.addEventListenerOnce(closeButton, 'click', () => {
         handle.remove()
         navigateToShelf(parent_id)
         if (sidebarLock) {
@@ -653,586 +548,36 @@ const simulateContextDelete = async (shelf_id) => {
     })
 }
 
-
 /* ----- end of contextMenu.dom.js ----- */
-
-
-/* ######### select.controls.js ######## */
-
-// Styles for the dropdown container
-const DROPDOWN_CONTAINER_STYLES = {
-    top: '100%',
-    position: 'absolute',
-    width: '100%',
-    zIndex: '1',
-    backgroundColor: 'rgb(26, 28, 46)',
-    borderRadius: '0px',
-    boxShadow: 'rgba(52, 56, 92, 0.6) 0px 0px 0px 1px, rgba(0, 0, 0, 0.2) 0px 4px 11px',
-    boxSizing: 'border-box',
-    margin: '0px',
-}
-
-// Styles for the options list container
-const DROPDOWN_LIST_STYLES = {
-    maxHeight: '200px',
-    overflowY: 'auto',
-    position: 'relative',
-    boxSizing: 'border-box',
-    padding: '0px',
-}
-
-// Common styles for dropdown options
-const DROPDOWN_OPTION_STYLES = {
-    cursor: 'pointer',
-    display: 'block',
-    fontSize: 'inherit',
-    width: '100%',
-    userSelect: 'none',
-    webkitTapHighlightColor: 'rgba(0, 0, 0, 0)',
-    color: 'rgb(255, 255, 255)',
-    padding: '8px 12px',
-    boxSizing: 'border-box',
-}
-
-const DROPDOWN_NO_OPTIONS_STYLES = {
-    textAlign: 'center',
-    color: 'rgba(255, 255, 255, 0.6)',
-    padding: '8px 12px',
-    boxSizing: 'border-box',
-    display: 'none',
-}
-
-const createSelectDropdown = (options, selectedValue) => {
-    const dropdownContainer = createElement('div', DROPDOWN_CONTAINER_STYLES)
-    const optionsList = createElement('div', DROPDOWN_LIST_STYLES)
-    dropdownContainer.appendChild(optionsList)
-
-    options.forEach(({ title, value }) => {
-        const optionElement = createElement('div', {
-            ...DROPDOWN_OPTION_STYLES,
-            backgroundColor: value === selectedValue ? 'rgb(16, 18, 36)' : 'transparent',
-        })
-
-        optionElement.setAttribute('aria-disabled', 'false')
-        optionElement.setAttribute('tabindex', '-1')
-        optionElement.setAttribute('data-option-value', value)
-
-        const optionText = createElement('span')
-        optionText.textContent = title
-        optionElement.appendChild(optionText)
-
-        optionsList.appendChild(optionElement)
-    })
-
-    const noOptions = createElement('div', DROPDOWN_NO_OPTIONS_STYLES)
-    noOptions.classList.add('naie-select-no-options')
-    noOptions.textContent = 'No options'
-    optionsList.appendChild(noOptions)
-
-    return dropdownContainer
-}
-
-const constructSelectControl = (options, selectedValue, callback) => {
-    const selectControl = selectControlTemplate.cloneNode(true)
-
-    const controlElement = selectControl.querySelector('.naie-select-control')
-    const singleValueElement = selectControl.querySelector('.naie-select-value')
-    const inputElement = selectControl.querySelector('.naie-select-input')
-    const inputWrapper = selectControl.querySelector('.naie-select-input-wrapper')
-
-    const selectedOption = options.find((option) => option.value === selectedValue)
-    if (selectedOption) {
-        singleValueElement.textContent = selectedOption.title
-    }
-
-    const dropdown = createSelectDropdown(options, selectedValue)
-    dropdown.style.display = 'none'
-    selectControl.appendChild(dropdown)
-
-    const updateDropdown = (filterText = '') => {
-        let visibleOptionsCount = 0
-        const optionElements = dropdown.querySelectorAll('[data-option-value]')
-        const noOptions = dropdown.querySelector('.naie-select-no-options')
-        optionElements.forEach((optionElement) => {
-            const title = optionElement.textContent.toLowerCase()
-            if (title.includes(filterText.toLowerCase())) {
-                optionElement.style.display = 'block'
-                visibleOptionsCount++
-            } else {
-                optionElement.style.display = 'none'
-            }
-        })
-
-        if (visibleOptionsCount === 0) {
-            noOptions.style.display = 'block'
-        } else {
-            noOptions.style.display = 'none'
-        }
-    }
-
-    const toggleDropdown = () => {
-        dropdown.style.display === 'none' ? showDropdown() : hideDropdown()
-    }
-
-    let outsideClickHandle = null
-
-    const showDropdown = () => {
-        dropdown.style.display = 'block'
-        //singleValueElement.style.display = 'none'
-        inputElement.focus()
-
-        outsideClickHandle = OnClickOutside(
-            selectControl,
-            () => {
-                hideDropdown()
-            },
-            true,
-        )
-    }
-
-    const hideDropdown = () => {
-        dropdown.style.display = 'none'
-        singleValueElement.style.display = 'block'
-        inputElement.value = ''
-        updateDropdown()
-
-        if (outsideClickHandle) {
-            outsideClickHandle.remove()
-            outsideClickHandle = null
-        }
-    }
-
-    controlElement.addEventListener('click', toggleDropdown)
-
-    inputElement.addEventListener('input', (e) => {
-        inputElement.value = e.target.value
-        inputElement.parentNode.dataset['value'] = e.target.value
-
-        if (e.target.value.length > 0) {
-            singleValueElement.style.display = 'none'
-            inputWrapper.classList.add('naie-focus-override')
-        } else {
-            singleValueElement.style.display = 'block'
-        }
-
-        updateDropdown(e.target.value)
-    })
-
-    const optionElements = dropdown.querySelectorAll('[data-option-value]')
-    optionElements.forEach((optionElement) => {
-        optionElement.addEventListener('click', () => {
-            const newValue = optionElement.getAttribute('data-option-value')
-            const newTitle = optionElement.textContent
-            singleValueElement.textContent = newTitle
-            hideDropdown()
-
-            optionElements.forEach((el) => {
-                el.style.backgroundColor = el === optionElement ? 'rgb(16, 18, 36)' : 'transparent'
-            })
-
-            callback(newValue)
-        })
-    })
-
-    return selectControl
-}
-
-
-/* ----- end of select.controls.js ----- */
-
-
-/* ########### general.dom.js ########## */
-
-const simulateClick = (element) => {
-    if (element) {
-        element.click()
-    }
-}
-
-const simulateRightClick = (element) => {
-    const evt = new Event('contextmenu', { bubbles: true, cancelable: false })
-    element.dispatchEvent(evt)
-}
-
-const simulateInputEvent = (element) => {
-    element.dispatchEvent(new Event('input', { bubbles: true }))
-}
-
-const createElement = (tag, styles = {}) => {
-    const element = document.createElement(tag)
-    Object.assign(element.style, styles)
-    return element
-}
-
-const waitForElement = (selector, timeout) => {
-    const getElement = () => document.querySelector(selector)
-
-    return new Promise((resolve) => {
-        const element = getElement()
-        if (element) {
-            resolve(element)
-        } else {
-            const observer = new MutationObserver((mutationsList, observer) => {
-                const element = getElement()
-                if (element) {
-                    observer.disconnect()
-                    resolve(element)
-                }
-            })
-
-            observer.observe(document.body, { childList: true, subtree: true, attributes: true })
-
-            if (timeout) {
-                setTimeout(() => {
-                    observer.disconnect()
-                    const element = getElement()
-                    resolve(element || null)
-                }, timeout)
-            }
-        }
-    })
-}
-
-const sleep = async (duration) => {
-    await waitForElement('nullelement', duration)
-}
-
-const addEventListenerOnce = (element, event, handler) => {
-    const flag = `listenerAdded_${event}_${handler.name}`
-
-    if (!element.dataset[flag]) {
-        element.addEventListener(event, handler)
-
-        element.dataset[flag] = 'true'
-    }
-}
-
-const OnClickOutside = (element, callback, oneShot = false) => {
-    const outsideClickListener = (event) => {
-        if (!event.composedPath().includes(element)) {
-            if (oneShot) {
-                removeClickListener()
-            }
-            callback()
-        }
-    }
-
-    const removeClickListener = () => {
-        document.removeEventListener('click', outsideClickListener)
-    }
-
-    document.addEventListener('click', outsideClickListener)
-
-    // Return a handle to manually remove the listener
-    return { remove: removeClickListener }
-}
-
-// not used, remove?
-const removeEventListener = (element, event, handler) => {
-    const flag = `listenerAdded_${event}_${handler.name}`
-
-    if (element.dataset[flag]) {
-        element.dataset[flag] = false
-    }
-}
-
-const findTitleBar = () => {
-    // Find the button with aria-label="Open Sort Settings"
-    const sortSettingsButton = document.querySelector(filterButtonSelector)
-
-    // manually traverse dom to expected home button
-    const titleBarCandidate = sortSettingsButton?.parentNode?.parentNode
-
-    if (titleBarCandidate && titleBarCandidate.tagName === 'DIV') {
-        return titleBarCandidate
-    }
-
-    return null
-}
-
-const findElementWithMaskImage = (elements, urlSubstrings) => {
-    const results = [...elements].filter((e) => {
-        const computedStyle = e ? window.getComputedStyle(e) : null
-        const maskImageValue = computedStyle ? computedStyle.getPropertyValue('mask-image') : null
-        const finalMaskImageValue = maskImageValue || (computedStyle ? computedStyle.getPropertyValue('-webkit-mask-image') : null)
-
-        return finalMaskImageValue && urlSubstrings.every((sub) => finalMaskImageValue.includes(sub))
-    })
-    return results
-}
-
-const setNativeValue = (element, value) => {
-    const valueSetter = Object.getOwnPropertyDescriptor(element, 'value').set
-    const prototype = Object.getPrototypeOf(element)
-    const prototypeValueSetter = Object.getOwnPropertyDescriptor(prototype, 'value').set
-
-    if (valueSetter && valueSetter !== prototypeValueSetter) {
-        prototypeValueSetter.call(element, value)
-    } else {
-        valueSetter.call(element, value)
-    }
-}
-
-
-/* ------- end of general.dom.js ------- */
-
-
-/* ######### homeButton.dom.js ######### */
-
-const grabHomeButton = () => {
-    const homeButtonCandidate = findHomeButton()
-    if (homeButtonCandidate && homeButton !== homeButtonCandidate) {
-        homeButton = homeButtonCandidate
-        addEventListenerOnce(homeButton, 'click', () => {
-            activeShelf = null
-        })
-    }
-}
-
-const findHomeButton = () => {
-    const titleBar = findTitleBar()
-
-    const homeButtonCandidate = titleBar?.firstElementChild?.firstElementChild
-
-    const isHomeButton = findElementWithMaskImage([homeButtonCandidate?.firstElementChild], ['home', '.svg']).length > 0
-
-    if (isHomeButton) {
-        return homeButtonCandidate
-    }
-
-    return null
-}
-
-const waitForHome = () => {
-    return new Promise((resolve) => {
-        const checkHomeButton = () => {
-            const homeButton = findHomeButton()
-            if (homeButton === null) {
-                resolve()
-            } else {
-                requestAnimationFrame(checkHomeButton)
-            }
-        }
-        checkHomeButton()
-    })
-}
-
-
-/* ------ end of homeButton.dom.js ----- */
-
 
 /* ############ modal.dom.js ########### */
 
 const initModalObserver = () => {
-    if (modalObserver) {
-        //console.log('modal observer already initiated, aborting...')
+    // Get the modal observer from NAIE services and subscribe to modal events
+    const { emitter } = NAIE.SERVICES.modalObserver
+    emitter.on('modal', handlePotentialShelfModal)
+}
+
+const handlePotentialShelfModal = async ({ modal, overlay }) => {
+    // Skip if already handled
+    if (modal.dataset['proxied']) {
         return
     }
 
-    modalObserver = true
-
-    const observerOptions = {
-        childList: true,
-    }
-
-    const observerCallback = (mutationsList, observer) => {
-        // Trigger mapShelfMetadata when mutations indicate changes
-        for (const mutation of mutationsList) {
-            if (mutation.type === 'childList') {
-                const addedNodes = Array.from(mutation.addedNodes)
-                const hasProjectionId = addedNodes.some(
-                    (node) => node.nodeType === Node.ELEMENT_NODE && node.hasAttribute('data-projection-id'),
-                )
-
-                if (hasProjectionId) {
-                    modalObserver.disconnect()
-
-                    waitForShelfSettingsModal(100)
-                        .then((data) => {
-                            if (!data.modal?.dataset['proxied']) {
-                                constructShelfSettingModal(data)
-                            }
-                            observer.observe(document.body, observerOptions)
-                        })
-                        .catch((error) => {
-                            // Not a settingsModal
-                            // having an empty catch block doesn't feel great, should probably rework modal handling at some point.
-                            observer.observe(document.body, observerOptions)
-                        })
-                    break
-                }
-            }
+    try {
+        // Try to handle as shelf settings modal
+        if (isShelfSettingsModal({ modal })) {
+            handleShelfSettingsModal({ modal, overlay })
+            return
         }
-    }
-
-    modalObserver = new MutationObserver(observerCallback)
-    modalObserver.observe(document.body, observerOptions)
-}
-
-const waitForModal = async (timeout) => {
-    const modal = await waitForElement(modalSelector, timeout)
-
-    const overlay = modal?.parentNode?.parentNode?.hasAttribute('data-projection-id') ? modal?.parentNode?.parentNode : null
-
-    const closeButton = modal ? findElementWithMaskImage(modal.querySelectorAll('button > div'), ['cross', '.svg'])?.[0] : null
-
-    return { modal, overlay, closeButton }
-}
-
-
-/* -------- end of modal.dom.js -------- */
-
-
-/* ######### settings.modal.js ######### */
-
-const getSettingsButton = () => {
-    return document.querySelector(settingsButtonSelector)
-}
-
-const waitForSettingsModal = async (timeout, hidden = false) => {
-    const { modal, overlay } = await waitForModal(timeout)
-
-    if (hidden) {
-        overlay.style.display = 'none'
-    }
-
-    const sidebar = await waitForElement('.settings-sidebar', 15000)
-
-    if (!sidebar) {
-        throw new Error('No settings sidebar found')
-    }
-
-    const { tabs, changelog, logout, closeButton } = isMobileView()
-        ? await handleSettingsMobile(modal, sidebar)
-        : await handleSettingsDesktop(modal, sidebar)
-
-    return {
-        modal,
-        overlay,
-        closeButton,
-        tabs,
-        extra: { changelog, logout },
-        panels: {
-            //getAISettingsPanel: () => getPanel(tabs.ai_settings, waitForAISettingsPanel),
-            //getInterfacePanel: () => getPanel(tabs.interface, waitForInterfacePanel),
-            getThemePanel: () => getPanel(modal, tabs.theme, waitForThemePanel),
-            //getAccountPanel: () => getPanel(tabs.account, waitForAccountPanel),
-            //getTextToSpeechPanel: () => getPanel(tabs.text_to_speech, waitForTextToSpeechPanel),
-            //getDefaultsPanel: () => getPanel(tabs.defaults, waitForDefaultsPanel),
-            //getHotkeysPanel: () => getPanel(tabs.hotkeys, waitForHotkeysPanel),
-        },
+    } catch (error) {
+        NAIE.LOGGING.getLogger().error('Error handling shelf modal:', error)
+        // Not a shelf settings modal, ignore
     }
 }
 
-const handleSettingsDesktop = async (modal, sidebar) => {
-    do {
-        await sleep(50)
-    } while (sidebar?.parentNode?.parentNode?.previousSibling?.tagName?.toLowerCase() !== 'button')
-
-    const buttons = sidebar.querySelectorAll('button')
-
-    if (buttons.length < 9) {
-        throw new Error('Not all required buttons are found')
-    }
-
-    const tabs = {
-        ai_settings: buttons[0],
-        interface: buttons[1],
-        theme: buttons[2],
-        account: buttons[3],
-        text_to_speech: buttons[4],
-        defaults: buttons[5],
-        hotkeys: buttons[6],
-    }
-
-    const changelog = buttons[7]
-    const logout = buttons[8]
-
-    const closeButton = findElementWithMaskImage(modal.querySelectorAll('button > div'), ['cross', '.svg'])?.[0]
-
-    return { tabs, changelog, logout, closeButton }
-}
-
-const handleSettingsMobile = async (modal, sidebar) => {
-    const buttons = sidebar.querySelectorAll('button')
-
-    if (buttons.length < 9) {
-        throw new Error('Not all required buttons are found')
-    }
-
-    const tabs = {
-        ai_settings: buttons[1],
-        interface: buttons[2],
-        theme: buttons[3],
-        account: buttons[4],
-        text_to_speech: buttons[5],
-        defaults: buttons[6],
-    }
-
-    const changelog = buttons[7]
-    const logout = buttons[8]
-
-    const closeButton = findElementWithMaskImage(modal.querySelectorAll('button > div'), ['cross', '.svg'])?.[0]
-
-    return { tabs, changelog, logout, closeButton }
-}
-
-const getPanel = async (modal, button, waitForFunction) => {
-    const panelPromise = waitForFunction(modal)
-
-    simulateClick(button) // Simulate the click on the button to show the panel
-
-    const panel = await panelPromise
-
-    return panel
-}
-
-
-/* ------ end of settings.modal.js ----- */
-
-
-/* ######### theme.settings.js ######### */
-
-const waitForThemePanel = async (modal) => {
-    const content = modal.querySelector('.settings-content')
-
-    if (!content) {
-        throw new Error('settings content not found')
-    }
-
-    const themeIndicator = await waitForElement('button[aria-label="Import Theme File"]', 15000)
-
-    if (!themeIndicator) {
-        throw new Error('cannot identify theme panel')
-    }
-
-    const fontSelect = content.querySelector('.font-select')
-
-    return { fontSelect }
-}
-
-
-/* ------ end of theme.settings.js ----- */
-
-
-/* ####### shelf-delete.modal.js ####### */
-
-const waitForShelfDeleteModal = async (timeout) => {
-    let { modal, overlay } = await waitForModal(timeout)
-
-    const buttons = modal.firstChild.lastChild.querySelectorAll('button')
-
-    if (buttons.length !== 1) {
-        throw new Error('Not a delete modal')
-    }
-
-    const deleteButton = buttons[0]
-    const closeButton = modal.querySelector('button[aria-label="Close Modal"]')
-
-    return { modal, overlay, closeButton, deleteButton }
-}
-
-const OverlayClickListener = (overlay, modal, callback, oneShot = false) => {
+// Helper for handling overlay clicks
+const createOverlayClickListener = (overlay, modal, callback, oneShot = false) => {
     const outsideClickListener = (event) => {
         if (!event.composedPath().includes(modal)) {
             if (oneShot) {
@@ -1252,25 +597,60 @@ const OverlayClickListener = (overlay, modal, callback, oneShot = false) => {
     return { remove: removeClickListener }
 }
 
+/* -------- end of modal.dom.js -------- */
+
+/* ####### shelf-delete.modal.js ####### */
+
+const isShelfDeleteModal = ({ modal }) => {
+    const buttons = modal.firstChild?.lastChild?.querySelectorAll('button')
+    return buttons?.length === 1 && modal.querySelector('button[aria-label="Close Modal"]')
+}
+
+const waitForShelfDeleteModal = async (timeout) => {
+    const { waitForSpecificModal } = NAIE.SERVICES.modalObserver
+    const modalData = await waitForSpecificModal(isShelfDeleteModal, timeout)
+
+    return {
+        ...modalData,
+        deleteButton: modalData.modal.firstChild.lastChild.querySelector('button'),
+    }
+}
 
 /* ---- end of shelf-delete.modal.js --- */
 
-
 /* ###### shelf-settings.modal.js ###### */
 
-const waitForShelfSettingsModal = async (timeout) => {
-    let { modal, overlay, closeButton } = await waitForModal(timeout)
-
+// Predicate for identifying shelf settings modals
+const isShelfSettingsModal = ({ modal }) => {
     const title = modal.querySelector('input')
     const description = modal.querySelector('textarea')
-
-    if (!title || !description) {
-        throw new Error('Title or description is null')
-    }
-
-    return { modal, overlay, closeButton, fields: { title, description } }
+    return title && description
 }
 
+// Handle shelf settings modal event
+const handleShelfSettingsModal = ({ modal, overlay }) => {
+    const fields = {
+        title: modal.querySelector('input'),
+        description: modal.querySelector('textarea'),
+    }
+    constructShelfSettingModal({ modal, overlay, fields })
+}
+
+// Wait for a shelf settings modal to appear
+const waitForShelfSettingsModal = async (timeout) => {
+    const { waitForSpecificModal } = NAIE.SERVICES.modalObserver
+    const modalData = await waitForSpecificModal(isShelfSettingsModal, timeout)
+
+    return {
+        ...modalData,
+        fields: {
+            title: modalData.modal.querySelector('input'),
+            description: modalData.modal.querySelector('textarea'),
+        },
+    }
+}
+
+// Construct the shelf settings modal UI
 const constructShelfSettingModal = ({ fields: { title, description }, modal, ...rest }) => {
     const cleanMetadata = (text) => {
         return writeMetadata(text, {})
@@ -1294,8 +674,8 @@ const constructShelfSettingModal = ({ fields: { title, description }, modal, ...
     const descriptionMetadata = parseMetadata(description.value)
 
     const updateNativeTextbox = (text) => {
-        setNativeValue(description, restoreMetadata(text, descriptionMetadata))
-        simulateInputEvent(description)
+        NAIE.DOM.setNativeValue(description, restoreMetadata(text, descriptionMetadata))
+        NAIE.DOM.simulateInputEvent(description)
     }
 
     // Initialize the cloned textarea with sanitized content
@@ -1319,7 +699,7 @@ const constructShelfSettingModal = ({ fields: { title, description }, modal, ...
         descriptionMetadata.parent_id && shelfState?.getMap()?.has(descriptionMetadata.parent_id)
             ? descriptionMetadata.parent_id
             : 'noshelf'
-    const dropdown = constructSelectControl(selectableShelves, selectedValue, (value) => {
+    const dropdown = NAIE.EXTENSIONS.Controls.Select.constructSelectControl(selectableShelves, selectedValue, (value) => {
         if (value === 'noshelf') {
             delete descriptionMetadata.parent_id
         } else {
@@ -1333,6 +713,7 @@ const constructShelfSettingModal = ({ fields: { title, description }, modal, ...
     return { ...rest, modal, fields: { title, description: clonedTextarea, rawDescription: description } }
 }
 
+// Helper functions for shelf settings modal
 const getTitleHeader = (titleInputElement, newTitle) => {
     const clone = titleInputElement.previousSibling.cloneNode(true)
     clone.textContent = newTitle
@@ -1344,9 +725,182 @@ const insertShelfPicker = (textarea, title, dropdown) => {
     textarea.parentNode.insertBefore(title, dropdown)
 }
 
-
 /* --- end of shelf-settings.modal.js -- */
 
+/* ######### shelf-image.svg.js ######## */
+
+const shelfSvgMap = {
+    0: '<svg width="134" height="59" viewBox="0 0 134 59" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="svg-color-bg1 svg-fill" y="43" width="134" height="8" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="0.5" y="43.5" width="133" height="7" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="15" y="50" width="6" height="8" rx="1" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="15.5" y="50.5" width="5" height="7" rx="0.5" stroke="#F7F7F7"></rect></svg>',
+    1: '<svg width="134" height="59" viewBox="0 0 134 59" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="svg-color-bg1 svg-fill" y="43" width="134" height="8" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="0.5" y="43.5" width="133" height="7" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="15" y="50" width="6" height="8" rx="1" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="15.5" y="50.5" width="5" height="7" rx="0.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="32" y="11" width="10" height="33" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="32.5" y="11.5" width="9" height="32" rx="1.5" stroke="#F7F7F7"></rect></svg>',
+    5: '<svg width="134" height="59" viewBox="0 0 134 59" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="svg-color-bg1 svg-fill" y="43" width="134" height="8" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="0.5" y="43.5" width="133" height="7" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="15" y="50" width="6" height="8" rx="1" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="15.5" y="50.5" width="5" height="7" rx="0.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="16" y="6" width="10" height="38" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="16.5" y="6.5" width="9" height="37" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="32" y="11" width="10" height="33" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="32.5" y="11.5" width="9" height="32" rx="1.5" stroke="#F7F7F7"></rect></svg>',
+    10: '<svg width="134" height="59" viewBox="0 0 134 59" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="svg-color-bg1 svg-fill" y="43" width="134" height="8" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="0.5" y="43.5" width="133" height="7" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="15" y="50" width="6" height="8" rx="1" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="15.5" y="50.5" width="5" height="7" rx="0.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="16" y="6" width="10" height="38" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="16.5" y="6.5" width="9" height="37" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="32" y="11" width="10" height="33" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="32.5" y="11.5" width="9" height="32" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="69" y="8" width="14" height="36" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="69.5" y="8.5" width="13" height="35" rx="1.5" stroke="#F7F7F7"></rect></svg>',
+    15: '<svg width="134" height="59" viewBox="0 0 134 59" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="svg-color-bg1 svg-fill" y="43" width="134" height="8" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="0.5" y="43.5" width="133" height="7" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="15" y="50" width="6" height="8" rx="1" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="15.5" y="50.5" width="5" height="7" rx="0.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="16" y="6" width="10" height="38" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="16.5" y="6.5" width="9" height="37" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="32" y="11" width="10" height="33" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="32.5" y="11.5" width="9" height="32" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="45" y="10" width="7" height="34" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="45.5" y="10.5" width="6" height="33" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="69" y="8" width="14" height="36" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="69.5" y="8.5" width="13" height="35" rx="1.5" stroke="#F7F7F7"></rect></svg>',
+    20: '<svg width="134" height="59" viewBox="0 0 134 59" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="svg-color-bg1 svg-fill" y="43" width="134" height="8" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="0.5" y="43.5" width="133" height="7" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="15" y="50" width="6" height="8" rx="1" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="15.5" y="50.5" width="5" height="7" rx="0.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="16" y="6" width="10" height="38" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="16.5" y="6.5" width="9" height="37" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="32" y="11" width="10" height="33" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="32.5" y="11.5" width="9" height="32" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="45" y="10" width="7" height="34" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="45.5" y="10.5" width="6" height="33" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="69" y="8" width="14" height="36" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="69.5" y="8.5" width="13" height="35" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="78.3" y="15.5195" width="7" height="31.6992" rx="2" transform="rotate(-30 82 10.5)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="78.983" y="15.7025" width="6" height="30.6992" rx="1.5" transform="rotate(-30 82.683 10.683)" stroke="#F7F7F7"></rect></svg>',
+    25: '<svg width="134" height="59" viewBox="0 0 134 59" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="svg-color-bg1 svg-fill" y="43" width="134" height="8" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="0.5" y="43.5" width="133" height="7" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="15" y="50" width="6" height="8" rx="1" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="15.5" y="50.5" width="5" height="7" rx="0.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="16" y="6" width="10" height="38" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="16.5" y="6.5" width="9" height="37" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="32" y="11" width="10" height="33" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="32.5" y="11.5" width="9" height="32" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="45" y="10" width="7" height="34" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="45.5" y="10.5" width="6" height="33" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="69" y="8" width="14" height="36" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="69.5" y="8.5" width="13" height="35" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="78.3" y="15.5195" width="7" height="31.6992" rx="2" transform="rotate(-30 82 10.5)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="78.983" y="15.7025" width="6" height="30.6992" rx="1.5" transform="rotate(-30 82.683 10.683)" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="57" y="19.0195" width="8" height="25" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="57.5" y="19.5195" width="7" height="24" rx="1.5" stroke="#F7F7F7"></rect></svg>',
+    30: '<svg width="134" height="59" viewBox="0 0 134 59" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="svg-color-bg1 svg-fill" y="43" width="134" height="8" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="0.5" y="43.5" width="133" height="7" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="15" y="50" width="6" height="8" rx="1" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="15.5" y="50.5" width="5" height="7" rx="0.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="16" y="6" width="10" height="38" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="16.5" y="6.5" width="9" height="37" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="32" y="11" width="10" height="33" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="32.5" y="11.5" width="9" height="32" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="45" y="10" width="7" height="34" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="45.5" y="10.5" width="6" height="33" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="69" y="8" width="14" height="36" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="69.5" y="8.5" width="13" height="35" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="78.3" y="15.5195" width="7" height="31.6992" rx="2" transform="rotate(-30 82 10.5)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="78.983" y="15.7025" width="6" height="30.6992" rx="1.5" transform="rotate(-30 82.683 10.683)" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="57" y="19.0195" width="8" height="25" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="57.5" y="19.5195" width="7" height="24" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="9.06875" y="18.0078" width="8" height="25" rx="2" transform="rotate(15 9.46875 18.0078)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="9.4223" y="18.6202" width="7" height="24" rx="1.5" transform="rotate(15 9.8223 18.6202)" stroke="#F7F7F7"></rect></svg>',
+    40: '<svg width="134" height="59" viewBox="0 0 134 59" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="svg-color-bg1 svg-fill" y="43" width="134" height="8" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="0.5" y="43.5" width="133" height="7" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="15" y="50" width="6" height="8" rx="1" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="15.5" y="50.5" width="5" height="7" rx="0.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="16" y="6" width="10" height="38" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="16.5" y="6.5" width="9" height="37" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="32" y="11" width="10" height="33" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="32.5" y="11.5" width="9" height="32" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="45" y="10" width="7" height="34" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="45.5" y="10.5" width="6" height="33" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="69" y="8" width="14" height="36" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="69.5" y="8.5" width="13" height="35" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="78.3" y="15.5195" width="7" height="31.6992" rx="2" transform="rotate(-30 82 10.5)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="78.983" y="15.7025" width="6" height="30.6992" rx="1.5" transform="rotate(-30 82.683 10.683)" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="57" y="19.0195" width="8" height="25" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="57.5" y="19.5195" width="7" height="24" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="9.06875" y="18.0078" width="8" height="25" rx="2" transform="rotate(15 9.46875 18.0078)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="9.4223" y="18.6202" width="7" height="24" rx="1.5" transform="rotate(15 9.8223 18.6202)" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="62.8789" width="10" height="38" rx="2" transform="rotate(85.4507 62.8789 0)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="62.4201" y="0.538083" width="9" height="37" rx="1.5" transform="rotate(85.4507 62.4201 0.538083)" stroke="#F7F7F7"></rect></svg>',
+    55: '<svg width="134" height="59" viewBox="0 0 134 59" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="svg-color-bg1 svg-fill" y="43" width="134" height="8" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="0.5" y="43.5" width="133" height="7" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="15" y="50" width="6" height="8" rx="1" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="15.5" y="50.5" width="5" height="7" rx="0.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="16" y="6" width="10" height="38" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="16.5" y="6.5" width="9" height="37" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="32" y="11" width="10" height="33" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="32.5" y="11.5" width="9" height="32" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="45" y="10" width="7" height="34" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="45.5" y="10.5" width="6" height="33" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="69" y="8" width="14" height="36" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="69.5" y="8.5" width="13" height="35" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="78.3" y="15.5195" width="7" height="31.6992" rx="2" transform="rotate(-30 82 10.5)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="78.983" y="15.7025" width="6" height="30.6992" rx="1.5" transform="rotate(-30 82.683 10.683)" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="57" y="19.0195" width="8" height="25" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="57.5" y="19.5195" width="7" height="24" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="9.06875" y="18.0078" width="8" height="25" rx="2" transform="rotate(15 9.46875 18.0078)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="9.4223" y="18.6202" width="7" height="24" rx="1.5" transform="rotate(15 9.8223 18.6202)" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="62.8789" width="10" height="38" rx="2" transform="rotate(85.4507 62.8789 0)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="62.4201" y="0.538083" width="9" height="37" rx="1.5" transform="rotate(85.4507 62.4201 0.538083)" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="83" y="8.00098" width="7.75503" height="47.531" rx="2" transform="rotate(-40.1313 83 8.00098)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="83.7046" y="8.06099" width="6.75503" height="46.531" rx="1.5" transform="rotate(-40.1313 83.7046 8.06099)" stroke="#F7F7F7"></rect></svg>',
+    70: '<svg width="134" height="59" viewBox="0 0 134 59" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="svg-color-bg1 svg-fill" y="43" width="134" height="8" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="0.5" y="43.5" width="133" height="7" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="15" y="50" width="6" height="8" rx="1" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="15.5" y="50.5" width="5" height="7" rx="0.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="16" y="6" width="10" height="38" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="16.5" y="6.5" width="9" height="37" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="32" y="11" width="10" height="33" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="32.5" y="11.5" width="9" height="32" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="45" y="10" width="7" height="34" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="45.5" y="10.5" width="6" height="33" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="69" y="8" width="14" height="36" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="69.5" y="8.5" width="13" height="35" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="78.3" y="15.5195" width="7" height="31.6992" rx="2" transform="rotate(-30 82 10.5)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="78.983" y="15.7025" width="6" height="30.6992" rx="1.5" transform="rotate(-30 82.683 10.683)" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="57" y="19.0195" width="8" height="25" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="57.5" y="19.5195" width="7" height="24" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="9.06875" y="18.0078" width="8" height="25" rx="2" transform="rotate(15 9.46875 18.0078)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="9.4223" y="18.6202" width="7" height="24" rx="1.5" transform="rotate(15 9.8223 18.6202)" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="62.8789" width="10" height="38" rx="2" transform="rotate(85.4507 62.8789 0)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="62.4201" y="0.538083" width="9" height="37" rx="1.5" transform="rotate(85.4507 62.4201 0.538083)" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="83" y="8.00098" width="7.75503" height="47.531" rx="2" transform="rotate(-40.1313 83 8.00098)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="83.7046" y="8.06099" width="6.75503" height="46.531" rx="1.5" transform="rotate(-40.1313 83.7046 8.06099)" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="65.1523" y="20.1592" width="6.64128" height="18.4574" rx="2" transform="rotate(-157.911 65.1523 20.1592)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="64.8771" y="19.5079" width="5.64128" height="17.4574" rx="1.5" transform="rotate(-157.911 64.8771 19.5079)" stroke="#F7F7F7"></rect></svg>',
+}
+
+const getShelfSVG = (value) => {
+    const svgString = [...Object.entries(shelfSvgMap)].reverse().find(([k]) => value >= Number(k))?.[1] ?? shelfSvgMap[0]
+    const template = document.createElement('template')
+    template.innerHTML = svgString.trim() // .trim() is important to avoid issues with leading whitespace
+    return template.content.firstChild
+}
+
+/* ----- end of shelf-image.svg.js ----- */
+
+/* ######### breadcrumbs.dom.js ######## */
+
+const getBreadcrumbBarEl = () => {
+    return document.querySelector(breadcrumbsBarSelector)
+}
+
+const toggleBreadcrumbBar = () => {
+    if (activeShelf === null) {
+        // on home shelf
+        let breadcrumbBar = getBreadcrumbBarEl()
+        if (breadcrumbBar) {
+            breadcrumbBar.style.display = 'none'
+        }
+    } else {
+        let breadcrumbBar = getBreadcrumbBarEl()
+        if (breadcrumbBar) {
+            breadcrumbBar.style.display = 'flex'
+        }
+    }
+}
+
+const createBreadcrumbBar = () => {
+    if (getBreadcrumbBarEl()) {
+        return
+    }
+    let titlebar = NAIE.NAI.findTitleBar()
+
+    if (titlebar && !document.querySelector(breadcrumbsBarSelector)) {
+        let clone = titlebar.cloneNode(false)
+        clone.id = breadcrumbsBarSelector.substring(1) // remove '#' to set correct id
+        clone.style.fontSize = '0.8rem'
+        clone.style.color = 'var(--loader-color)'
+
+        clone.style.display = 'flex'
+        clone.style.flexDirection = 'row'
+        clone.style.flexWrap = 'wrap'
+        clone.style.height = 'auto'
+        clone.style.padding = '0 20px 5px 20px'
+
+        titlebar.parentNode.insertBefore(clone, titlebar.nextSibling)
+    }
+}
+
+const createCrumb = (title, onClick) => {
+    const crumbStyles = {
+        whiteSpace: 'nowrap',
+        cursor: onClick ? 'pointer' : 'default',
+    }
+
+    const crumbEl = NAIE.DOM.createElement('span', crumbStyles)
+    crumbEl.textContent = title
+
+    if (onClick) {
+        crumbEl.addEventListener('click', onClick)
+    }
+
+    return crumbEl
+}
+
+const createCrumbSeparator = () => {
+    // original separator html
+    const svgHTML = `<svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg" style="display: inline-block; height: 22px; width: 22px;"><path fill="none" d="M0 0h24v24H0V0z"></path><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"></path></svg>`
+    const template = document.createElement('template')
+    template.innerHTML = svgHTML.trim()
+    let separator = template.content.firstChild
+    separator.style.transform = 'scale(.8)'
+    return separator
+}
+
+const insertBreadcrumbs = (shelf_id) => {
+    const breadcrumbBar = getBreadcrumbBarEl()
+
+    if (breadcrumbBar) {
+        // Clear existing breadcrumbs
+        breadcrumbBar.innerHTML = ''
+
+        if (activeShelf) {
+            const crumbData = makeBreadcrumbs(shelf_id, shelfState.getMap())
+
+            const homeCrumb = createCrumb('Home', () => {
+                navigateToHome()
+            })
+            breadcrumbBar.appendChild(homeCrumb)
+            const separator = createCrumbSeparator()
+            breadcrumbBar.appendChild(separator)
+
+            // Create breadcrumb elements
+            const crumbs = crumbData.reduce((acc, crumb, index) => {
+                const crumbEl = createCrumb(
+                    crumb.data.title,
+                    index < crumbData.length - 1 ? () => handleSubSubshelfClick(crumb.meta) : null,
+                )
+
+                acc.appendChild(crumbEl)
+                if (index < crumbData.length - 1) {
+                    acc.appendChild(separator.cloneNode(true))
+                }
+
+                return acc
+            }, document.createDocumentFragment())
+
+            breadcrumbBar.appendChild(crumbs)
+        }
+    }
+}
+
+/* ----- end of breadcrumbs.dom.js ----- */
+
+/* ######### homeButton.dom.js ######### */
+
+const grabHomeButton = () => {
+    const homeButtonCandidate = findHomeButton()
+    if (homeButtonCandidate && homeButton !== homeButtonCandidate) {
+        homeButton = homeButtonCandidate
+        NAIE.DOM.addEventListenerOnce(homeButton, 'click', () => {
+            activeShelf = null
+        })
+    }
+}
+
+const findHomeButton = () => {
+    const titleBar = NAIE.NAI.findTitleBar()
+
+    const homeButtonCandidate = titleBar?.firstElementChild?.firstElementChild
+
+    const isHomeButton = NAIE.DOM.findElementWithMaskImage([homeButtonCandidate?.firstElementChild], ['home', '.svg']).length > 0
+
+    if (isHomeButton) {
+        return homeButtonCandidate
+    }
+
+    return null
+}
+
+const waitForHome = () => {
+    return new Promise((resolve) => {
+        const checkHomeButton = () => {
+            const homeButton = findHomeButton()
+            if (homeButton === null) {
+                resolve()
+            } else {
+                requestAnimationFrame(checkHomeButton)
+            }
+        }
+        checkHomeButton()
+    })
+}
+
+/* ------ end of homeButton.dom.js ----- */
 
 /* ####### newShelfButton.dom.js ####### */
 
@@ -1364,7 +918,7 @@ const initNewSubShelfButton = () => {
 
         newShelfButton.dataset['newSubShelf'] = 'true'
 
-        addEventListenerOnce(newShelfButton, 'click', (e) => {
+        NAIE.DOM.addEventListenerOnce(newShelfButton, 'click', (e) => {
             if (newShelfButton.dataset['newSubShelf'] === 'true') {
                 e.preventDefault()
                 createNewShelf()
@@ -1375,46 +929,7 @@ const initNewSubShelfButton = () => {
     }
 }
 
-
 /* ---- end of newShelfButton.dom.js --- */
-
-
-/* ####### save-indicator.dom.js ####### */
-
-const saveIndicatorSelector = '.save-indicator'
-const naieIndicatorSelector = '.naie-status-indicator'
-
-const getNAIEindicator = () => {
-    return document.querySelector(naieIndicatorSelector)
-}
-
-const createNAIEindicator = () => {
-    const saveIndicator = document.querySelector(saveIndicatorSelector)
-
-    const clone = saveIndicator.cloneNode()
-    clone.style.zIndex = '2000'
-    clone.classList.remove(saveIndicatorSelector)
-    clone.classList.add(naieIndicatorSelector.substring(1))
-
-    saveIndicator.parentNode.insertBefore(clone, saveIndicator.nextSibling)
-}
-
-const showIndicator = async (text) => {
-    const indicator = getNAIEindicator()
-
-    indicator.textContent = text
-
-    return new Promise((resolve, reject) => {
-        setTimeout(() => {
-            indicator.textContent = ''
-            resolve()
-        }, 3000)
-    })
-}
-
-
-/* ---- end of save-indicator.dom.js --- */
-
 
 /* ########### shelves.dom.js ########## */
 
@@ -1616,7 +1131,7 @@ const mapShelfMetadata = async () => {
         spans.forEach((span) => {
             const metadata = parseMetadata(span.textContent)
 
-            if (!isObjEmpty(metadata)) {
+            if (!NAIE.MISC.isObjEmpty(metadata)) {
                 Object.keys(metadata).forEach((key) => {
                     div.setAttribute(`data-metadata-${key}`, metadata[key])
                 })
@@ -1628,11 +1143,11 @@ const mapShelfMetadata = async () => {
                 // store element for cloning for subshelves
                 shelfState.setShelfElement(metadata.shelf_id, div.cloneNode(true))
 
-                addEventListenerOnce(div, 'click', () => {
+                NAIE.DOM.addEventListenerOnce(div, 'click', () => {
                     activeShelf = metadata.shelf_id
                 })
 
-                promises.push(waitForElement(`[data-metadata-shelf_id="${metadata.shelf_id}"]`, 1000))
+                promises.push(NAIE.DOM.waitForElement(`[data-metadata-shelf_id="${metadata.shelf_id}"]`, 1000))
             }
         })
     })
@@ -1662,7 +1177,7 @@ const processStoryList = () => {
 const cleanShelfDescriptions = (spans) => {
     spans.forEach((span) => {
         const metadata = parseMetadata(span.textContent)
-        if (!isObjEmpty(metadata)) {
+        if (!NAIE.MISC.isObjEmpty(metadata)) {
             span.textContent = writeMetadata(span.textContent, {})
         }
     })
@@ -1682,7 +1197,7 @@ const updateMetadata = () => {
 
             updateShelfEntry(subShelf, shelf.data)
         } catch (e) {
-            console.log('metadata error', e)
+            NAIE.LOGGING.getLogger().error('metadata error', e)
         }
     })
 }
@@ -1742,10 +1257,10 @@ const insertSubshelves = () => {
             shelf.style.display = 'block'
             shelf.setAttribute(`data-metadata-subshelf`, true)
             updateShelfEntry(shelf, subshelf.data)
-            addEventListenerOnce(shelf, 'click', () => {
+            NAIE.DOM.addEventListenerOnce(shelf, 'click', () => {
                 handleSubSubshelfClick(shelf_id)
             })
-            addEventListenerOnce(shelf, 'contextmenu', (e) => {
+            NAIE.DOM.addEventListenerOnce(shelf, 'contextmenu', (e) => {
                 e.preventDefault()
                 createContextMenu(shelf_id, e.pageX, e.pageY)
             })
@@ -1768,7 +1283,7 @@ const updateShelfEntry = (element, data) => {
     const metadata = parseMetadata(descriptionEl.textContent)
 
     // Update/set data annotations with the extracted metadata
-    if (!isObjEmpty(metadata)) {
+    if (!NAIE.MISC.isObjEmpty(metadata)) {
         Object.keys(metadata).forEach((key) => {
             element.setAttribute(`data-metadata-${key}`, metadata[key])
         })
@@ -1839,10 +1354,10 @@ const navigateToShelf = async (shelf_id, lockSidebar = true) => {
     if (shelf_id) {
         // Wait for the shelf to appear in the DOM
         const selector = `div[data-metadata-shelf_id="${shelf_id}"]:not([data-metadata-subshelf])`
-        const shelfElement = await waitForElement(selector, 1000)
+        const shelfElement = await NAIE.DOM.waitForElement(selector, 1000)
 
         // Simulate click on the shelf
-        simulateClick(shelfElement)
+        NAIE.DOM.simulateClick(shelfElement)
     }
     setTimeout(() => {
         if (sidebarLock && lockSidebar) {
@@ -1861,11 +1376,11 @@ const navigateToHome = async () => {
         // avoids a race condition in event queue
         await setTimeoutPromise(0)
 
-        simulateClick(homeButton)
+        NAIE.DOM.simulateClick(homeButton)
         await waitForHome()
 
         const selector = `div[data-metadata-shelf_id="${shelf_id}"]:not([data-metadata-subshelf])`
-        await waitForElement(selector)
+        await NAIE.DOM.waitForElement(selector)
     }
 }
 
@@ -1885,7 +1400,7 @@ const createNewShelf = async () => {
     let newShelfButton = findNewShelfButton()
     if (newShelfButton.dataset['newSubShelf'] !== 'true') {
         activeShelf = parent_id
-        simulateClick(newShelfButton)
+        NAIE.DOM.simulateClick(newShelfButton)
     }
 }
 
@@ -1893,7 +1408,7 @@ const updateShelfStateViaDescription = async (shelfElement, metadata) => {
     let contextMenuPromise = waitForNewContextMenu(true)
 
     setTimeout(() => {
-        simulateRightClick(shelfElement)
+        NAIE.DOM.simulateRightClick(shelfElement)
     }, 0)
 
     const { contextMenu, editButton, deleteButton } = await contextMenuPromise
@@ -1902,13 +1417,13 @@ const updateShelfStateViaDescription = async (shelfElement, metadata) => {
     }
     contextMenu.style.visibility = 'hidden'
 
-    simulateClick(editButton)
+    NAIE.DOM.simulateClick(editButton)
     let { modal, overlay, closeButton, fields } = await waitForShelfSettingsModal(100)
 
-    setNativeValue(fields.description, writeMetadata('', metadata))
-    simulateInputEvent(fields.description)
+    NAIE.DOM.setNativeValue(fields.description, writeMetadata('', metadata))
+    NAIE.DOM.simulateInputEvent(fields.description)
 
-    simulateClick(closeButton)
+    NAIE.DOM.simulateClick(closeButton)
 }
 
 const processNewShelf = async (shelf_id) => {
@@ -1919,12 +1434,14 @@ const processNewShelf = async (shelf_id) => {
     let parent_id = null
     if (inSubshelf) {
         parent_id = activeShelf
-        simulateClick(homeButton)
+        NAIE.DOM.simulateClick(homeButton)
     }
 
     const contextMenuPromise = waitForNewContextMenu(false, 1000)
 
-    let newShelf = await waitForElement(`${storyListSelector} > div:not([data-metadata-processed]):not([role]):not([data-locked-shelf])`)
+    let newShelf = await NAIE.DOM.waitForElement(
+        `${storyListSelector} > div:not([data-metadata-processed]):not([role]):not([data-locked-shelf])`,
+    )
 
     let ctx = await contextMenuPromise
 
@@ -1953,9 +1470,7 @@ const processNewShelf = async (shelf_id) => {
     }
 }
 
-
 /* ------- end of shelves.dom.js ------- */
-
 
 /* ########### sidebar.dom.js ########## */
 
@@ -2009,7 +1524,7 @@ const lockSideBar = (showLoader = true, forceLoader = false, positional = false)
         loaderShownTime = Date.now()
     }
 
-    forceLoader = isMobileView() ? true : forceLoader
+    forceLoader = NAIE.MISC.isMobileView() ? true : forceLoader
 
     const timeout = forceLoader ? 0 : 250
 
@@ -2080,7 +1595,7 @@ const createSidebarLoader = (lockedSidebar) => {
         loaderSidebar.removeChild(loaderSidebar.lastChild)
     }
 
-    const container = createElement('div', {
+    const container = NAIE.DOM.createElement('div', {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -2088,7 +1603,7 @@ const createSidebarLoader = (lockedSidebar) => {
         width: '100%',
     })
 
-    const spinner = loaderTemplate.firstChild.cloneNode(true)
+    const spinner = NAIE.EXTENSIONS.Loader.getSpinner() //loaderTemplate.firstChild.cloneNode(true)
     container.append(spinner)
 
     loaderSidebar.append(container)
@@ -2096,103 +1611,382 @@ const createSidebarLoader = (lockedSidebar) => {
     return loaderSidebar
 }
 
+/* new sidebar lock function
+
+
+let sidebarLockCounter = 0;
+let sidebarLock = null;
+
+const lockSideBar = (showLoader = true, forceLoader = false, positional = false) => {
+    if (!sidebarLock) {
+        sidebarLockCounter = 0;
+        sidebarLock = {
+            unlock: null
+        };
+    }
+
+    sidebarLockCounter++;
+
+    const sidebar = getSidebarEl();
+    const storyListEl = getStoryListEl();
+    const scroll = storyListEl.scrollTop;
+    const clone = cloneSidebar(sidebar, scroll);
+
+    const hideSidebarWithPosition = () => {
+        sidebar.style.position = 'absolute';
+        sidebar.style.left = '-1000px';
+        sidebar.style.top = '-1000px';
+    };
+
+    const restoreSidebarWithPosition = () => {
+        sidebar.style.removeProperty('position');
+        sidebar.style.removeProperty('left');
+        sidebar.style.removeProperty('top');
+    };
+
+    const hideSidebarWithDisplay = () => {
+        sidebar.style.display = 'none';
+    };
+
+    const restoreSidebarWithDisplay = () => {
+        sidebar.style.removeProperty('display');
+    };
+
+    const hideSidebar = positional ? hideSidebarWithPosition : hideSidebarWithDisplay;
+    const restoreSidebar = positional ? restoreSidebarWithPosition : restoreSidebarWithDisplay;
+
+    hideSidebar();
+
+    const sibling = sidebar.nextSibling;
+    sidebar.parentNode.insertBefore(clone, sibling);
+
+    let loaderTimeout: number | undefined;
+    let loaderShownTime: number | null = null;
+    let loaderElement: HTMLElement | null = null;
+
+    const addLoader = () => {
+        loaderElement = createSidebarLoader(clone);
+        clone.replaceWith(loaderElement);
+        loaderShownTime = Date.now();
+    };
+
+    forceLoader = isMobileView() ? true : forceLoader;
+    const timeout = forceLoader ? 0 : 250;
+
+    if (showLoader) {
+        loaderTimeout = window.setTimeout(addLoader, timeout);
+    }
+
+    const unlock = () => {
+        if (sidebarLockCounter > 0) {
+            sidebarLockCounter--;
+        }
+
+        if (sidebarLockCounter === 0) {
+            clearTimeout(loaderTimeout);
+
+            const currentClone = document.getElementById('sidebar-lock');
+
+            if (loaderShownTime && showLoader) {
+                const elapsedTime = Date.now() - loaderShownTime;
+                const remainingTime = Math.max(500 - elapsedTime, 0);
+
+                setTimeout(() => {
+                    restoreSidebar();
+                    if (currentClone) {
+                        currentClone.remove();
+                    }
+                    sidebarLock = null;
+                }, remainingTime);
+            } else {
+                restoreSidebar();
+                if (currentClone) {
+                    currentClone.remove();
+                }
+                sidebarLock = null;
+            }
+        }
+    };
+
+    sidebarLock.unlock = unlock;
+    return sidebarLock;
+};
+
+ */
 
 /* ------- end of sidebar.dom.js ------- */
 
+/* ########## delete.hooks.js ########## */
 
-/* ######### shelf-image.svg.js ######## */
+/**
+ * Hooks for handling DELETE requests to the shelves API endpoint
+ */
 
-const shelfSvgMap = {
-    0: '<svg width="134" height="59" viewBox="0 0 134 59" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="svg-color-bg1 svg-fill" y="43" width="134" height="8" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="0.5" y="43.5" width="133" height="7" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="15" y="50" width="6" height="8" rx="1" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="15.5" y="50.5" width="5" height="7" rx="0.5" stroke="#F7F7F7"></rect></svg>',
-    1: '<svg width="134" height="59" viewBox="0 0 134 59" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="svg-color-bg1 svg-fill" y="43" width="134" height="8" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="0.5" y="43.5" width="133" height="7" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="15" y="50" width="6" height="8" rx="1" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="15.5" y="50.5" width="5" height="7" rx="0.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="32" y="11" width="10" height="33" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="32.5" y="11.5" width="9" height="32" rx="1.5" stroke="#F7F7F7"></rect></svg>',
-    5: '<svg width="134" height="59" viewBox="0 0 134 59" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="svg-color-bg1 svg-fill" y="43" width="134" height="8" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="0.5" y="43.5" width="133" height="7" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="15" y="50" width="6" height="8" rx="1" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="15.5" y="50.5" width="5" height="7" rx="0.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="16" y="6" width="10" height="38" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="16.5" y="6.5" width="9" height="37" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="32" y="11" width="10" height="33" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="32.5" y="11.5" width="9" height="32" rx="1.5" stroke="#F7F7F7"></rect></svg>',
-    10: '<svg width="134" height="59" viewBox="0 0 134 59" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="svg-color-bg1 svg-fill" y="43" width="134" height="8" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="0.5" y="43.5" width="133" height="7" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="15" y="50" width="6" height="8" rx="1" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="15.5" y="50.5" width="5" height="7" rx="0.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="16" y="6" width="10" height="38" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="16.5" y="6.5" width="9" height="37" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="32" y="11" width="10" height="33" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="32.5" y="11.5" width="9" height="32" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="69" y="8" width="14" height="36" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="69.5" y="8.5" width="13" height="35" rx="1.5" stroke="#F7F7F7"></rect></svg>',
-    15: '<svg width="134" height="59" viewBox="0 0 134 59" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="svg-color-bg1 svg-fill" y="43" width="134" height="8" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="0.5" y="43.5" width="133" height="7" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="15" y="50" width="6" height="8" rx="1" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="15.5" y="50.5" width="5" height="7" rx="0.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="16" y="6" width="10" height="38" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="16.5" y="6.5" width="9" height="37" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="32" y="11" width="10" height="33" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="32.5" y="11.5" width="9" height="32" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="45" y="10" width="7" height="34" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="45.5" y="10.5" width="6" height="33" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="69" y="8" width="14" height="36" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="69.5" y="8.5" width="13" height="35" rx="1.5" stroke="#F7F7F7"></rect></svg>',
-    20: '<svg width="134" height="59" viewBox="0 0 134 59" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="svg-color-bg1 svg-fill" y="43" width="134" height="8" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="0.5" y="43.5" width="133" height="7" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="15" y="50" width="6" height="8" rx="1" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="15.5" y="50.5" width="5" height="7" rx="0.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="16" y="6" width="10" height="38" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="16.5" y="6.5" width="9" height="37" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="32" y="11" width="10" height="33" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="32.5" y="11.5" width="9" height="32" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="45" y="10" width="7" height="34" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="45.5" y="10.5" width="6" height="33" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="69" y="8" width="14" height="36" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="69.5" y="8.5" width="13" height="35" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="78.3" y="15.5195" width="7" height="31.6992" rx="2" transform="rotate(-30 82 10.5)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="78.983" y="15.7025" width="6" height="30.6992" rx="1.5" transform="rotate(-30 82.683 10.683)" stroke="#F7F7F7"></rect></svg>',
-    25: '<svg width="134" height="59" viewBox="0 0 134 59" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="svg-color-bg1 svg-fill" y="43" width="134" height="8" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="0.5" y="43.5" width="133" height="7" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="15" y="50" width="6" height="8" rx="1" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="15.5" y="50.5" width="5" height="7" rx="0.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="16" y="6" width="10" height="38" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="16.5" y="6.5" width="9" height="37" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="32" y="11" width="10" height="33" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="32.5" y="11.5" width="9" height="32" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="45" y="10" width="7" height="34" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="45.5" y="10.5" width="6" height="33" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="69" y="8" width="14" height="36" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="69.5" y="8.5" width="13" height="35" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="78.3" y="15.5195" width="7" height="31.6992" rx="2" transform="rotate(-30 82 10.5)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="78.983" y="15.7025" width="6" height="30.6992" rx="1.5" transform="rotate(-30 82.683 10.683)" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="57" y="19.0195" width="8" height="25" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="57.5" y="19.5195" width="7" height="24" rx="1.5" stroke="#F7F7F7"></rect></svg>',
-    30: '<svg width="134" height="59" viewBox="0 0 134 59" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="svg-color-bg1 svg-fill" y="43" width="134" height="8" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="0.5" y="43.5" width="133" height="7" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="15" y="50" width="6" height="8" rx="1" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="15.5" y="50.5" width="5" height="7" rx="0.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="16" y="6" width="10" height="38" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="16.5" y="6.5" width="9" height="37" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="32" y="11" width="10" height="33" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="32.5" y="11.5" width="9" height="32" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="45" y="10" width="7" height="34" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="45.5" y="10.5" width="6" height="33" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="69" y="8" width="14" height="36" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="69.5" y="8.5" width="13" height="35" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="78.3" y="15.5195" width="7" height="31.6992" rx="2" transform="rotate(-30 82 10.5)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="78.983" y="15.7025" width="6" height="30.6992" rx="1.5" transform="rotate(-30 82.683 10.683)" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="57" y="19.0195" width="8" height="25" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="57.5" y="19.5195" width="7" height="24" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="9.06875" y="18.0078" width="8" height="25" rx="2" transform="rotate(15 9.46875 18.0078)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="9.4223" y="18.6202" width="7" height="24" rx="1.5" transform="rotate(15 9.8223 18.6202)" stroke="#F7F7F7"></rect></svg>',
-    40: '<svg width="134" height="59" viewBox="0 0 134 59" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="svg-color-bg1 svg-fill" y="43" width="134" height="8" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="0.5" y="43.5" width="133" height="7" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="15" y="50" width="6" height="8" rx="1" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="15.5" y="50.5" width="5" height="7" rx="0.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="16" y="6" width="10" height="38" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="16.5" y="6.5" width="9" height="37" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="32" y="11" width="10" height="33" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="32.5" y="11.5" width="9" height="32" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="45" y="10" width="7" height="34" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="45.5" y="10.5" width="6" height="33" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="69" y="8" width="14" height="36" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="69.5" y="8.5" width="13" height="35" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="78.3" y="15.5195" width="7" height="31.6992" rx="2" transform="rotate(-30 82 10.5)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="78.983" y="15.7025" width="6" height="30.6992" rx="1.5" transform="rotate(-30 82.683 10.683)" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="57" y="19.0195" width="8" height="25" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="57.5" y="19.5195" width="7" height="24" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="9.06875" y="18.0078" width="8" height="25" rx="2" transform="rotate(15 9.46875 18.0078)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="9.4223" y="18.6202" width="7" height="24" rx="1.5" transform="rotate(15 9.8223 18.6202)" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="62.8789" width="10" height="38" rx="2" transform="rotate(85.4507 62.8789 0)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="62.4201" y="0.538083" width="9" height="37" rx="1.5" transform="rotate(85.4507 62.4201 0.538083)" stroke="#F7F7F7"></rect></svg>',
-    55: '<svg width="134" height="59" viewBox="0 0 134 59" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="svg-color-bg1 svg-fill" y="43" width="134" height="8" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="0.5" y="43.5" width="133" height="7" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="15" y="50" width="6" height="8" rx="1" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="15.5" y="50.5" width="5" height="7" rx="0.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="16" y="6" width="10" height="38" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="16.5" y="6.5" width="9" height="37" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="32" y="11" width="10" height="33" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="32.5" y="11.5" width="9" height="32" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="45" y="10" width="7" height="34" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="45.5" y="10.5" width="6" height="33" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="69" y="8" width="14" height="36" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="69.5" y="8.5" width="13" height="35" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="78.3" y="15.5195" width="7" height="31.6992" rx="2" transform="rotate(-30 82 10.5)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="78.983" y="15.7025" width="6" height="30.6992" rx="1.5" transform="rotate(-30 82.683 10.683)" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="57" y="19.0195" width="8" height="25" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="57.5" y="19.5195" width="7" height="24" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="9.06875" y="18.0078" width="8" height="25" rx="2" transform="rotate(15 9.46875 18.0078)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="9.4223" y="18.6202" width="7" height="24" rx="1.5" transform="rotate(15 9.8223 18.6202)" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="62.8789" width="10" height="38" rx="2" transform="rotate(85.4507 62.8789 0)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="62.4201" y="0.538083" width="9" height="37" rx="1.5" transform="rotate(85.4507 62.4201 0.538083)" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="83" y="8.00098" width="7.75503" height="47.531" rx="2" transform="rotate(-40.1313 83 8.00098)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="83.7046" y="8.06099" width="6.75503" height="46.531" rx="1.5" transform="rotate(-40.1313 83.7046 8.06099)" stroke="#F7F7F7"></rect></svg>',
-    70: '<svg width="134" height="59" viewBox="0 0 134 59" fill="none" xmlns="http://www.w3.org/2000/svg"><rect class="svg-color-bg1 svg-fill" y="43" width="134" height="8" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="0.5" y="43.5" width="133" height="7" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="15" y="50" width="6" height="8" rx="1" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="15.5" y="50.5" width="5" height="7" rx="0.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="16" y="6" width="10" height="38" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="16.5" y="6.5" width="9" height="37" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="32" y="11" width="10" height="33" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="32.5" y="11.5" width="9" height="32" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="45" y="10" width="7" height="34" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="45.5" y="10.5" width="6" height="33" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="69" y="8" width="14" height="36" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="69.5" y="8.5" width="13" height="35" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="78.3" y="15.5195" width="7" height="31.6992" rx="2" transform="rotate(-30 82 10.5)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="78.983" y="15.7025" width="6" height="30.6992" rx="1.5" transform="rotate(-30 82.683 10.683)" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="57" y="19.0195" width="8" height="25" rx="2" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="57.5" y="19.5195" width="7" height="24" rx="1.5" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="9.06875" y="18.0078" width="8" height="25" rx="2" transform="rotate(15 9.46875 18.0078)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="9.4223" y="18.6202" width="7" height="24" rx="1.5" transform="rotate(15 9.8223 18.6202)" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="62.8789" width="10" height="38" rx="2" transform="rotate(85.4507 62.8789 0)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="62.4201" y="0.538083" width="9" height="37" rx="1.5" transform="rotate(85.4507 62.4201 0.538083)" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="83" y="8.00098" width="7.75503" height="47.531" rx="2" transform="rotate(-40.1313 83 8.00098)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="83.7046" y="8.06099" width="6.75503" height="46.531" rx="1.5" transform="rotate(-40.1313 83.7046 8.06099)" stroke="#F7F7F7"></rect><rect class="svg-color-bg1 svg-fill" x="65.1523" y="20.1592" width="6.64128" height="18.4574" rx="2" transform="rotate(-157.911 65.1523 20.1592)" fill="#13152C"></rect><rect class="svg-color-textMain-20 svg-stroke" x="64.8771" y="19.5079" width="5.64128" height="17.4574" rx="1.5" transform="rotate(-157.911 64.8771 19.5079)" stroke="#F7F7F7"></rect></svg>',
+const registerShelfDeleteHooks = () => {
+    NAIE.NETWORK.manager.registerHook({
+        id: 'shelf-delete',
+        priority: 10,
+        urlPattern: '/user/objects/shelf',
+        methods: ['DELETE'],
+        modifyRequest: async (request) => {
+            const remoteId = request.url.split('/').pop()
+
+            if (shelfState) {
+                try {
+                    const shelf = shelfState.getShelfByRemoteId(remoteId)
+                    const parent = getMetadataObject(shelf)?.parent_id
+                    shelfState.deleteShelf(shelf.meta)
+
+                    if (activeShelf === null) {
+                        // we are deleting from the home shelf, manually restore hidden children of deleted parent
+                        restoreSubshelvesOfParent(shelf.meta)
+                    }
+
+                    // we know delete sends us back to home if we're not, correct activeShelf to reflect that
+                    activeShelf = null
+
+                    navigateToShelf(parent)
+                    if (sidebarLock) {
+                        sidebarLock.unlock()
+                    }
+                } catch (e) {
+                    console.error('Error in delete request hook:', e)
+                }
+            }
+
+            return {
+                type: 'request',
+                value: request,
+            }
+        },
+    })
 }
 
-const getShelfSVG = (value) => {
-    const svgString = [...Object.entries(shelfSvgMap)].reverse().find(([k]) => value >= Number(k))?.[1] ?? shelfSvgMap[0]
-    const template = document.createElement('template')
-    template.innerHTML = svgString.trim() // .trim() is important to avoid issues with leading whitespace
-    return template.content.firstChild
+/* ------- end of delete.hooks.js ------ */
+
+/* ############ get.hooks.js ########### */
+
+/**
+ * Hooks for handling GET requests to the shelves API endpoint
+ */
+
+const registerShelfGetHooks = () => {
+    NAIE.NETWORK.manager.registerHook({
+        id: 'shelf-get-all',
+        priority: 10,
+        urlPattern: '/user/objects/shelf',
+        methods: ['GET'],
+        modifyResponse: async (response, request) => {
+            const copy = response.clone()
+            let data = await copy.json()
+            shelfState = createShelfState(buildShelfMap(data.objects))
+            const modifiedData = { objects: InjectShelfTransientMeta(data.objects) }
+
+            return new Response(JSON.stringify(modifiedData), {
+                status: response.status,
+                statusText: response.statusText,
+                headers: response.headers,
+            })
+        },
+    })
 }
 
+/* -------- end of get.hooks.js -------- */
 
-/* ----- end of shelf-image.svg.js ----- */
+/* ########### patch.hooks.js ########## */
 
+/**
+ * Hooks for handling PATCH requests to the shelves API endpoint
+ */
 
-/* #### clone-dropdown.preflight.js #### */
+const registerShelfPatchHooks = () => {
+    NAIE.NETWORK.manager.registerHook({
+        id: 'shelf-patch',
+        priority: 10,
+        urlPattern: '/user/objects/shelf',
+        methods: ['PATCH'],
+        modifyRequest: async (request) => {
+            const options = getFetchOptions(request)
+            const body = JSON.parse(options.body)
+            const data = JSON.parse(NAIE.MISC.decodeBase64(body.data))
+            const shelf_id = body.meta
 
-let selectControlTemplate = null
+            // Strip transient metadata from description
+            data.description = stripTransientMetadataFromText(data.description)
+            body.data = NAIE.MISC.encodeBase64(JSON.stringify(data))
+            options.body = JSON.stringify(body)
 
-const cloneSelectControl = async () => {
-    try {
-        simulateClick(getSettingsButton())
+            // Update shelf state
+            if (shelfState) {
+                try {
+                    shelfState.upsertShelf(shelf_id, decodeShelf(body))
+                    processStoryList()
+                } catch (e) {
+                    console.error('Error updating shelf state:', e)
+                }
+            }
 
-        const settingsModal = await waitForSettingsModal(null, true)
+            return {
+                type: 'request',
+                value: new Request(request.url, options),
+            }
+        },
+        modifyResponse: async (response, request) => {
+            const copy = response.clone()
+            let shelf = await copy.json()
 
-        const { fontSelect } = await settingsModal.panels.getThemePanel()
+            // Update shelf state with response data
+            if (shelfState) {
+                try {
+                    shelfState.upsertShelf(shelf.meta, decodeShelf(shelf))
+                } catch (e) {
+                    // Silently handle error as per original implementation
+                }
+            }
 
-        const template = createSelectControlTemplate(fontSelect)
+            // Inject transient metadata and create modified response
+            const modifiedData = InjectShelfTransientMetaSingle(shelf)
 
-        selectControlTemplate = template
+            // Force refresh story list after patch
+            forceStoryListRefresh()
 
-        addGlobalStyle(`
-        .naie-focus-override:focus-within {
-            opacity: 1 !important;
-        }
-    `)
+            return new Response(JSON.stringify(modifiedData), {
+                status: response.status,
+                statusText: response.statusText,
+                headers: response.headers,
+            })
+        },
+    })
+}
 
-        simulateClick(settingsModal.closeButton)
-    } catch (e) {
-        console.error(e)
-        throw new Error('Failed to clone select element')
+/* ------- end of patch.hooks.js ------- */
+
+/* ############ put.hooks.js ########### */
+
+/**
+ * Hooks for handling PUT requests to the shelves API endpoint
+ */
+
+// Track active PUT requests to handle double-PUT pattern
+const activePutShelfRequests = new Map()
+
+/**
+ * Register hooks for PUT operations on the shelves endpoint
+ */
+const registerShelfPutHooks = () => {
+    NAIE.NETWORK.manager.registerHook({
+        id: 'shelf-put',
+        priority: 10,
+        urlPattern: '/user/objects/shelf',
+        methods: ['PUT'],
+        modifyRequest: async (request) => {
+            const options = getFetchOptions(request)
+            const body = JSON.parse(options.body)
+            const data = JSON.parse(NAIE.MISC.decodeBase64(body.data))
+            const shelf_id = body.meta
+
+            // Handle first PUT request
+            if (!activePutShelfRequests.has(shelf_id)) {
+                activePutShelfRequests.set(shelf_id, 1)
+                processNewShelf(shelf_id) // This will trigger a new PUT request
+                return {
+                    type: 'response',
+                    value: new Response('{}', {
+                        status: 418,
+                        statusText: 'Blocked by client',
+                    }),
+                }
+            }
+
+            // Process second PUT request (the one triggered by processNewShelf)
+            data.description = stripTransientMetadataFromText(data.description)
+            body.data = NAIE.MISC.encodeBase64(JSON.stringify(data))
+            options.body = JSON.stringify(body)
+
+            if (shelfState) {
+                try {
+                    shelfState.upsertShelf(shelf_id, decodeShelf(body))
+                } catch (e) {
+                    console.error('Error updating shelf state:', e)
+                }
+            }
+
+            // Reset the state for this entity's requests after processing the second request
+            if (activePutShelfRequests.has(shelf_id)) {
+                activePutShelfRequests.delete(shelf_id)
+            }
+
+            // not sure why this is here but likely necessary due to some race condition
+            createContextMenuTemplate()
+
+            return {
+                type: 'request',
+                value: new Request(request.url, options),
+            }
+        },
+        modifyResponse: async (response, request) => {
+            const copy = response.clone()
+            let shelf = await copy.json()
+
+            if (shelfState) {
+                try {
+                    shelfState.upsertShelf(shelf.meta, decodeShelf(shelf))
+                } catch (e) {
+                    // Silently handle error as per original implementation
+                }
+            }
+
+            const modifiedData = InjectShelfTransientMetaSingle(shelf)
+
+            return new Response(JSON.stringify(modifiedData), {
+                status: response.status,
+                statusText: response.statusText,
+                headers: response.headers,
+            })
+        },
+    })
+}
+
+/* -------- end of put.hooks.js -------- */
+
+/* ########## shelves.hooks.js ######### */
+
+/**
+ * Main registration point for all shelf-related hooks
+ */
+
+const registerShelfHooks = () => {
+    registerShelfGetHooks()
+    registerShelfPutHooks()
+    registerShelfPatchHooks()
+    registerShelfDeleteHooks()
+}
+
+/* ------ end of shelves.hooks.js ------ */
+
+/* ########## request.utils.js ######### */
+
+/**
+ * Utility functions for handling requests
+ */
+
+/**
+ * Extracts fetch options from a request object
+ *
+ * @param {Request} request - The request to extract options from
+ * @returns {Object} The fetch options
+ */
+const getFetchOptions = (request) => {
+    return {
+        method: request.method,
+        headers: request.headers,
+        body: request.body,
+        timeout: request.timeout,
+        credentials: request.withCredentials ? 'include' : 'same-origin',
     }
 }
 
-const createSelectControlTemplate = (fontSelect) => {
-    const clone = fontSelect.cloneNode(true)
-    const control = clone.children[2]
-
-    if (!Array.from(control.classList).some((cls) => cls.endsWith('-control'))) {
-        throw new Error('unable to identify select control')
-    }
-
-    // remove aria live region spans since we're not implementing them currently
-    const span1 = clone.children[0]
-    const span2 = clone.children[1]
-
-    clone.removeChild(span1)
-    clone.removeChild(span2)
-
-    // tag wrapper for focus override fix
-    const inputWrapper = control.firstChild
-    inputWrapper.classList.add('naie-select-input-wrapper')
-
-    const selectedValueText = control.firstChild.querySelector('span')
-    const inputElement = control.firstChild.querySelector('input')
-
-    inputElement.id = ''
-
-    clone.classList.add('naie-select-box')
-    control.classList.add('naie-select-control')
-    selectedValueText.classList.add('naie-select-value')
-    inputElement.classList.add('naie-select-input')
-
-    selectedValueText.textContent = ''
-
-    return clone
-}
-
-
-/* - end of clone-dropdown.preflight.js  */
-
+/* ------ end of request.utils.js ------ */
 
 /* #### init-observers.preflight.js #### */
 
@@ -2205,9 +1999,7 @@ const initGlobalObservers = () => {
     }
 }
 
-
 /* - end of init-observers.preflight.js  */
-
 
 /* ############ preflight.js ########### */
 
@@ -2219,83 +2011,51 @@ const preflight = async () => {
     preflightRun = true
 
     try {
-        const app = await waitForElement(appSelector)
+        const registerSubshelvesHooks = () => {
+            // Early stage - Basic UI elements and controls
+            /*NAIE.PREFLIGHT.registerHook(
+                'early',
+                'subshelves-network',
+                10,
+                async () => {
+                    initializeNetworkHooks()
+                }
+            )*/
 
-        const lock = lockLoader(app)
-        //console.log('locked loader')
+            // Main stage - Core functionality
+            NAIE.PREFLIGHT.registerHook('main', 'subshelves-core', 10, async () => {
+                //await NAIE.DOM.waitForElement(menubarSelector)
+                await NAIE.DOM.waitForElement(storyListSelector)
+                if (!sidebarLock) {
+                    sidebarLock = lockSideBar(true, true, true)
+                    await NAIE.MISC.sleep(100)
+                }
+                await preProcessSidebar()
+                await initGlobalObservers() // implement core
+            })
 
-        await waitForElement(settingsButtonSelector)
-
-        preProcessIndicator()
-
-        showIndicator('initializing subshelves...')
-
-        await cloneSelectControl()
-
-        await waitForElement(menubarSelector)
-
-        showIndicator('subshelves ready')
-
-        if (AreThereShelves()) {
-            await waitForElement(storyListSelector)
-
-            if (!sidebarLock) {
-                sidebarLock = lockSideBar(true, true, true)
-                await sleep(100)
-            }
-        } else {
-            emptyStoryListFlag = true
+            // Late stage - Final setup
+            NAIE.PREFLIGHT.registerHook('late', 'subshelves-final', 10, async () => {
+                if (AreThereShelves()) {
+                    createContextMenuTemplate()
+                }
+                if (sidebarLock) {
+                    sidebarLock.unlock()
+                }
+                NAIE.SERVICES.statusIndicator.displayMessage('Subshelves initialized')
+            })
         }
 
-        lock.unlock()
-
-        if (AreThereShelves()) {
-            await preProcessSidebar()
-            createContextMenuTemplate()
-        }
-
-        await initGlobalObservers()
-
-        if (sidebarLock) {
-            sidebarLock.unlock()
-        }
+        registerSubshelvesHooks()
     } catch (e) {
-        console.error(e)
-        throw new Error('preflight failed!')
+        console.error('Failed to register subshelves preflight hooks:', e)
+        throw new Error('Subshelves preflight initialization failed!')
     }
 }
-
-let loaderTemplate = null
-
-const lockLoader = (app) => {
-    if (loaderTemplate === null) {
-        loaderTemplate = app.firstChild.cloneNode(true)
-    }
-
-    const loader = loaderTemplate
-
-    const clone = loader.cloneNode(true)
-    clone.id = 'loader-lock'
-    clone.style.zIndex = '1000'
-
-    document.documentElement.append(clone)
-
-    const unlock = () => {
-        //console.log('unlocking loader')
-        document.documentElement.removeChild(clone)
-    }
-    return { unlock }
-}
-
 
 /* -------- end of preflight.js -------- */
 
-
 /* #### preprocess-dom.preflight.js #### */
-
-const preProcessIndicator = () => {
-    createNAIEindicator()
-}
 
 const preProcessSidebar = async () => {
     createBreadcrumbBar()
@@ -2303,9 +2063,7 @@ const preProcessSidebar = async () => {
     await mapShelfMetadata()
 }
 
-
 /* - end of preprocess-dom.preflight.js  */
-
 
 /* ########### shelf.state.js ########## */
 
@@ -2432,814 +2190,28 @@ const createShelfState = (shelfData) => {
     }
 }
 
-
 /* ------- end of shelf.state.js ------- */
 
+/* ########### network.mod.js ########## */
 
-/* ########## base64.utils.js ########## */
+/**
+ * Network module for handling API requests
+ * Registers hooks with NAIE.NETWORK for intercepting and modifying requests/responses
+ */
 
-const decodeBase64 = (str) => {
-    return atob(str)
+const initializeNetworkHooks = () => {
+    // Initialize hooks for each endpoint group
+    registerShelfHooks()
+
+    // Future endpoint groups can be initialized here
+    // initializeStoryHooks();
+    // initializeContextHooks();
 }
 
-const encodeBase64 = (str) => {
-    return btoa(str)
-}
-
-
-/* ------- end of base64.utils.js ------ */
-
-
-/* ########### misc.utils.js ########### */
-
-const isMobileView = () => {
-    return window.innerWidth <= 650
-}
-
-const isObjEmpty = (obj) => {
-    for (const prop in obj) {
-        if (Object.hasOwn(obj, prop)) {
-            return false
-        }
-    }
-
-    return true
-}
-
-const addGlobalStyle = (css) => {
-    var head, style
-    head = document.getElementsByTagName('head')[0]
-    if (!head) {
-        return
-    }
-    style = document.createElement('style')
-    style.type = 'text/css'
-    style.innerHTML = css
-    head.appendChild(style)
-}
-
-
-/* -------- end of misc.utils.js ------- */
-
-
-/* ############# helpers.js ############ */
-
-const getFetchOptions = (request) => {
-    return {
-        method: request.method,
-        headers: request.headers,
-        body: request.body,
-        timeout: request.timeout,
-        credentials: request.withCredentials ? 'include' : 'same-origin',
-    }
-}
-
-
-/* --------- end of helpers.js --------- */
-
-
-/* ############## hooks.js ############# */
-
-const loadXhookScript = () => {
-    //const script = document.createElement('script')
-    //script.src = 'https://unpkg.com/xhook@latest/dist/xhook.min.js'
-    //script.onload = initializeXhook
-    //document.documentElement.prepend(script)
-    initializeXhook()
-}
-
-const initializeXhook = () => {
-    //xhook.after(responseModifier);
-    const nativeFetch = xhook.fetch.bind(window)
-    xhook.before(beforeHook(nativeFetch))
-}
-
-const beforeHook = (nativeFetch) => async (request, callback) => {
-    const fetchOptions = preRequestHandlers(request)
-
-    try {
-        if (fetchOptions.shouldBlock) {
-            callback(new Response('{}', { status: 418, statusText: 'Blocked by client' }))
-            return
-        }
-
-        const raw_response = await nativeFetch(request.url, fetchOptions)
-
-        const response = await postRequestHandler(request, raw_response)
-        callback(response)
-    } catch (error) {
-        console.error('Error fetching:', error)
-    }
-}
-
-
-/* ---------- end of hooks.js ---------- */
-
-
-/* ####### before-shelf-delete.js ###### */
-
-const preShelfDelete = (request) => {
-    const options = getFetchOptions(request)
-    const remoteId = request.url.split('/').pop()
-
-    if (shelfState) {
-        try {
-            /*if (!sidebarLock) {
-                sidebarLock = lockSideBar()
-            }*/
-            const shelf = shelfState.getShelfByRemoteId(remoteId)
-            const parent = getMetadataObject(shelf)?.parent_id
-            shelfState.deleteShelf(shelf.meta)
-
-            if (activeShelf === null) {
-                // we are deleting from the home shelf, manually restore hidden children of deleted parent
-                restoreSubshelvesOfParent(shelf.meta)
-            }
-
-            // we know delete sends us back to home if we're not, correct activeShelf to reflect that
-            activeShelf = null
-
-            navigateToShelf(parent)
-            if (sidebarLock) {
-                sidebarLock.unlock()
-            }
-
-            /*setTimeout(async () => {
-                await 
-            }, 100)*/
-        } catch (e) {}
-    }
-
-    return options
-}
-
-
-/* --- end of before-shelf-delete.js --- */
-
-
-/* ####### before-shelf-patch.js ####### */
-
-const preShelfPatch = (request) => {
-    const options = getFetchOptions(request)
-
-    const body = JSON.parse(options.body)
-    const data = JSON.parse(decodeBase64(body.data))
-    const shelf_id = body.meta
-
-    data.description = stripTransientMetadataFromText(data.description)
-
-    body.data = encodeBase64(JSON.stringify(data))
-
-    options.body = JSON.stringify(body)
-
-    if (shelfState) {
-        try {
-            shelfState.upsertShelf(shelf_id, decodeShelf(body))
-            processStoryList()
-        } catch (e) {
-            console.error('Error updating shelf state:', e)
-        }
-    }
-
-    return options
-}
-
-
-/* ---- end of before-shelf-patch.js --- */
-
-
-/* ######## before-shelf-put.js ######## */
-
-const activePutShelfRequests = new Map()
-
-const preShelfPut = (request) => {
-    const options = getFetchOptions(request)
-    const body = JSON.parse(options.body)
-    const data = JSON.parse(decodeBase64(body.data))
-    const shelf_id = body.meta
-
-    // Check if this is the first request for this meta
-    if (!activePutShelfRequests.has(shelf_id)) {
-        processNewShelf(shelf_id) // This will trigger a new PUT request
-        activePutShelfRequests.set(shelf_id, 1)
-
-        options.shouldBlock = true
-
-        return options
-    }
-
-    data.description = stripTransientMetadataFromText(data.description)
-
-    body.data = encodeBase64(JSON.stringify(data))
-
-    options.body = JSON.stringify(body)
-
-    if (shelfState) {
-        try {
-            shelfState.upsertShelf(shelf_id, decodeShelf(body))
-        } catch (e) {
-            console.error('Error updating shelf state:', e)
-        }
-    }
-
-    // Reset the state for this entity's requests after processing the second request
-    if (activePutShelfRequests.has(shelf_id)) {
-        activePutShelfRequests.delete(shelf_id)
-    }
-
-    createContextMenuTemplate()
-
-    return options
-}
-
-
-/* ----- end of before-shelf-put.js ---- */
-
-
-/* ########## request-hooks.js ######### */
-
-const preRequestHandlers = (request) => {
-    const baseShelfUrl = 'https://api.novelai.net/user/objects/shelf'
-    const method = request.method?.toLowerCase()
-
-    if (request.url.startsWith(baseShelfUrl)) {
-        switch (method) {
-            case 'put':
-                return preShelfPut(request)
-            case 'patch':
-                return preShelfPatch(request)
-            case 'delete':
-                return preShelfDelete(request)
-            default:
-                return getFetchOptions(request)
-        }
-    } else {
-        return getFetchOptions(request)
-    }
-}
-
-
-/* ------ end of request-hooks.js ------ */
-
-
-/* ####### after-shelf-delete.js ####### */
-
-const postShelfDelete = async (response) => {
-    //const copy = response.clone()
-    //let shelf = await copy.json()
-
-    /*if (shelfState) {
-        try {
-            shelfState.delete(shelf.meta)
-        } catch (e) {}
-    }*/
-
-    return response
-}
-
-
-/* ---- end of after-shelf-delete.js --- */
-
-
-/* ####### after-shelf-get-all.js ###### */
-
-const postShelfGetAll = async (response) => {
-    const copy = response.clone()
-    let data = await copy.json()
-    shelfState = createShelfState(buildShelfMap(data.objects))
-    const modifiedData = { objects: InjectShelfTransientMeta(data.objects) }
-    const modifiedText = JSON.stringify(modifiedData)
-    const modifiedResponse = new Response(modifiedText, {
-        status: response.status,
-        statusText: response.statusText,
-        headers: response.headers,
-    })
-
-    return modifiedResponse
-}
-
-
-/* --- end of after-shelf-get-all.js --- */
-
-
-/* ######## after-shelf-patch.js ####### */
-
-const postShelfPatch = async (response) => {
-    const copy = response.clone()
-    let shelf = await copy.json()
-
-    if (shelfState) {
-        try {
-            shelfState.upsertShelf(shelf.meta, decodeShelf(shelf))
-        } catch (e) {}
-    }
-
-    const modifiedData = InjectShelfTransientMetaSingle(shelf)
-
-    const modifiedText = JSON.stringify(modifiedData)
-    const modifiedResponse = new Response(modifiedText, {
-        status: response.status,
-        statusText: response.statusText,
-        headers: response.headers,
-    })
-
-    forceStoryListRefresh()
-
-    return modifiedResponse
-}
-
-
-/* ---- end of after-shelf-patch.js ---- */
-
-
-/* ######### after-shelf-put.js ######## */
-
-const postShelfPut = async (response) => {
-    const copy = response.clone()
-    let shelf = await copy.json()
-
-    if (shelfState) {
-        try {
-            shelfState.upsertShelf(shelf.meta, decodeShelf(shelf))
-        } catch (e) {}
-    }
-
-    const modifiedData = InjectShelfTransientMetaSingle(shelf)
-
-    const modifiedText = JSON.stringify(modifiedData)
-    const modifiedResponse = new Response(modifiedText, {
-        status: response.status,
-        statusText: response.statusText,
-        headers: response.headers,
-    })
-
-    return modifiedResponse
-}
-
-
-/* ----- end of after-shelf-put.js ----- */
-
-
-/* ######### response-hooks.js ######### */
-
-const postRequestHandler = async (request, response) => {
-    const baseShelfUrl = 'https://api.novelai.net/user/objects/shelf'
-    const method = request.method?.toLowerCase()
-
-    if (request.url.startsWith(baseShelfUrl)) {
-        switch (method) {
-            case 'get':
-                return await postShelfGetAll(response)
-            case 'patch':
-                return await postShelfPatch(response)
-            case 'put':
-                return await postShelfPut(response)
-            case 'delete':
-                return await postShelfDelete(response)
-            default:
-                return response
-        }
-    } else {
-        return response
-    }
-}
-
-
-/* ------ end of response-hooks.js ----- */
-
-
-/* ############## xhook.js ############# */
-
-// MODIFIED XHOOK CODE GOES HERE BECAUSE LOADING FROM GITLAB GIVES ERROR
-
-//XHook - v0.0.0-git-tag - https://github.com/jpillora/xhook
-//Jaime Pillora <dev@jpillora.com> - MIT Copyright 2024
-const xhook = (function () {
-    'use strict'
-
-    const slice = (o, n) => Array.prototype.slice.call(o, n)
-
-    let result = null
-
-    //find global object
-    if (typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope) {
-        result = self
-    } else if (typeof global !== 'undefined') {
-        result = global
-    } else if (window) {
-        result = window
-    }
-
-    const windowRef = result
-    const documentRef = result.document
-
-    const depricatedProp = (p) => ['returnValue', 'totalSize', 'position'].includes(p)
-
-    const mergeObjects = function (src, dst) {
-        for (let k in src) {
-            if (depricatedProp(k)) {
-                continue
-            }
-            const v = src[k]
-            try {
-                dst[k] = v
-            } catch (error) {}
-        }
-        return dst
-    }
-
-    //create fake event
-    const fakeEvent = function (type) {
-        if (documentRef && documentRef.createEventObject != null) {
-            const msieEventObject = documentRef.createEventObject()
-            msieEventObject.type = type
-            return msieEventObject
-        }
-        // on some platforms like android 4.1.2 and safari on windows, it appears
-        // that new Event is not allowed
-        try {
-            return new Event(type)
-        } catch (error) {
-            return { type }
-        }
-    }
-
-    //tiny event emitter
-    const EventEmitter = function (nodeStyle) {
-        //private
-        let events = {}
-        const listeners = (event) => events[event] || []
-        //public
-        const emitter = {}
-        emitter.addEventListener = function (event, callback, i) {
-            events[event] = listeners(event)
-            if (events[event].indexOf(callback) >= 0) {
-                return
-            }
-            i = i === undefined ? events[event].length : i
-            events[event].splice(i, 0, callback)
-        }
-        emitter.removeEventListener = function (event, callback) {
-            //remove all
-            if (event === undefined) {
-                events = {}
-                return
-            }
-            //remove all of type event
-            if (callback === undefined) {
-                events[event] = []
-            }
-            //remove particular handler
-            const i = listeners(event).indexOf(callback)
-            if (i === -1) {
-                return
-            }
-            listeners(event).splice(i, 1)
-        }
-        emitter.dispatchEvent = function () {
-            const args = slice(arguments)
-            const event = args.shift()
-            if (!nodeStyle) {
-                args[0] = mergeObjects(args[0], fakeEvent(event))
-                Object.defineProperty(args[0], 'target', {
-                    writable: false,
-                    value: this,
-                })
-            }
-            const legacylistener = emitter[`on${event}`]
-            if (legacylistener) {
-                legacylistener.apply(emitter, args)
-            }
-            const iterable = listeners(event).concat(listeners('*'))
-            for (let i = 0; i < iterable.length; i++) {
-                const listener = iterable[i]
-                listener.apply(emitter, args)
-            }
-        }
-        emitter._has = (event) => !!(events[event] || emitter[`on${event}`])
-        //add extra aliases
-        if (nodeStyle) {
-            emitter.listeners = (event) => slice(listeners(event))
-            emitter.on = emitter.addEventListener
-            emitter.off = emitter.removeEventListener
-            emitter.fire = emitter.dispatchEvent
-            emitter.once = function (e, fn) {
-                var fire = function () {
-                    emitter.off(e, fire)
-                    return fn.apply(null, arguments)
-                }
-                return emitter.on(e, fire)
-            }
-            emitter.destroy = () => (events = {})
-        }
-
-        return emitter
-    }
-
-    //helper
-    const CRLF = '\r\n'
-
-    const objectToString = function (headersObj) {
-        const entries = Object.entries(headersObj)
-
-        const headers = entries.map(([name, value]) => {
-            return `${name.toLowerCase()}: ${value}`
-        })
-
-        return headers.join(CRLF)
-    }
-
-    const stringToObject = function (headersString, dest) {
-        const headers = headersString.split(CRLF)
-        if (dest == null) {
-            dest = {}
-        }
-
-        for (let header of headers) {
-            if (/([^:]+):\s*(.+)/.test(header)) {
-                const name = RegExp.$1 != null ? RegExp.$1.toLowerCase() : undefined
-                const value = RegExp.$2
-                if (dest[name] == null) {
-                    dest[name] = value
-                }
-            }
-        }
-
-        return dest
-    }
-
-    const convert = function (headers, dest) {
-        switch (typeof headers) {
-            case 'object': {
-                return objectToString(headers)
-            }
-            case 'string': {
-                return stringToObject(headers, dest)
-            }
-        }
-
-        return []
-    }
-
-    var headers = { convert }
-
-    /******************************************************************************
-  Copyright (c) Microsoft Corporation.
-
-  Permission to use, copy, modify, and/or distribute this software for any
-  purpose with or without fee is hereby granted.
-
-  THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
-  REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
-  AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
-  INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
-  LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
-  OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
-  PERFORMANCE OF THIS SOFTWARE.
-  ***************************************************************************** */
-
-    function __rest(s, e) {
-        var t = {}
-        for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0) t[p] = s[p]
-        if (s != null && typeof Object.getOwnPropertySymbols === 'function')
-            for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
-                if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i])) t[p[i]] = s[p[i]]
-            }
-        return t
-    }
-
-    function __awaiter(thisArg, _arguments, P, generator) {
-        function adopt(value) {
-            return value instanceof P
-                ? value
-                : new P(function (resolve) {
-                      resolve(value)
-                  })
-        }
-        return new (P || (P = Promise))(function (resolve, reject) {
-            function fulfilled(value) {
-                try {
-                    step(generator.next(value))
-                } catch (e) {
-                    reject(e)
-                }
-            }
-            function rejected(value) {
-                try {
-                    step(generator['throw'](value))
-                } catch (e) {
-                    reject(e)
-                }
-            }
-            function step(result) {
-                result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected)
-            }
-            step((generator = generator.apply(thisArg, _arguments || [])).next())
-        })
-    }
-
-    //global set of hook functions,
-    //uses event emitter to store hooks
-    const hooks = EventEmitter(true)
-
-    //browser's fetch
-    const Native = windowRef.fetch
-    function copyToObjFromRequest(req) {
-        const copyedKeys = [
-            'method',
-            'headers',
-            'body',
-            'mode',
-            'credentials',
-            'cache',
-            'redirect',
-            'referrer',
-            'referrerPolicy',
-            'integrity',
-            'keepalive',
-            'signal',
-            'url',
-        ]
-        let copyedObj = {}
-        copyedKeys.forEach((key) => (copyedObj[key] = req[key]))
-        return copyedObj
-    }
-    function covertHeaderToPlainObj(headers) {
-        if (headers instanceof Headers) {
-            return covertTDAarryToObj([...headers.entries()])
-        }
-        if (Array.isArray(headers)) {
-            return covertTDAarryToObj(headers)
-        }
-        return headers
-    }
-    function covertTDAarryToObj(input) {
-        return input.reduce((prev, [key, value]) => {
-            prev[key] = value
-            return prev
-        }, {})
-    }
-    /**
-     * if fetch(hacked by Xhook) accept a Request as a first parameter, it will be destrcuted to a plain object.
-     * Finally the whole network request was convert to fectch(Request.url, other options)
-     */
-    const Xhook = function (input, init = { headers: {} }) {
-        let options = Object.assign(Object.assign({}, init), { isFetch: true })
-        if (input instanceof Request) {
-            const requestObj = copyToObjFromRequest(input)
-            const prevHeaders = Object.assign(
-                Object.assign({}, covertHeaderToPlainObj(requestObj.headers)),
-                covertHeaderToPlainObj(options.headers),
-            )
-            options = Object.assign(Object.assign(Object.assign({}, requestObj), init), { headers: prevHeaders, acceptedRequest: true })
-        } else {
-            options.url = input
-        }
-        const beforeHooks = hooks.listeners('before')
-        const afterHooks = hooks.listeners('after')
-        return new Promise(function (resolve, reject) {
-            let fullfiled = resolve
-            const processAfter = function (response) {
-                if (!afterHooks.length) {
-                    return fullfiled(response)
-                }
-                const hook = afterHooks.shift()
-                if (hook.length === 2) {
-                    hook(options, response)
-                    return processAfter(response)
-                } else if (hook.length === 3) {
-                    return hook(options, response, processAfter)
-                } else {
-                    return processAfter(response)
-                }
-            }
-            const done = function (userResponse) {
-                if (userResponse !== undefined) {
-                    const response = new Response(userResponse.body || userResponse.text, userResponse)
-                    resolve(response)
-                    processAfter(response)
-                    return
-                }
-                //continue processing until no hooks left
-                processBefore()
-            }
-            const processBefore = function () {
-                if (!beforeHooks.length) {
-                    send()
-                    return
-                }
-                const hook = beforeHooks.shift()
-                if (hook.length === 1) {
-                    return done(hook(options))
-                } else if (hook.length === 2) {
-                    return hook(options, done)
-                }
-            }
-            const send = () =>
-                __awaiter(this, void 0, void 0, function* () {
-                    const { url, isFetch, acceptedRequest } = options,
-                        restInit = __rest(options, ['url', 'isFetch', 'acceptedRequest'])
-                    if (input instanceof Request && restInit.body instanceof ReadableStream) {
-                        restInit.body = yield new Response(restInit.body).text()
-                    }
-                    return Native(url, restInit)
-                        .then((response) => processAfter(response))
-                        .catch(function (err) {
-                            fullfiled = reject
-                            processAfter(err)
-                            return reject(err)
-                        })
-                })
-            processBefore()
-        })
-    }
-    //patch interface
-    var fetch = {
-        patch() {
-            if (Native) {
-                windowRef.fetch = Xhook
-            }
-        },
-        unpatch() {
-            if (Native) {
-                windowRef.fetch = Native
-            }
-        },
-        Native,
-        Xhook,
-    }
-
-    //the global hooks event emitter is also the global xhook object
-    //(not the best decision in hindsight)
-    const xhook = hooks
-    xhook.EventEmitter = EventEmitter
-    //modify hooks
-    xhook.before = function (handler, i) {
-        if (handler.length < 1 || handler.length > 2) {
-            throw 'invalid hook'
-        }
-        return xhook.on('before', handler, i)
-    }
-    xhook.after = function (handler, i) {
-        if (handler.length < 2 || handler.length > 3) {
-            throw 'invalid hook'
-        }
-        return xhook.on('after', handler, i)
-    }
-
-    //globally enable/disable
-    xhook.enable = function () {
-        //XMLHttpRequest.patch();
-        fetch.patch()
-    }
-    xhook.disable = function () {
-        //XMLHttpRequest.unpatch();
-        fetch.unpatch()
-    }
-    //expose native objects
-    //xhook.XMLHttpRequest = XMLHttpRequest.Native;
-    xhook.fetch = fetch.Native
-
-    //expose helpers
-    xhook.headers = headers.convert
-
-    //enable by default
-    xhook.enable()
-
-    return xhook
-})()
-//# sourceMappingURL=xhook.js.map
-
-
-/* ---------- end of xhook.js ---------- */
-
-
-
-// Force a reload when the app navigates to or from /stories
-// This is to make sure we only load the script when we access /stories
-
-let previousPath = window.location.pathname
-const handleUrlChange = () => {
-    const currentPath = window.location.pathname
-
-    if (
-        (previousPath.startsWith('/stories') && !currentPath.startsWith('/stories')) ||
-        (!previousPath.startsWith('/stories') && currentPath.startsWith('/stories'))
-    ) {
-        window.location.reload()
-    }
-
-    previousPath = currentPath
-}
-
-const observer = new MutationObserver(handleUrlChange)
-
-observer.observe(document, { childList: true, subtree: true })
-
-handleUrlChange() // Initial check
+/* ------- end of network.mod.js ------- */
 
 // Check if the current path is /stories before initializing
 if (window.location.pathname.startsWith('/stories')) {
+    scriptInit = false
     init()
 }
-

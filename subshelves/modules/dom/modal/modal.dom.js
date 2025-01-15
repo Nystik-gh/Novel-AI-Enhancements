@@ -1,55 +1,44 @@
 const initModalObserver = () => {
-    if (modalObserver) {
-        //console.log('modal observer already initiated, aborting...')
+    // Get the modal observer from NAIE services and subscribe to modal events
+    const { emitter } = NAIE.SERVICES.modalObserver
+    emitter.on('modal', handlePotentialShelfModal)
+}
+
+const handlePotentialShelfModal = async ({ modal, overlay }) => {
+    // Skip if already handled
+    if (modal.dataset['proxied']) {
         return
     }
 
-    modalObserver = true
-
-    const observerOptions = {
-        childList: true,
+    try {
+        // Try to handle as shelf settings modal
+        if (isShelfSettingsModal({ modal })) {
+            handleShelfSettingsModal({ modal, overlay })
+            return
+        }
+    } catch (error) {
+        NAIE.LOGGING.getLogger().error("Error handling shelf modal:", error)
+        // Not a shelf settings modal, ignore
     }
+}
 
-    const observerCallback = (mutationsList, observer) => {
-        // Trigger mapShelfMetadata when mutations indicate changes
-        for (const mutation of mutationsList) {
-            if (mutation.type === 'childList') {
-                const addedNodes = Array.from(mutation.addedNodes)
-                const hasProjectionId = addedNodes.some(
-                    (node) => node.nodeType === Node.ELEMENT_NODE && node.hasAttribute('data-projection-id'),
-                )
-
-                if (hasProjectionId) {
-                    modalObserver.disconnect()
-
-                    waitForShelfSettingsModal(100)
-                        .then((data) => {
-                            if (!data.modal?.dataset['proxied']) {
-                                constructShelfSettingModal(data)
-                            }
-                            observer.observe(document.body, observerOptions)
-                        })
-                        .catch((error) => {
-                            // Not a settingsModal
-                            // having an empty catch block doesn't feel great, should probably rework modal handling at some point.
-                            observer.observe(document.body, observerOptions)
-                        })
-                    break
-                }
+// Helper for handling overlay clicks
+const createOverlayClickListener = (overlay, modal, callback, oneShot = false) => {
+    const outsideClickListener = (event) => {
+        if (!event.composedPath().includes(modal)) {
+            if (oneShot) {
+                removeClickListener()
             }
+            callback()
         }
     }
 
-    modalObserver = new MutationObserver(observerCallback)
-    modalObserver.observe(document.body, observerOptions)
-}
+    const removeClickListener = () => {
+        document.removeEventListener('click', outsideClickListener)
+    }
 
-const waitForModal = async (timeout) => {
-    const modal = await waitForElement(modalSelector, timeout)
+    overlay.addEventListener('click', outsideClickListener)
 
-    const overlay = modal?.parentNode?.parentNode?.hasAttribute('data-projection-id') ? modal?.parentNode?.parentNode : null
-
-    const closeButton = modal ? findElementWithMaskImage(modal.querySelectorAll('button > div'), ['cross', '.svg'])?.[0] : null
-
-    return { modal, overlay, closeButton }
+    // Return a handle to manually remove the listener
+    return { remove: removeClickListener }
 }

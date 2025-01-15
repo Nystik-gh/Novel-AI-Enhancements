@@ -6,70 +6,44 @@ const preflight = async () => {
     preflightRun = true
 
     try {
-        const app = await waitForElement(appSelector)
+        const registerSubshelvesHooks = () => {
+            // Early stage - Basic UI elements and controls
+            /*NAIE.PREFLIGHT.registerHook(
+                'early',
+                'subshelves-network',
+                10,
+                async () => {
+                    initializeNetworkHooks()
+                }
+            )*/
 
-        const lock = lockLoader(app)
-        //console.log('locked loader')
+            // Main stage - Core functionality
+            NAIE.PREFLIGHT.registerHook('main', 'subshelves-core', 10, async () => {
+                //await NAIE.DOM.waitForElement(menubarSelector)
+                await NAIE.DOM.waitForElement(storyListSelector)
+                if (!sidebarLock) {
+                    sidebarLock = lockSideBar(true, true, true)
+                    await NAIE.MISC.sleep(100)
+                }
+                await preProcessSidebar()
+                await initGlobalObservers() // implement core
+            })
 
-        await waitForElement(settingsButtonSelector)
-
-        preProcessIndicator()
-
-        showIndicator('initializing subshelves...')
-
-        await cloneSelectControl()
-
-        await waitForElement(menubarSelector)
-
-        showIndicator('subshelves ready')
-
-        if (AreThereShelves()) {
-            await waitForElement(storyListSelector)
-
-            if (!sidebarLock) {
-                sidebarLock = lockSideBar(true, true, true)
-                await sleep(100)
-            }
-        } else {
-            emptyStoryListFlag = true
+            // Late stage - Final setup
+            NAIE.PREFLIGHT.registerHook('late', 'subshelves-final', 10, async () => {
+                if (AreThereShelves()) {
+                    createContextMenuTemplate()
+                }
+                if (sidebarLock) {
+                    sidebarLock.unlock()
+                }
+                NAIE.SERVICES.statusIndicator.displayMessage('Subshelves initialized')
+            })
         }
 
-        lock.unlock()
-
-        if (AreThereShelves()) {
-            await preProcessSidebar()
-            createContextMenuTemplate()
-        }
-
-        await initGlobalObservers()
-
-        if (sidebarLock) {
-            sidebarLock.unlock()
-        }
+        registerSubshelvesHooks()
     } catch (e) {
-        console.error(e)
-        throw new Error('preflight failed!')
+        console.error('Failed to register subshelves preflight hooks:', e)
+        throw new Error('Subshelves preflight initialization failed!')
     }
-}
-
-let loaderTemplate = null
-
-const lockLoader = (app) => {
-    if (loaderTemplate === null) {
-        loaderTemplate = app.firstChild.cloneNode(true)
-    }
-
-    const loader = loaderTemplate
-
-    const clone = loader.cloneNode(true)
-    clone.id = 'loader-lock'
-    clone.style.zIndex = '1000'
-
-    document.documentElement.append(clone)
-
-    const unlock = () => {
-        //console.log('unlocking loader')
-        document.documentElement.removeChild(clone)
-    }
-    return { unlock }
 }

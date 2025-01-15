@@ -12,7 +12,7 @@ const initNewSubShelfButton = () => {
 
         newShelfButton.dataset['newSubShelf'] = 'true'
 
-        addEventListenerOnce(newShelfButton, 'click', (e) => {
+        NAIE.DOM.addEventListenerOnce(newShelfButton, 'click', (e) => {
             if (newShelfButton.dataset['newSubShelf'] === 'true') {
                 e.preventDefault()
                 createNewShelf()

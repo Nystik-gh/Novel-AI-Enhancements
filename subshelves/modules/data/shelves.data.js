@@ -1,5 +1,5 @@
 const decodeShelf = (shelf) => {
-    const decodedData = JSON.parse(decodeBase64(shelf.data))
+    const decodedData = JSON.parse(NAIE.MISC.decodeBase64(shelf.data))
     if (decodedData.children === undefined) {
         decodedData.children = []
     }
@@ -21,7 +21,7 @@ const encodeShelf = (item) => {
             }
         }
 
-        const encodedData = encodeBase64(JSON.stringify(item.data))
+        const encodedData = NAIE.MISC.encodeBase64(JSON.stringify(item.data))
         item.data = encodedData
     }
 

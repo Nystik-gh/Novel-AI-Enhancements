@@ -21,7 +21,7 @@ const createBreadcrumbBar = () => {
     if (getBreadcrumbBarEl()) {
         return
     }
-    let titlebar = findTitleBar()
+    let titlebar = NAIE.NAI.findTitleBar()
 
     if (titlebar && !document.querySelector(breadcrumbsBarSelector)) {
         let clone = titlebar.cloneNode(false)
@@ -45,7 +45,7 @@ const createCrumb = (title, onClick) => {
         cursor: onClick ? 'pointer' : 'default',
     }
 
-    const crumbEl = createElement('span', crumbStyles)
+    const crumbEl = NAIE.DOM.createElement('span', crumbStyles)
     crumbEl.textContent = title
 
     if (onClick) {
