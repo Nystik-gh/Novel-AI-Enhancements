@@ -1,5 +1,5 @@
 /***
- * @type {PreflightUtils}
+ * @type {NAIEPreflight}
  */
 const PREFLIGHT_UTILS = {
     registerHook: preflight_registerHook,

@@ -1,4 +1,14 @@
 /**
+ * Response returned when blocking a request
+ * 
+ * @interface
+ */
+interface BlockResponse {
+    type: 'response';
+    value: Response;
+}
+
+/**
  * A hook for intercepting and modifying network requests
  * 
  * @interface

@@ -19,7 +19,7 @@ interface PreflightError {
  *
  * @interface
  */
-interface PreflightUtils {
+interface NAIEPreflight {
     /**
      * Register a hook to be run during preflight
      * 

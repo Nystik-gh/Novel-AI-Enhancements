@@ -2,6 +2,14 @@ const fs = require('fs')
 const path = require('path')
 const { exec } = require('child_process')
 
+// Get core version from naie-core.user.js
+const getCoreVersion = () => {
+    const corePath = path.join(__dirname, 'core', 'naie-core.user.js')
+    const coreContent = fs.readFileSync(corePath, 'utf8')
+    const versionMatch = coreContent.match(/@version\s+(\d+\.\d+\.\d+)/)
+    return versionMatch ? versionMatch[1] : 'unknown'
+}
+
 // Function to recursively find all .d.ts files in a directory
 const getDtsFiles = (dir, files = []) => {
     const entries = fs.readdirSync(dir, { withFileTypes: true })
@@ -18,8 +26,9 @@ const getDtsFiles = (dir, files = []) => {
 
 // Function to run TypeDoc
 const runTypedoc = (files) => {
+    const version = getCoreVersion()
     const fileList = files.join(' ')
-    const command = `npx typedoc --out docs ${fileList}`
+    const command = `npx typedoc --out docs ${fileList} --name "NAIE Core API v${version}"`
     console.log(`Running command: ${command}`)
     exec(command, (error, stdout, stderr) => {
         if (error) {
@@ -50,5 +59,5 @@ const dtsFiles = getDtsFiles(directoryToTraverse)
 if (dtsFiles.length > 0) {
     runTypedoc(dtsFiles)
 } else {
-    console.log('No .d.ts files found.')
+    console.error('No .d.ts files found')
 }
