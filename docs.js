@@ -28,7 +28,7 @@ const getDtsFiles = (dir, files = []) => {
 const runTypedoc = (files) => {
     const version = getCoreVersion()
     const fileList = files.join(' ')
-    const command = `npx typedoc --out core/docs ${fileList} --name "NAIE Core API v${version}"`
+    const command = `npx typedoc --out docs ${fileList} --name "NAIE Core API v${version}"`
     console.log(`Running command: ${command}`)
     exec(command, (error, stdout, stderr) => {
         if (error) {
