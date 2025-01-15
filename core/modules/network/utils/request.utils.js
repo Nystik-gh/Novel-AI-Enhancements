@@ -13,10 +13,3 @@ const network_getFetchOptions = (request) => {
         credentials: request.withCredentials ? 'include' : 'same-origin',
     }
 }
-
-const REQUEST_UTILS = {
-    getFetchOptions,
-}
-
-// Export for use in network manager
-const network_request_utils = REQUEST_UTILS

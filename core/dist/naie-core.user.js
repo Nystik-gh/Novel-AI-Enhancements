@@ -1474,13 +1474,6 @@ const network_getFetchOptions = (request) => {
     }
 }
 
-const REQUEST_UTILS = {
-    getFetchOptions,
-}
-
-// Export for use in network manager
-const network_request_utils = REQUEST_UTILS
-
 
 /* ------ end of request.utils.js ------ */
 
