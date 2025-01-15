@@ -53,7 +53,7 @@ and loosely follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 -   Fixed issue in contextmenu setup
 
-[v2.0.4]: https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/<commitid>/subshelves/dist/naie-subshelves.user.js
+[v2.0.4]: https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/e255ae5bac6fe1755473554af87e4b0318d86aaf/subshelves/dist/naie-subshelves.user.js
 [v1.0.7]: https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/9ea64294c1b5510bbe2623fd90f65a2631df8dd0/subshelves/dist/naie-subshelves.user.js
 [v1.0.6]: https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/8db1fdc374e508ffb35163ae5b98099ac15f59c8/subshelves/dist/naie-subshelves.user.js
 [v1.0.5]: https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/48cf18749f5347339e5d1d60bd201683abafa916/subshelves/dist/naie-subshelves.user.js

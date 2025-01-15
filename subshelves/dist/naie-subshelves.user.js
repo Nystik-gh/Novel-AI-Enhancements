@@ -84,7 +84,9 @@ const makeBreadcrumbs = (id, map) => {
     return breadcrumbs
 }
 
+
 /* ----- end of breadcrumbs.data.js ---- */
+
 
 /* ########## metadata.data.js ######### */
 
@@ -190,7 +192,9 @@ const stripTransientMetadataFromText = (text) => {
     return writeMetadata(cleanText, cleanMeta)
 }
 
+
 /* ------ end of metadata.data.js ------ */
+
 
 /* ########## shelves.data.js ########## */
 
@@ -304,7 +308,9 @@ const getShelfStoryTotal = (shelf_id) => {
     return total
 }
 
+
 /* ------- end of shelves.data.js ------ */
+
 
 /* ######### contextMenu.dom.js ######## */
 
@@ -548,7 +554,9 @@ const simulateContextDelete = async (shelf_id) => {
     })
 }
 
+
 /* ----- end of contextMenu.dom.js ----- */
+
 
 /* ############ modal.dom.js ########### */
 
@@ -571,7 +579,7 @@ const handlePotentialShelfModal = async ({ modal, overlay }) => {
             return
         }
     } catch (error) {
-        NAIE.LOGGING.getLogger().error('Error handling shelf modal:', error)
+        NAIE.LOGGING.getLogger().error("Error handling shelf modal:", error)
         // Not a shelf settings modal, ignore
     }
 }
@@ -599,6 +607,7 @@ const createOverlayClickListener = (overlay, modal, callback, oneShot = false) =
 
 /* -------- end of modal.dom.js -------- */
 
+
 /* ####### shelf-delete.modal.js ####### */
 
 const isShelfDeleteModal = ({ modal }) => {
@@ -618,6 +627,7 @@ const waitForShelfDeleteModal = async (timeout) => {
 
 /* ---- end of shelf-delete.modal.js --- */
 
+
 /* ###### shelf-settings.modal.js ###### */
 
 // Predicate for identifying shelf settings modals
@@ -631,7 +641,7 @@ const isShelfSettingsModal = ({ modal }) => {
 const handleShelfSettingsModal = ({ modal, overlay }) => {
     const fields = {
         title: modal.querySelector('input'),
-        description: modal.querySelector('textarea'),
+        description: modal.querySelector('textarea')
     }
     constructShelfSettingModal({ modal, overlay, fields })
 }
@@ -640,13 +650,13 @@ const handleShelfSettingsModal = ({ modal, overlay }) => {
 const waitForShelfSettingsModal = async (timeout) => {
     const { waitForSpecificModal } = NAIE.SERVICES.modalObserver
     const modalData = await waitForSpecificModal(isShelfSettingsModal, timeout)
-
+    
     return {
         ...modalData,
         fields: {
             title: modalData.modal.querySelector('input'),
-            description: modalData.modal.querySelector('textarea'),
-        },
+            description: modalData.modal.querySelector('textarea')
+        }
     }
 }
 
@@ -725,7 +735,9 @@ const insertShelfPicker = (textarea, title, dropdown) => {
     textarea.parentNode.insertBefore(title, dropdown)
 }
 
+
 /* --- end of shelf-settings.modal.js -- */
+
 
 /* ######### shelf-image.svg.js ######## */
 
@@ -750,7 +762,9 @@ const getShelfSVG = (value) => {
     return template.content.firstChild
 }
 
+
 /* ----- end of shelf-image.svg.js ----- */
+
 
 /* ######### breadcrumbs.dom.js ######## */
 
@@ -858,7 +872,9 @@ const insertBreadcrumbs = (shelf_id) => {
     }
 }
 
+
 /* ----- end of breadcrumbs.dom.js ----- */
+
 
 /* ######### homeButton.dom.js ######### */
 
@@ -900,7 +916,9 @@ const waitForHome = () => {
     })
 }
 
+
 /* ------ end of homeButton.dom.js ----- */
+
 
 /* ####### newShelfButton.dom.js ####### */
 
@@ -929,7 +947,9 @@ const initNewSubShelfButton = () => {
     }
 }
 
+
 /* ---- end of newShelfButton.dom.js --- */
+
 
 /* ########### shelves.dom.js ########## */
 
@@ -1439,9 +1459,7 @@ const processNewShelf = async (shelf_id) => {
 
     const contextMenuPromise = waitForNewContextMenu(false, 1000)
 
-    let newShelf = await NAIE.DOM.waitForElement(
-        `${storyListSelector} > div:not([data-metadata-processed]):not([role]):not([data-locked-shelf])`,
-    )
+    let newShelf = await NAIE.DOM.waitForElement(`${storyListSelector} > div:not([data-metadata-processed]):not([role]):not([data-locked-shelf])`)
 
     let ctx = await contextMenuPromise
 
@@ -1470,7 +1488,9 @@ const processNewShelf = async (shelf_id) => {
     }
 }
 
+
 /* ------- end of shelves.dom.js ------- */
+
 
 /* ########### sidebar.dom.js ########## */
 
@@ -1714,7 +1734,9 @@ const lockSideBar = (showLoader = true, forceLoader = false, positional = false)
 
  */
 
+
 /* ------- end of sidebar.dom.js ------- */
+
 
 /* ########## delete.hooks.js ########## */
 
@@ -1729,40 +1751,42 @@ const registerShelfDeleteHooks = () => {
         urlPattern: '/user/objects/shelf',
         methods: ['DELETE'],
         modifyRequest: async (request) => {
-            const remoteId = request.url.split('/').pop()
+            const remoteId = request.url.split('/').pop();
 
             if (shelfState) {
                 try {
-                    const shelf = shelfState.getShelfByRemoteId(remoteId)
-                    const parent = getMetadataObject(shelf)?.parent_id
-                    shelfState.deleteShelf(shelf.meta)
+                    const shelf = shelfState.getShelfByRemoteId(remoteId);
+                    const parent = getMetadataObject(shelf)?.parent_id;
+                    shelfState.deleteShelf(shelf.meta);
 
                     if (activeShelf === null) {
                         // we are deleting from the home shelf, manually restore hidden children of deleted parent
-                        restoreSubshelvesOfParent(shelf.meta)
+                        restoreSubshelvesOfParent(shelf.meta);
                     }
 
                     // we know delete sends us back to home if we're not, correct activeShelf to reflect that
-                    activeShelf = null
+                    activeShelf = null;
 
-                    navigateToShelf(parent)
+                    navigateToShelf(parent);
                     if (sidebarLock) {
-                        sidebarLock.unlock()
+                        sidebarLock.unlock();
                     }
                 } catch (e) {
-                    console.error('Error in delete request hook:', e)
+                    console.error('Error in delete request hook:', e);
                 }
             }
 
             return {
                 type: 'request',
-                value: request,
-            }
-        },
-    })
-}
+                value: request
+            };
+        }
+    });
+};
+
 
 /* ------- end of delete.hooks.js ------ */
+
 
 /* ############ get.hooks.js ########### */
 
@@ -1777,21 +1801,23 @@ const registerShelfGetHooks = () => {
         urlPattern: '/user/objects/shelf',
         methods: ['GET'],
         modifyResponse: async (response, request) => {
-            const copy = response.clone()
-            let data = await copy.json()
-            shelfState = createShelfState(buildShelfMap(data.objects))
-            const modifiedData = { objects: InjectShelfTransientMeta(data.objects) }
-
+            const copy = response.clone();
+            let data = await copy.json();
+            shelfState = createShelfState(buildShelfMap(data.objects));
+            const modifiedData = { objects: InjectShelfTransientMeta(data.objects) };
+            
             return new Response(JSON.stringify(modifiedData), {
                 status: response.status,
                 statusText: response.statusText,
                 headers: response.headers,
-            })
-        },
-    })
-}
+            });
+        }
+    });
+};
+
 
 /* -------- end of get.hooks.js -------- */
+
 
 /* ########### patch.hooks.js ########## */
 
@@ -1806,7 +1832,7 @@ const registerShelfPatchHooks = () => {
         urlPattern: '/user/objects/shelf',
         methods: ['PATCH'],
         modifyRequest: async (request) => {
-            const options = getFetchOptions(request)
+            const options = NAIE.NETWORK.getFetchOptions(request)
             const body = JSON.parse(options.body)
             const data = JSON.parse(NAIE.MISC.decodeBase64(body.data))
             const shelf_id = body.meta
@@ -1859,7 +1885,9 @@ const registerShelfPatchHooks = () => {
     })
 }
 
+
 /* ------- end of patch.hooks.js ------- */
+
 
 /* ############ put.hooks.js ########### */
 
@@ -1880,7 +1908,7 @@ const registerShelfPutHooks = () => {
         urlPattern: '/user/objects/shelf',
         methods: ['PUT'],
         modifyRequest: async (request) => {
-            const options = getFetchOptions(request)
+            const options = NAIE.NETWORK.getFetchOptions(request)
             const body = JSON.parse(options.body)
             const data = JSON.parse(NAIE.MISC.decodeBase64(body.data))
             const shelf_id = body.meta
@@ -1947,7 +1975,9 @@ const registerShelfPutHooks = () => {
     })
 }
 
+
 /* -------- end of put.hooks.js -------- */
+
 
 /* ########## shelves.hooks.js ######### */
 
@@ -1956,37 +1986,15 @@ const registerShelfPutHooks = () => {
  */
 
 const registerShelfHooks = () => {
-    registerShelfGetHooks()
-    registerShelfPutHooks()
-    registerShelfPatchHooks()
-    registerShelfDeleteHooks()
-}
+    registerShelfGetHooks();
+    registerShelfPutHooks();
+    registerShelfPatchHooks();
+    registerShelfDeleteHooks();
+};
+
 
 /* ------ end of shelves.hooks.js ------ */
 
-/* ########## request.utils.js ######### */
-
-/**
- * Utility functions for handling requests
- */
-
-/**
- * Extracts fetch options from a request object
- *
- * @param {Request} request - The request to extract options from
- * @returns {Object} The fetch options
- */
-const getFetchOptions = (request) => {
-    return {
-        method: request.method,
-        headers: request.headers,
-        body: request.body,
-        timeout: request.timeout,
-        credentials: request.withCredentials ? 'include' : 'same-origin',
-    }
-}
-
-/* ------ end of request.utils.js ------ */
 
 /* #### init-observers.preflight.js #### */
 
@@ -1999,7 +2007,9 @@ const initGlobalObservers = () => {
     }
 }
 
+
 /* - end of init-observers.preflight.js  */
+
 
 /* ############ preflight.js ########### */
 
@@ -2053,7 +2063,9 @@ const preflight = async () => {
     }
 }
 
+
 /* -------- end of preflight.js -------- */
+
 
 /* #### preprocess-dom.preflight.js #### */
 
@@ -2063,7 +2075,9 @@ const preProcessSidebar = async () => {
     await mapShelfMetadata()
 }
 
+
 /* - end of preprocess-dom.preflight.js  */
+
 
 /* ########### shelf.state.js ########## */
 
@@ -2190,7 +2204,9 @@ const createShelfState = (shelfData) => {
     }
 }
 
+
 /* ------- end of shelf.state.js ------- */
+
 
 /* ########### network.mod.js ########## */
 
@@ -2201,17 +2217,21 @@ const createShelfState = (shelfData) => {
 
 const initializeNetworkHooks = () => {
     // Initialize hooks for each endpoint group
-    registerShelfHooks()
-
+    registerShelfHooks();
+    
     // Future endpoint groups can be initialized here
     // initializeStoryHooks();
     // initializeContextHooks();
-}
+};
+
 
 /* ------- end of network.mod.js ------- */
+
+
 
 // Check if the current path is /stories before initializing
 if (window.location.pathname.startsWith('/stories')) {
     scriptInit = false
     init()
 }
+

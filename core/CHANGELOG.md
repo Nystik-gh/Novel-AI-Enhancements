@@ -19,3 +19,5 @@ and follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 -   Scripts manager for handling script registration and lifecycle
 -   Common utilities and shared functionality for NAIE scripts
 -   Public API for script integration and management
+
+[v1.0.4]: https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/e255ae5bac6fe1755473554af87e4b0318d86aaf/core/dist/naie-core.user.js

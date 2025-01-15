@@ -30,6 +30,8 @@ The core script serves as the foundation for all NAIE feature scripts, providing
 
 Feature scripts interact with the core through a stable API that follows semantic versioning. Breaking changes will only occur with major version increments.
 
+[📚 View Full API Documentation](https://nystik-gh.github.io/Novel-AI-Enhancements/)
+
 Key API features:
 
 -   Script registration and lifecycle management
