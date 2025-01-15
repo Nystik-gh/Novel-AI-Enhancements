@@ -2,7 +2,7 @@
 // THIS IS NOT A STANDALONE USER SCRIPT! DO NO INSTALL THIS SCRIPT DIRECTLY.
 // @name         Novel AI Enhanced: Core
 // @namespace    github.nystik-hg
-// @version      1.0.3
+// @version      1.0.4
 // @description  Core library
 // @require      ./lib/*
 // @require      ./modules/misc/*

@@ -1,7 +1,7 @@
 /**
  * Maximum time to wait for initial script registration
  */
-const SCRIPT_REGISTRATION_TIMEOUT = 4000 // Max wait time for scripts to register
+const SCRIPT_REGISTRATION_TIMEOUT = 1000 // Max wait time for scripts to register
 
 /**
  * Maximum time to wait for registered scripts to become ready
