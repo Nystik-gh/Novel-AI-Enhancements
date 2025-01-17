@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         NAIE Inline Images
+// @name         NAIE Crypto
 // @namespace    https://github.com/Nystik-gh/Novel-AI-Enhancements
 // @version      1.0.0
 // @description  Cryptography functions

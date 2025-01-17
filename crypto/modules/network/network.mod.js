@@ -1,5 +1,5 @@
 const initializeNetworkHooks = () => {
-    console.timeLog('initializeNetworkHooks')
+    console.log('initializeNetworkHooks')
     registerUserDataHooks()
     registerKeystoreHooks()
 }
