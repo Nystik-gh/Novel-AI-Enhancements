@@ -286,7 +286,7 @@ const CRYPTO_UTILS = {
     encryptCompressObject,
 }
 
-initNAIECrypto = async () => {
+const initNAIECrypto = async () => {
     keystoreState = createKeystoreState
     CRYPTO_UTILS.sodiumInstance = await initSodium()
 
