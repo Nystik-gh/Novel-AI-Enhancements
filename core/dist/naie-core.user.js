@@ -21,6 +21,9 @@
             logger.info('creating NAIE instance')
             wRef.NAIE_INSTANCE = createNAIEInstance()
 
+            // Need to create hooks immediately
+            NERWORK_UTILS.manager.initialize()
+
             // Start waiting for scripts to register and become ready
             internal_startWaitingForScripts()
         } else {
@@ -1559,13 +1562,25 @@ const network_createNetworkManager = () => {
         return modifiedResponse
     }
 
-    /**
-     * Initializes the network manager by setting up the xhook
-     */
+    let preflightResolver
+    const internalPreflightPromise = new Promise((resolve) => {
+        preflightResolver = resolve
+    })
+
+    const markPreflightComplete = () => {
+        preflightResolver()
+    }
+
     const initialize = () => {
-        console.log('initialize network hooks')
-        xhook.before((request, callback) => {
+        console.log('initialize xhook')
+        xhook.before(async (request, callback) => {
             console.log('xhook before')
+
+            // Wait for internal preflight to complete
+            console.log('waiting for internal preflight, deferring request')
+            await internalPreflightPromise
+            console.log('internal preflight complete')
+
             processRequest(
                 hooks,
                 nativeFetch,
@@ -1616,6 +1631,7 @@ const network_createNetworkManager = () => {
             if (hook) hook.enabled = false
         },
         initialize,
+        markPreflightComplete,
         API_BASE_URL,
     }
 }
@@ -2036,10 +2052,11 @@ const registerCoreInit = () => {
         async () => {
             const logger = LOGGING_UTILS.getLogger()
             logger.debug('core-initialization')
-            NERWORK_UTILS.manager.initialize()
             NAIE_SERVICES.modalObserver = naie_initModalObserver()
             await controls_initializeTemplates()
             NAIE_SERVICES.statusIndicator = INDICATOR_UTILS.createNAIEIndicator()
+            // Mark network manager as ready to process requests
+            NETWORK_UTILS.manager.markPreflightComplete()
         },
     )
 }

@@ -32,10 +32,11 @@ const registerCoreInit = () => {
         async () => {
             const logger = LOGGING_UTILS.getLogger()
             logger.debug('core-initialization')
-            NERWORK_UTILS.manager.initialize()
             NAIE_SERVICES.modalObserver = naie_initModalObserver()
             await controls_initializeTemplates()
             NAIE_SERVICES.statusIndicator = INDICATOR_UTILS.createNAIEIndicator()
+            // Mark network manager as ready to process requests
+            NETWORK_UTILS.manager.markPreflightComplete()
         },
     )
 }

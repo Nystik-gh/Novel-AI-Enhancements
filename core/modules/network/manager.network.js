@@ -77,13 +77,25 @@ const network_createNetworkManager = () => {
         return modifiedResponse
     }
 
-    /**
-     * Initializes the network manager by setting up the xhook
-     */
+    let preflightResolver
+    const internalPreflightPromise = new Promise((resolve) => {
+        preflightResolver = resolve
+    })
+
+    const markPreflightComplete = () => {
+        preflightResolver()
+    }
+
     const initialize = () => {
-        console.log('initialize network hooks')
-        xhook.before((request, callback) => {
+        console.log('initialize xhook')
+        xhook.before(async (request, callback) => {
             console.log('xhook before')
+
+            // Wait for internal preflight to complete
+            console.log('waiting for internal preflight, deferring request')
+            await internalPreflightPromise
+            console.log('internal preflight complete')
+
             processRequest(
                 hooks,
                 nativeFetch,
@@ -134,6 +146,7 @@ const network_createNetworkManager = () => {
             if (hook) hook.enabled = false
         },
         initialize,
+        markPreflightComplete,
         API_BASE_URL,
     }
 }
