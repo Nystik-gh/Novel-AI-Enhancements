@@ -15,8 +15,9 @@
     let NAIE = wRef.NAIE_INSTANCE
 
     const init = async () => {
-        initializeNetworkHooks()
         if (NAIE) {
+            console.log('initialize network hooks')
+            initializeNetworkHooks()
             NAIE.CRYPTO = await initNAIECrypto()
         } else {
             console.warn('NAIE not initialized')
@@ -317,6 +318,7 @@ async function decryptKeyStore(keystore) {
 /* ########### network.mod.js ########## */
 
 const initializeNetworkHooks = () => {
+    console.timeLog('initializeNetworkHooks')
     registerUserDataHooks()
     registerKeystoreHooks()
 }
