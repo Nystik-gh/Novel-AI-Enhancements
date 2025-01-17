@@ -48,8 +48,8 @@ const xhook = (function () {
         result = self
     } else if (typeof global !== 'undefined') {
         result = global
-    } else if (window) {
-        result = window
+    } else if (wRef) {
+        result = wRef
     }
 
     const windowRef = result
