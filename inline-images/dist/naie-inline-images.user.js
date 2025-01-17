@@ -6,11 +6,11 @@
 // @author       Nystik
 // @match        https://novelai.net/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=novelai.net
-// @grant        GM.getValue
-// @grant        GM.setValue
-// @grant        GM.addStyle
+// @grant        GM_xmlhttpRequest
+// @grant        GM_getValue
+// @grant        GM_setValue
 // @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/main/core/dist/naie-core.user.js
-// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/crypto/dist/naie-crypto.user.js
+// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/crypto/dist/naie-crypto.user.js?v=4
 // @run-at       document-start
 // ==/UserScript==
 'use strict'

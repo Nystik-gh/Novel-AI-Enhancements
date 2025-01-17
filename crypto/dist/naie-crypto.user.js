@@ -14,9 +14,10 @@
     /** @type {NAIE} */
     let NAIE = wRef.NAIE_INSTANCE
 
-    const init = () => {
+    const init = async () => {
+        initializeNetworkHooks()
         if (NAIE) {
-            NAIE.CRYPTO = initNAIECrypto()
+            NAIE.CRYPTO = await initNAIECrypto()
         } else {
             console.warn('NAIE not initialized')
         }
