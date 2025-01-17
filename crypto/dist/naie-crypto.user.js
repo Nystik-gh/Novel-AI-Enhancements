@@ -146,6 +146,7 @@ const initSodium = async () => {
 /* ####### put.keystore.hooks.js ####### */
 
 const registerKeystoreHooks = () => {
+    console.log('registerKeystoreHooks')
     NAIE.NETWORK.manager.registerHook({
         id: 'keystore-put',
         priority: 10,
@@ -194,6 +195,7 @@ const registerKeystoreHooks = () => {
 /* ######### get.user.hooks.js ######### */
 
 const registerUserDataHooks = () => {
+    console.log('registerUserDataHooks')
     NAIE.NETWORK.manager.registerHook({
         id: 'user-data-get',
         priority: 10,

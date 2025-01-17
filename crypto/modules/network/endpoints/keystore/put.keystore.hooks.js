@@ -1,4 +1,5 @@
 const registerKeystoreHooks = () => {
+    console.log('registerKeystoreHooks')
     NAIE.NETWORK.manager.registerHook({
         id: 'keystore-put',
         priority: 10,

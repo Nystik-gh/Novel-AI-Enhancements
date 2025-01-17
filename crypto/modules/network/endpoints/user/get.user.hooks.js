@@ -1,4 +1,5 @@
 const registerUserDataHooks = () => {
+    console.log('registerUserDataHooks')
     NAIE.NETWORK.manager.registerHook({
         id: 'user-data-get',
         priority: 10,
