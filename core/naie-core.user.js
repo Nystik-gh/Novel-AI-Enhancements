@@ -16,7 +16,7 @@
 // @require      ./modules/naie-object.js
 // @author       Nystik (https://gitlab.com/Nystik)
 // ==/UserScript==
-'use strict'
+
 ;(() => {
     const wRef = unsafeWindow ? unsafeWindow : window
 

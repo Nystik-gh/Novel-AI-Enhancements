@@ -10,7 +10,7 @@ const API_BASE_URL = 'https://api.novelai.net'
  */
 const network_createNetworkManager = () => {
     const hooks = []
-    const nativeFetch = xhook.fetch.bind(window)
+    const nativeFetch = xhook.fetch.bind(wRef)
 
     /**
      * Gets the matching hooks for a given URL and method
@@ -46,7 +46,7 @@ const network_createNetworkManager = () => {
         if (!request.method || request.url.startsWith('data:')) {
             return nativeFetch(request.url, request)
         }
-        console.log('processRequest', request.url, request.method)
+
         const matchingHooks = getMatchingHooks(hooks, request.url, request.method)
 
         // Chain request modifications
@@ -77,19 +77,11 @@ const network_createNetworkManager = () => {
         return modifiedResponse
     }
 
-    let preflightResolver
-    const internalPreflightPromise = new Promise((resolve) => {
-        preflightResolver = resolve
-    })
-
-    const markPreflightComplete = () => {
-        preflightResolver()
-    }
-
+    /**
+     * Initializes the network manager by setting up the xhook
+     */
     const initialize = () => {
-        console.log('initialize xhook', xhook)
         xhook.before((request, callback) => {
-            console.log('xhook before', request.url)
             processRequest(
                 hooks,
                 nativeFetch,
