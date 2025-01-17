@@ -1572,25 +1572,18 @@ const network_createNetworkManager = () => {
     }
 
     const initialize = () => {
-        console.log('initialize xhook')
+        console.log('initialize xhook', xhook)
         xhook.before((request, callback) => {
-            console.log('xhook before')
-
-            // Wait for internal preflight to complete
-            console.log('waiting for internal preflight, deferring request')
-            internalPreflightPromise.then(() => {
-                console.log('internal preflight complete')
-
-                processRequest(
-                    hooks,
-                    nativeFetch,
-                )(request)
-                    .then(callback)
-                    .catch((error) => {
-                        LOGGING_UTILS.getLogger().error('Hook processing error:', error)
-                        nativeFetch(request.url, request).then(callback)
-                    })
-            })
+            console.log('xhook before', request.url)
+            processRequest(
+                hooks,
+                nativeFetch,
+            )(request)
+                .then(callback)
+                .catch((error) => {
+                    LOGGING_UTILS.getLogger().error('Hook processing error:', error)
+                    nativeFetch(request.url, request).then(callback)
+                })
         })
     }
 
@@ -1632,7 +1625,6 @@ const network_createNetworkManager = () => {
             if (hook) hook.enabled = false
         },
         initialize,
-        markPreflightComplete,
         API_BASE_URL,
     }
 }
@@ -2056,8 +2048,6 @@ const registerCoreInit = () => {
             NAIE_SERVICES.modalObserver = naie_initModalObserver()
             await controls_initializeTemplates()
             NAIE_SERVICES.statusIndicator = INDICATOR_UTILS.createNAIEIndicator()
-            // Mark network manager as ready to process requests
-            NETWORK_UTILS.manager.markPreflightComplete()
         },
     )
 }
