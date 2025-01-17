@@ -6,7 +6,7 @@
 // @description  Core library
 // @author       Nystik (https://gitlab.com/Nystik)
 // ==/UserScript==
-
+'use strict'
 ;(() => {
     const wRef = unsafeWindow ? unsafeWindow : window
 
@@ -1528,7 +1528,7 @@ const network_createNetworkManager = () => {
         if (!request.method || request.url.startsWith('data:')) {
             return nativeFetch(request.url, request)
         }
-
+        console.log('processRequest', request.url, request.method)
         const matchingHooks = getMatchingHooks(hooks, request.url, request.method)
 
         // Chain request modifications

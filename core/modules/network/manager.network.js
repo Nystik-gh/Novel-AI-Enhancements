@@ -46,7 +46,7 @@ const network_createNetworkManager = () => {
         if (!request.method || request.url.startsWith('data:')) {
             return nativeFetch(request.url, request)
         }
-
+        console.log('processRequest', request.url, request.method)
         const matchingHooks = getMatchingHooks(hooks, request.url, request.method)
 
         // Chain request modifications
