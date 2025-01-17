@@ -279,7 +279,7 @@ const CRYPTO_UTILS = {
     decryptObject,
     decompressDecryptObject,
     encryptObject,
-    compressEncryptObject,
+    encryptCompressObject,
 }
 
 initNAIECrypto = async () => {

@@ -10,9 +10,13 @@
 // @grant        GM.setValue
 // @grant        GM.addStyle
 // @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/main/core/dist/naie-core.user.js
+// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/crypto/dist/naie-crypto.user.js
 // @run-at       document-start
 // ==/UserScript==
 'use strict'
+// state vars
+let keystoreState = null
+let storyImagesState = null
 
 let scriptInit = false
 const wRef = unsafeWindow ? unsafeWindow : window
@@ -36,54 +40,6 @@ const init = () => {
         }
     })
 }
-
-/* ####### put.keystore.hooks.js ####### */
-
-const registerKeystoreHooks = () => {
-    NAIE.NETWORK.manager.registerHook({
-        id: 'keystore-put',
-        priority: 10,
-        urlPattern: '/user/keystore',
-        methods: ['PUT'],
-        modifyRequest: async (request) => {
-            console.log('intercept keystore put (update keystore)')
-
-            const options = NAIE.NETWORK.getFetchOptions(request)
-            const body = JSON.parse(options.body)
-
-            console.log(body)
-
-            return {
-                type: 'request',
-                value: request,
-            }
-        },
-        modifyResponse: async (response, request) => {
-            console.log('intercept keystore put (update keystore)')
-
-            try {
-                const copy = response.clone()
-                let data = await copy.json()
-
-                console.log(data)
-
-                const modifiedData = data
-
-                return new Response(JSON.stringify(modifiedData), {
-                    status: response.status,
-                    statusText: response.statusText,
-                    headers: response.headers,
-                })
-            } catch (e) {
-                return response
-            }
-        },
-    })
-}
-
-
-/* ---- end of put.keystore.hooks.js --- */
-
 
 /* ##### get.storycontent.hooks.js ##### */
 
@@ -172,36 +128,6 @@ const registerStorycontentHooks = () => {
 /* ---- end of storycontent.hooks.js --- */
 
 
-/* ######### get.user.hooks.js ######### */
-
-const registerUserDataHooks = () => {
-    NAIE.NETWORK.manager.registerHook({
-        id: 'user-data-get',
-        priority: 10,
-        urlPattern: '/user/data',
-        methods: ['GET'],
-        modifyResponse: async (response, request) => {
-            console.log('intercept data get (here we grab initial keystore)')
-            const copy = response.clone()
-            let data = await copy.json()
-
-            console.log(data)
-
-            const modifiedData = data
-
-            return new Response(JSON.stringify(modifiedData), {
-                status: response.status,
-                statusText: response.statusText,
-                headers: response.headers,
-            })
-        },
-    })
-}
-
-
-/* ------ end of get.user.hooks.js ----- */
-
-
 /* ####### register.preflight.js ####### */
 
 const registerPreflight = async () => {
@@ -215,6 +141,80 @@ const registerPreflight = async () => {
 /* ---- end of register.preflight.js --- */
 
 
+/* ########## images.state.js ########## */
+
+/** @returns {StoryImageState} */
+const createStoryImageState = () => {
+    const storyImageMap = new Map()
+
+    const getMap = () => storyImageMap
+
+    const getStoryImages = (storyId) => {
+        return storyImageMap.get(storyId) || { images: [] }
+    }
+
+    /**
+     * @param {string} storyId
+     */
+    const deleteStoryImages = (storyId) => {
+        if (!storyImageMap.has(storyId)) {
+            return
+        }
+        storyImageMap.delete(storyId)
+    }
+
+    const addImageToStory = (storyId, imageData) => {
+        if (!storyImageMap.has(storyId)) {
+            storyImageMap.set(storyId, { images: [imageData] })
+            return
+        }
+        const currentMeta = storyImageMap.get(storyId)
+        storyImageMap.set(storyId, {
+            images: [...currentMeta.images, imageData],
+        })
+    }
+
+    const removeImageFromStory = (storyId, imageId) => {
+        if (!storyImageMap.has(storyId)) {
+            return
+        }
+
+        const currentMeta = storyImageMap.get(storyId)
+        storyImageMap.set(storyId, {
+            images: currentMeta.images.filter((img) => img.id !== imageId),
+        })
+    }
+
+    const updateImageInStory = (storyId, imageId, newImageData) => {
+        if (!storyImageMap.has(storyId)) {
+            return
+        }
+
+        const currentMeta = storyImageMap.get(storyId)
+        storyImageMap.set(storyId, {
+            images: currentMeta.images.map((img) => {
+                if (img.id === imageId) {
+                    return { ...img, ...newImageData }
+                }
+                return img
+            }),
+        })
+    }
+
+    return {
+        getMap,
+        getStoryImages,
+        deleteStoryImages,
+        addImageToStory,
+        removeImageFromStory,
+        updateImageInStory,
+    }
+}
+
+
+/* ------- end of images.state.js ------ */
+
+
 /* ########### network.mod.js ########## */
 
 /**
@@ -225,8 +225,6 @@ const registerPreflight = async () => {
 const initializeNetworkHooks = () => {
     // Initialize hooks for each endpoint group
     registerStorycontentHooks()
-    registerUserDataHooks()
-    registerKeystoreHooks()
 }
 
 
