@@ -1563,7 +1563,9 @@ const network_createNetworkManager = () => {
      * Initializes the network manager by setting up the xhook
      */
     const initialize = () => {
+        console.log('initialize network hooks')
         xhook.before((request, callback) => {
+            console.log('xhook before')
             processRequest(
                 hooks,
                 nativeFetch,
