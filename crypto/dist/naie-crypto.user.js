@@ -328,10 +328,6 @@ const initializeNetworkHooks = () => {
 
 
 
-    // Only initialize on the stories page
-    if (window.location.pathname.startsWith('/stories')) {
-        scriptInit = false
-        init()
-    }
+    init()
 })()
 
