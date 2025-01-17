@@ -31,9 +31,6 @@
             logger.info('creating NAIE instance')
             wRef.NAIE_INSTANCE = createNAIEInstance()
 
-            // Need to create hooks immediately
-            NERWORK_UTILS.manager.initialize()
-
             // Start waiting for scripts to register and become ready
             internal_startWaitingForScripts()
         } else {
