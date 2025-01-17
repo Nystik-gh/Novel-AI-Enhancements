@@ -1,0 +1,1 @@
+import '../core/naie-core.d.ts'

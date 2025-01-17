@@ -1,0 +1,4 @@
+const initializeNetworkHooks = () => {
+    registerUserDataHooks()
+    registerKeystoreHooks()
+}

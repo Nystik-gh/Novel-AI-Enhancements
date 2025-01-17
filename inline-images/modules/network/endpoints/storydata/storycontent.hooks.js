@@ -1,0 +1,4 @@
+const registerStorycontentHooks = () => {
+    registerStorycontentGetHooks()
+    registerStorycontentPatchHooks()
+}
