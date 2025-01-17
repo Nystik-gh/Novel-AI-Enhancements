@@ -88,23 +88,24 @@ const network_createNetworkManager = () => {
 
     const initialize = () => {
         console.log('initialize xhook')
-        xhook.before(async (request, callback) => {
+        xhook.before((request, callback) => {
             console.log('xhook before')
 
             // Wait for internal preflight to complete
             console.log('waiting for internal preflight, deferring request')
-            await internalPreflightPromise
-            console.log('internal preflight complete')
+            internalPreflightPromise.then(() => {
+                console.log('internal preflight complete')
 
-            processRequest(
-                hooks,
-                nativeFetch,
-            )(request)
-                .then(callback)
-                .catch((error) => {
-                    LOGGING_UTILS.getLogger().error('Hook processing error:', error)
-                    nativeFetch(request.url, request).then(callback)
-                })
+                processRequest(
+                    hooks,
+                    nativeFetch,
+                )(request)
+                    .then(callback)
+                    .catch((error) => {
+                        LOGGING_UTILS.getLogger().error('Hook processing error:', error)
+                        nativeFetch(request.url, request).then(callback)
+                    })
+            })
         })
     }
 
