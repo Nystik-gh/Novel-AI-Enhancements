@@ -9,9 +9,11 @@ const registerKeystoreHooks = () => {
             console.log('intercept keystore put (update keystore)')
 
             const options = NAIE.NETWORK.getFetchOptions(request)
-            const body = JSON.parse(options.body)
 
-            console.log(body)
+            /** @type {UserKeystore} */
+            const keystore = JSON.parse(options.body)
+
+            keystoreState.setKeystore(keystore)
 
             return {
                 type: 'request',
@@ -23,17 +25,13 @@ const registerKeystoreHooks = () => {
 
             try {
                 const copy = response.clone()
-                let data = await copy.json()
 
-                console.log(data)
+                /** @type {UserKeystore} */
+                let keystore = await copy.json()
 
-                const modifiedData = data
+                keystoreState.setKeystore(keystore)
 
-                return new Response(JSON.stringify(modifiedData), {
-                    status: response.status,
-                    statusText: response.statusText,
-                    headers: response.headers,
-                })
+                return response
             } catch (e) {
                 return response
             }

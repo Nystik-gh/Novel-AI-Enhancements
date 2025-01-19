@@ -1,3 +1,4 @@
+/** @type {KeystoreState} */
 let keystoreState = null
 
 /** @type {NAIECrypto} */

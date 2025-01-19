@@ -1,3 +1,6 @@
+import '../types/novel-ai/userdata.d.ts'
+import '../types/novel-ai/keystore.d.ts'
+
 interface EncryptionObject {
     meta: string;
     data: string;
@@ -20,5 +23,13 @@ type EncryptCompressObject = (obj: EncryptionObject, keys: KeyMap) => Promise<st
 type DecompressDecryptObject = (obj: DecryptionObject, keys: KeyMap) => Promise<any>;
 
 interface NAIECrypto {
-    init: () => {} 
+    sodiumInstance: any;
+    decryptObject: (data: any) => Promise<any>;
+    decompressDecryptObject: (data: any) => Promise<any>;
+    encryptObject: (data: any) => Promise<any>;
+    encryptCompressObject: (data: any) => Promise<any>;
+}
+
+type NAIEWithCrypto = NAIE & {
+    CRYPTO: NAIECrypto
 }

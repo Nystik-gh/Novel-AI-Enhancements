@@ -1,1 +1,1 @@
-import '../core/naie-core.d.ts'
+import '../crypto/naie-crypto.d.ts'

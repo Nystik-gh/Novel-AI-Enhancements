@@ -12,15 +12,13 @@ const registerUserDataHooks = () => {
             /** @type {UserData} */
             let data = await copy.json()
 
-            console.log(data)
+            const keystore = data.keystore
+
+            keystoreState.setKeystore(keystore)
 
             const modifiedData = data
 
-            return new Response(JSON.stringify(modifiedData), {
-                status: response.status,
-                statusText: response.statusText,
-                headers: response.headers,
-            })
+            return response
         },
     })
 }

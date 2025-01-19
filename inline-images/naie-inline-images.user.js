@@ -11,7 +11,7 @@
 // @grant        GM_setValue
 // @require      ./modules/*
 // @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/main/core/dist/naie-core.user.js?v=2
-// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/crypto/dist/naie-crypto.user.js?v=6
+// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/crypto/dist/naie-crypto.user.js?v=7
 // @run-at       document-start
 // ==/UserScript==
 'use strict'
@@ -22,7 +22,7 @@ let storyImagesState = null
 let scriptInit = false
 const wRef = unsafeWindow ? unsafeWindow : window
 
-/** @type {NAIE} */
+/** @type {NAIEWithCrypto} */
 let NAIE = wRef.NAIE_INSTANCE
 
 const init = () => {

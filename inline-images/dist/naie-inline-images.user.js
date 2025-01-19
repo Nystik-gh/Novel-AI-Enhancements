@@ -21,7 +21,7 @@ let storyImagesState = null
 let scriptInit = false
 const wRef = unsafeWindow ? unsafeWindow : window
 
-/** @type {NAIE} */
+/** @type {NAIEWithCrypto} */
 let NAIE = wRef.NAIE_INSTANCE
 
 const init = () => {
@@ -54,7 +54,11 @@ const registerStorycontentGetHooks = () => {
             const copy = response.clone()
             let data = await copy.json()
 
-            console.log(data)
+            console.log('rawdata', data)
+
+            let decrypted = NAIE.CRYPTO.decompressDecryptObject(data)
+
+            console.log('decrypted', decrypted)
 
             const modifiedData = data
 
