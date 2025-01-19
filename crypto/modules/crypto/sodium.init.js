@@ -4,7 +4,6 @@ const initSodium = async () => {
     return new Promise((resolve, reject) => {
         unsafeWindow.sodium = {
             onload: function (sodium) {
-                console.log('sodium loaded', sodium)
                 resolve(sodium)
             },
         }

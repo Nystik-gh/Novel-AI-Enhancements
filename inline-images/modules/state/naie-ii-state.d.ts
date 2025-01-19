@@ -35,6 +35,13 @@ interface StoryImageState {
     getStoryImages: (storyId: string) => StoryImageMeta
 
     /**
+     * Sets image metadata for a specific story
+     * @param storyId - ID of the story to set images for
+     * @param imageMeta - Image metadata to set for the specified story
+     */
+    setStoryImages: (storyId: string, imageMeta: StoryImageMeta) => void
+
+    /**
      * Deletes all images associated with a story
      * @param storyId - ID of the story to delete images from
      */

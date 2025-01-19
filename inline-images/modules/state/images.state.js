@@ -8,9 +8,10 @@ const createStoryImageState = () => {
         return storyImageMap.get(storyId) || { images: [] }
     }
 
-    /**
-     * @param {string} storyId
-     */
+    const setStoryImages = (storyId, imageMeta) => {
+        storyImageMap.set(storyId, imageMeta)
+    }
+
     const deleteStoryImages = (storyId) => {
         if (!storyImageMap.has(storyId)) {
             return
@@ -59,6 +60,7 @@ const createStoryImageState = () => {
     return {
         getMap,
         getStoryImages,
+        setStoryImages,
         deleteStoryImages,
         addImageToStory,
         removeImageFromStory,

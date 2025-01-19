@@ -7,15 +7,18 @@ const registerStorycontentPatchHooks = () => {
         modifyRequest: async (request) => {
             console.log('intercept storydata patch (inject images into lorebook')
             const options = NAIE.NETWORK.getFetchOptions(request)
+
+            /** @type {EntityWrapper} */
             const body = JSON.parse(options.body)
-            console.log(body)
+            console.log('original body', body)
 
             //TODO: if memory contains script signature, block request and trigger second save by removing signature from memory input
 
             //TODO: inject images, if lorebook entry missing create it.
+            const modifiedBody = await saveImagesToLorebook(body, storyImagesState.getStoryImages(body.meta))
 
-            options.body = JSON.stringify(body)
-
+            options.body = JSON.stringify(modifiedBody)
+            console.log('modified body', modifiedBody)
             return {
                 type: 'request',
                 value: new Request(request.url, options),
@@ -24,16 +27,19 @@ const registerStorycontentPatchHooks = () => {
         modifyResponse: async (response, request) => {
             console.log('intercept storydata patch (load images from saved lorebook)')
             const copy = response.clone()
+
+            /** @type {EntityWrapper} */
             let data = await copy.json()
-            console.log(data)
 
-            const modifiedData = data
+            console.log('rawdata', data)
 
-            return new Response(JSON.stringify(modifiedData), {
-                status: response.status,
-                statusText: response.statusText,
-                headers: response.headers,
-            })
+            const imageStore = await loadImagesFromLorebook(data)
+
+            storyImagesState.setStoryImages(data.meta, imageStore)
+
+            console.log('story image data', imageStore, storyImagesState.getStoryImages(data.meta))
+
+            return response
         },
     })
 }

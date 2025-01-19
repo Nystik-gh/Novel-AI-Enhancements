@@ -16,6 +16,7 @@
 // ==/UserScript==
 'use strict'
 // state vars
+/** @type {StoryImageState} */
 let storyImagesState = null
 
 let scriptInit = false
