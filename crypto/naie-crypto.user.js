@@ -4,6 +4,7 @@
 // @version      1.0.0
 // @description  Cryptography functions
 // @author       Nystik
+// @require      ./lib/*
 // @require      ./modules/*
 // @run-at       document-start
 // ==/UserScript==
