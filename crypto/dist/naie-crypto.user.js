@@ -284,7 +284,7 @@ const CRYPTO_UTILS = {
 }
 
 const initNAIECrypto = async () => {
-    keystoreState = createKeystoreState
+    keystoreState = createKeystoreState()
     CRYPTO_UTILS.sodiumInstance = await initSodium()
 
     return CRYPTO_UTILS
