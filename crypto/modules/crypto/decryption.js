@@ -1,7 +1,7 @@
 const decryptObject = async (obj) => {
     const sodium = CRYPTO_UTILS.sodiumInstance
 
-    const key = keystoreState.getKey(obj.meta)
+    const key = await keystoreState.getKey(obj.meta)
     const data = Uint8Array.from(atob(obj.data), (c) => c.charCodeAt(0))
 
     const nonce = data.slice(0, sodium.crypto_secretbox_NONCEBYTES)
@@ -15,8 +15,7 @@ const decryptObject = async (obj) => {
 const decompressDecryptObject = async (obj) => {
     const sodium = CRYPTO_UTILS.sodiumInstance
 
-    const key = keystoreState.getKey(obj.meta)
-    console.log('meta', obj.meta, 'key', key)
+    const key = await keystoreState.getKey(obj.meta)
     const data = Uint8Array.from(atob(obj.data), (c) => c.charCodeAt(0))
 
     // Skip first 16 bytes (compression prefix)

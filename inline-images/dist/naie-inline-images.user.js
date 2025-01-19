@@ -9,13 +9,12 @@
 // @grant        GM_xmlhttpRequest
 // @grant        GM_getValue
 // @grant        GM_setValue
-// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/main/core/dist/naie-core.user.js?v=2
-// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/crypto/dist/naie-crypto.user.js?v=6
+// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/core/dist/naie-core.user.js?version=9
+// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/crypto/dist/naie-crypto.user.js?version=3
 // @run-at       document-start
 // ==/UserScript==
 'use strict'
 // state vars
-let keystoreState = null
 let storyImagesState = null
 
 let scriptInit = false
@@ -56,7 +55,7 @@ const registerStorycontentGetHooks = () => {
 
             console.log('rawdata', data)
 
-            let decrypted = NAIE.CRYPTO.decompressDecryptObject(data)
+            let decrypted = await NAIE.CRYPTO.decompressDecryptObject(data)
 
             console.log('decrypted', decrypted)
 
@@ -71,7 +70,9 @@ const registerStorycontentGetHooks = () => {
     })
 }
 
+
 /* -- end of get.storycontent.hooks.js - */
+
 
 /* #### patch.storycontent.hooks.js #### */
 
@@ -115,7 +116,9 @@ const registerStorycontentPatchHooks = () => {
     })
 }
 
+
 /* - end of patch.storycontent.hooks.js  */
+
 
 /* ####### storycontent.hooks.js ####### */
 
@@ -124,7 +127,9 @@ const registerStorycontentHooks = () => {
     registerStorycontentPatchHooks()
 }
 
+
 /* ---- end of storycontent.hooks.js --- */
+
 
 /* ####### register.preflight.js ####### */
 
@@ -135,7 +140,9 @@ const registerPreflight = async () => {
     })
 }
 
+
 /* ---- end of register.preflight.js --- */
+
 
 /* ########## images.state.js ########## */
 
@@ -207,7 +214,9 @@ const createStoryImageState = () => {
     }
 }
 
+
 /* ------- end of images.state.js ------ */
+
 
 /* ########### network.mod.js ########## */
 
@@ -221,10 +230,14 @@ const initializeNetworkHooks = () => {
     registerStorycontentHooks()
 }
 
+
 /* ------- end of network.mod.js ------- */
+
+
 
 // Only initialize on the stories page
 if (window.location.pathname.startsWith('/stories')) {
     scriptInit = false
     init()
 }
+

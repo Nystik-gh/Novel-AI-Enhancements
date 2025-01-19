@@ -1,7 +1,7 @@
 const encryptObject = async (obj) => {
     const sodium = CRYPTO_UTILS.sodiumInstance
 
-    const key = keystoreState.getKey(obj.meta)
+    const key = await keystoreState.getKey(obj.meta)
     const nonce = sodium.crypto_generichash(24, sodium.from_string(obj.meta))
 
     const encrypted = sodium.crypto_secretbox_easy(sodium.from_string(JSON.stringify(obj.data)), nonce, new Uint8Array(key))
@@ -13,7 +13,7 @@ const encryptObject = async (obj) => {
 const encryptCompressObject = async (obj) => {
     const sodium = CRYPTO_UTILS.sodiumInstance
 
-    const key = keystoreState.getKey(obj.meta)
+    const key = await keystoreState.getKey(obj.meta)
     const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
 
     // Convert data to string and compress

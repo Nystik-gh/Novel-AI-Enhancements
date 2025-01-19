@@ -14,7 +14,6 @@ const createKeystoreState = () => {
 
     const getKey = async (keyId) => {
         const keys = await decryptKeyStore(keystoreData.keystore)
-        console.log('keys', keys)
         return keys[keyId]
     }
 

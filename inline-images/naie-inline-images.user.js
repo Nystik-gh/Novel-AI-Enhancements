@@ -10,13 +10,12 @@
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @require      ./modules/*
-// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/core/dist/naie-core.user.js?version=8
-// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/crypto/dist/naie-crypto.user.js?version=2
+// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/core/dist/naie-core.user.js?version=9
+// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/crypto/dist/naie-crypto.user.js?version=3
 // @run-at       document-start
 // ==/UserScript==
 'use strict'
 // state vars
-let keystoreState = null
 let storyImagesState = null
 
 let scriptInit = false

@@ -31,7 +31,7 @@
 const decryptObject = async (obj) => {
     const sodium = CRYPTO_UTILS.sodiumInstance
 
-    const key = keystoreState.getKey(obj.meta)
+    const key = await keystoreState.getKey(obj.meta)
     const data = Uint8Array.from(atob(obj.data), (c) => c.charCodeAt(0))
 
     const nonce = data.slice(0, sodium.crypto_secretbox_NONCEBYTES)
@@ -45,8 +45,7 @@ const decryptObject = async (obj) => {
 const decompressDecryptObject = async (obj) => {
     const sodium = CRYPTO_UTILS.sodiumInstance
 
-    const key = keystoreState.getKey(obj.meta)
-    console.log('meta', obj.meta, 'key', key)
+    const key = await keystoreState.getKey(obj.meta)
     const data = Uint8Array.from(atob(obj.data), (c) => c.charCodeAt(0))
 
     // Skip first 16 bytes (compression prefix)
@@ -77,7 +76,7 @@ const decompressDecryptObject = async (obj) => {
 const encryptObject = async (obj) => {
     const sodium = CRYPTO_UTILS.sodiumInstance
 
-    const key = keystoreState.getKey(obj.meta)
+    const key = await keystoreState.getKey(obj.meta)
     const nonce = sodium.crypto_generichash(24, sodium.from_string(obj.meta))
 
     const encrypted = sodium.crypto_secretbox_easy(sodium.from_string(JSON.stringify(obj.data)), nonce, new Uint8Array(key))
@@ -89,7 +88,7 @@ const encryptObject = async (obj) => {
 const encryptCompressObject = async (obj) => {
     const sodium = CRYPTO_UTILS.sodiumInstance
 
-    const key = keystoreState.getKey(obj.meta)
+    const key = await keystoreState.getKey(obj.meta)
     const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
 
     // Convert data to string and compress
@@ -241,7 +240,6 @@ const createKeystoreState = () => {
 
     const getKey = async (keyId) => {
         const keys = await decryptKeyStore(keystoreData.keystore)
-        console.log('keys', keys)
         return keys[keyId]
     }
 
