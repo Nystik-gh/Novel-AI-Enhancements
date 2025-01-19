@@ -71,9 +71,7 @@ const registerStorycontentGetHooks = () => {
     })
 }
 
-
 /* -- end of get.storycontent.hooks.js - */
-
 
 /* #### patch.storycontent.hooks.js #### */
 
@@ -117,9 +115,7 @@ const registerStorycontentPatchHooks = () => {
     })
 }
 
-
 /* - end of patch.storycontent.hooks.js  */
-
 
 /* ####### storycontent.hooks.js ####### */
 
@@ -128,9 +124,7 @@ const registerStorycontentHooks = () => {
     registerStorycontentPatchHooks()
 }
 
-
 /* ---- end of storycontent.hooks.js --- */
-
 
 /* ####### register.preflight.js ####### */
 
@@ -141,9 +135,7 @@ const registerPreflight = async () => {
     })
 }
 
-
 /* ---- end of register.preflight.js --- */
-
 
 /* ########## images.state.js ########## */
 
@@ -215,9 +207,7 @@ const createStoryImageState = () => {
     }
 }
 
-
 /* ------- end of images.state.js ------ */
-
 
 /* ########### network.mod.js ########## */
 
@@ -231,14 +221,10 @@ const initializeNetworkHooks = () => {
     registerStorycontentHooks()
 }
 
-
 /* ------- end of network.mod.js ------- */
-
-
 
 // Only initialize on the stories page
 if (window.location.pathname.startsWith('/stories')) {
     scriptInit = false
     init()
 }
-

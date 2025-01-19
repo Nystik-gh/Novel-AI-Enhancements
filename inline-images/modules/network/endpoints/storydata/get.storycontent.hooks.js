@@ -11,7 +11,7 @@ const registerStorycontentGetHooks = () => {
 
             console.log('rawdata', data)
 
-            let decrypted = NAIE.CRYPTO.decompressDecryptObject(data)
+            let decrypted = await NAIE.CRYPTO.decompressDecryptObject(data)
 
             console.log('decrypted', decrypted)
 

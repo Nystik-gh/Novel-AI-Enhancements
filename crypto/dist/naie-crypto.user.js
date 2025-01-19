@@ -46,6 +46,7 @@ const decompressDecryptObject = async (obj) => {
     const sodium = CRYPTO_UTILS.sodiumInstance
 
     const key = keystoreState.getKey(obj.meta)
+    console.log('meta', obj.meta, 'key', key)
     const data = Uint8Array.from(atob(obj.data), (c) => c.charCodeAt(0))
 
     // Skip first 16 bytes (compression prefix)
@@ -240,6 +241,7 @@ const createKeystoreState = () => {
 
     const getKey = async (keyId) => {
         const keys = await decryptKeyStore(keystoreData.keystore)
+        console.log('keys', keys)
         return keys[keyId]
     }
 
