@@ -1,9 +1,23 @@
 let paragraphObserver = null
+let resizeObserver = null
 
 const initInlineImages = (proseMirror) => {
     console.log('Initializing inline images for editor')
     injectImageLayer()
     // TODO: Initialize drag-drop zones and image handling
+
+    // Set up resize observer
+    if (resizeObserver) {
+        resizeObserver.disconnect()
+    }
+    
+    resizeObserver = new ResizeObserver(() => {
+        console.log('Editor resized, reloading images and updating styles')
+        loadImagesFromState()
+        handleParagraphStyling(proseMirror)
+    })
+    
+    resizeObserver.observe(proseMirror)
 }
 
 const observeParagraphs = (proseMirror) => {
@@ -29,6 +43,11 @@ const destroyParagraphObserver = () => {
     if (paragraphObserver) {
         paragraphObserver.disconnect()
         paragraphObserver = null
+    }
+    
+    if (resizeObserver) {
+        resizeObserver.disconnect()
+        resizeObserver = null
     }
 }
 

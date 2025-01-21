@@ -156,11 +156,14 @@ const createControls = (container) => {
 
     // Lock button
     const lockButton = createLockButton(async () => {
+        const { index, offset } = findNearestParagraph(container)
+
         const imageRecord = {
             id: container.dataset.id,
             url: container.dataset.url,
             align: container.dataset.alignment,
-            offset: parseInt(container.style.top),
+            anchorIndex: index,
+            offset: offset,
             width: parseInt(container.style.width),
         }
 
@@ -205,6 +208,36 @@ const setContainerMode = (container, mode) => {
 
         // Remove interactions
         removeImageInteractions(container)
+    }
+}
+
+// Find nearest paragraph and calculate relative offset
+const findNearestParagraph = (container) => {
+    const proseMirror = document.querySelector('.ProseMirror')
+    const paragraphs = proseMirror.querySelectorAll('p')
+    const imageRect = container.getBoundingClientRect()
+    const imageTop = imageRect.top
+
+    let nearestIndex = 0
+    let nearestDistance = Infinity
+    let nearestTop = 0
+
+    paragraphs.forEach((p, i) => {
+        const rect = p.getBoundingClientRect()
+        const distance = Math.abs(rect.top - imageTop)
+        if (distance < nearestDistance) {
+            nearestDistance = distance
+            nearestIndex = i
+            nearestTop = rect.top
+        }
+    })
+
+    // Calculate relative offset from the nearest paragraph
+    const relativeOffset = imageTop - nearestTop
+
+    return {
+        index: nearestIndex,
+        offset: Math.round(relativeOffset),
     }
 }
 

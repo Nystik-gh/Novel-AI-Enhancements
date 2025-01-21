@@ -5,6 +5,8 @@ interface ImageRecord {
     id: string,
     url: string,
     align: string,
+    anchorHash: string,
+    anchorIndex: number,
     offset: number,
     width: number
 }

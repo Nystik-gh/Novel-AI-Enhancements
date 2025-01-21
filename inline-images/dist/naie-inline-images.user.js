@@ -10,7 +10,7 @@
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/core/dist/naie-core.user.js?version=9
-// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/crypto/dist/naie-crypto.user.js?version=4
+// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/crypto/dist/naie-crypto.user.js?version=5
 // @require      https://unpkg.com/interactjs/dist/interact.min.js
 // @run-at       document-start
 // ==/UserScript==
@@ -266,11 +266,14 @@ const createControls = (container) => {
 
     // Lock button
     const lockButton = createLockButton(async () => {
+        const { index, offset } = findNearestParagraph(container)
+
         const imageRecord = {
             id: container.dataset.id,
             url: container.dataset.url,
             align: container.dataset.alignment,
-            offset: parseInt(container.style.top),
+            anchorIndex: index,
+            offset: offset,
             width: parseInt(container.style.width),
         }
 
@@ -315,6 +318,36 @@ const setContainerMode = (container, mode) => {
 
         // Remove interactions
         removeImageInteractions(container)
+    }
+}
+
+// Find nearest paragraph and calculate relative offset
+const findNearestParagraph = (container) => {
+    const proseMirror = document.querySelector('.ProseMirror')
+    const paragraphs = proseMirror.querySelectorAll('p')
+    const imageRect = container.getBoundingClientRect()
+    const imageTop = imageRect.top
+
+    let nearestIndex = 0
+    let nearestDistance = Infinity
+    let nearestTop = 0
+
+    paragraphs.forEach((p, i) => {
+        const rect = p.getBoundingClientRect()
+        const distance = Math.abs(rect.top - imageTop)
+        if (distance < nearestDistance) {
+            nearestDistance = distance
+            nearestIndex = i
+            nearestTop = rect.top
+        }
+    })
+
+    // Calculate relative offset from the nearest paragraph
+    const relativeOffset = imageTop - nearestTop
+
+    return {
+        index: nearestIndex,
+        offset: Math.round(relativeOffset),
     }
 }
 
@@ -623,17 +656,45 @@ const loadImagesFromState = async () => {
     await NAIE.MISC.sleep(100)
 
     // Create array of promises for loading all images
-    const loadPromises = storyImages.images.map(async (imageData) => {
-        const container = await createImageContainer(imageData.url, imageData.width, imageData.offset, imageData.align)
+    const loadPromises = storyImages.images
+        .map(async (imageData) => {
+            // Get the target paragraph position
+            const proseMirror = document.querySelector('.ProseMirror')
+            const paragraphs = proseMirror.querySelectorAll('p')
+            const targetParagraph = paragraphs[imageData.anchorIndex]
 
-        // Override the generated ID with the stored one
-        container.dataset.id = imageData.id
+            console.log('targetParagraph', targetParagraph, imageData.anchorIndex)
 
-        // Append to image layer and set to locked mode
-        imageLayer.appendChild(container)
-        setContainerMode(container, 'locked')
-        return container
-    })
+            if (!targetParagraph) {
+                console.error('Target paragraph not found for image:', imageData.id)
+                return null
+            }
+
+            const paragraphRect = targetParagraph.getBoundingClientRect()
+            const editorRect = proseMirror.getBoundingClientRect()
+            const scrollTop = proseMirror.scrollTop
+
+            // Calculate position relative to the editor's top, accounting for scroll
+            const relativeTop = paragraphRect.top - editorRect.top + scrollTop
+            const absoluteOffset = relativeTop + (imageData.offset || 0)
+
+            console.log('paragraphRect', paragraphRect)
+            console.log('editorRect', editorRect)
+            console.log('scrollTop', scrollTop)
+            console.log('absoluteOffset', absoluteOffset)
+
+            // Create container with calculated absolute position
+            const container = await createImageContainer(imageData.url, imageData.width, absoluteOffset, imageData.align)
+
+            // Override the generated ID with the stored one
+            container.dataset.id = imageData.id
+
+            // Append to image layer and set to locked mode
+            imageLayer.appendChild(container)
+            setContainerMode(container, 'locked')
+            return container
+        })
+        .filter(Boolean) // Filter out any null containers from failed loads
 
     // Fire and forget loading - will trigger effect when all images are loaded
     Promise.all(loadPromises)
@@ -879,7 +940,7 @@ const showImageUrlModal = () => {
 
     const handleInsert = () => {
         if (input.value) {
-            addImageToLayer(input.value, 200, 0, 'right')
+            addImageToLayer(input.value, 30, 0, 'right')
             console.log('Insert image:', input.value)
         }
         overlay.remove()
@@ -1021,11 +1082,25 @@ const handleParagraphStyling = (proseMirror) => {
 /* ####### prosemirror.editor.js ####### */
 
 let paragraphObserver = null
+let resizeObserver = null
 
 const initInlineImages = (proseMirror) => {
     console.log('Initializing inline images for editor')
     injectImageLayer()
     // TODO: Initialize drag-drop zones and image handling
+
+    // Set up resize observer
+    if (resizeObserver) {
+        resizeObserver.disconnect()
+    }
+    
+    resizeObserver = new ResizeObserver(() => {
+        console.log('Editor resized, reloading images and updating styles')
+        loadImagesFromState()
+        handleParagraphStyling(proseMirror)
+    })
+    
+    resizeObserver.observe(proseMirror)
 }
 
 const observeParagraphs = (proseMirror) => {
@@ -1051,6 +1126,11 @@ const destroyParagraphObserver = () => {
     if (paragraphObserver) {
         paragraphObserver.disconnect()
         paragraphObserver = null
+    }
+    
+    if (resizeObserver) {
+        resizeObserver.disconnect()
+        resizeObserver = null
     }
 }
 

@@ -155,7 +155,7 @@ const showImageUrlModal = () => {
 
     const handleInsert = () => {
         if (input.value) {
-            addImageToLayer(input.value, 200, 0, 'right')
+            addImageToLayer(input.value, 30, 0, 'right')
             console.log('Insert image:', input.value)
         }
         overlay.remove()

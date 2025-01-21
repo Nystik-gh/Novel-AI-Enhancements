@@ -22,17 +22,45 @@ const loadImagesFromState = async () => {
     await NAIE.MISC.sleep(100)
 
     // Create array of promises for loading all images
-    const loadPromises = storyImages.images.map(async (imageData) => {
-        const container = await createImageContainer(imageData.url, imageData.width, imageData.offset, imageData.align)
+    const loadPromises = storyImages.images
+        .map(async (imageData) => {
+            // Get the target paragraph position
+            const proseMirror = document.querySelector('.ProseMirror')
+            const paragraphs = proseMirror.querySelectorAll('p')
+            const targetParagraph = paragraphs[imageData.anchorIndex]
 
-        // Override the generated ID with the stored one
-        container.dataset.id = imageData.id
+            console.log('targetParagraph', targetParagraph, imageData.anchorIndex)
 
-        // Append to image layer and set to locked mode
-        imageLayer.appendChild(container)
-        setContainerMode(container, 'locked')
-        return container
-    })
+            if (!targetParagraph) {
+                console.error('Target paragraph not found for image:', imageData.id)
+                return null
+            }
+
+            const paragraphRect = targetParagraph.getBoundingClientRect()
+            const editorRect = proseMirror.getBoundingClientRect()
+            const scrollTop = proseMirror.scrollTop
+
+            // Calculate position relative to the editor's top, accounting for scroll
+            const relativeTop = paragraphRect.top - editorRect.top + scrollTop
+            const absoluteOffset = relativeTop + (imageData.offset || 0)
+
+            console.log('paragraphRect', paragraphRect)
+            console.log('editorRect', editorRect)
+            console.log('scrollTop', scrollTop)
+            console.log('absoluteOffset', absoluteOffset)
+
+            // Create container with calculated absolute position
+            const container = await createImageContainer(imageData.url, imageData.width, absoluteOffset, imageData.align)
+
+            // Override the generated ID with the stored one
+            container.dataset.id = imageData.id
+
+            // Append to image layer and set to locked mode
+            imageLayer.appendChild(container)
+            setContainerMode(container, 'locked')
+            return container
+        })
+        .filter(Boolean) // Filter out any null containers from failed loads
 
     // Fire and forget loading - will trigger effect when all images are loaded
     Promise.all(loadPromises)
