@@ -53,18 +53,21 @@ const getImageDataUrl = (url) =>
         })
     })
 
-const createImageContainer = async (url, width = 200, y = 0, alignment = 'left') => {
+const createImageContainer = async (url, width = 30, y = 0, alignment = 'left') => {
     const container = document.createElement('div')
     container.className = 'naie-image-container'
-    container.style.width = `${width}px`
+    container.style.width = `${width}%`  // Use percentage for width
     container.style.top = `${y}px`
     container.dataset.alignment = alignment
     container.dataset.url = url
     container.dataset.id = crypto.randomUUID()
+    container.dataset.widthPercent = width.toString()
 
     const editor = document.querySelector('.ProseMirror')
     if (editor) {
-        const position = calculatePosition(alignment, width, editor.getBoundingClientRect().width)
+        const editorWidth = editor.getBoundingClientRect().width
+        const pixelWidth = (width / 100) * editorWidth
+        const position = calculatePosition(alignment, pixelWidth, editorWidth)
         Object.assign(container.style, position)
     }
 
@@ -101,7 +104,7 @@ const createImageContainer = async (url, width = 200, y = 0, alignment = 'left')
     })
 }
 
-const addImageToLayer = async (url, width = 200, y = 0, alignment = 'left', startLocked = false) => {
+const addImageToLayer = async (url, width = 30, y = 0, alignment = 'left', startLocked = false) => {
     const imageLayer = document.querySelector('.naie-image-layer')
     if (!imageLayer) {
         console.error('Image layer not found')

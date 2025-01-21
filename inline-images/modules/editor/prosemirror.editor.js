@@ -13,6 +13,7 @@ const observeParagraphs = (proseMirror) => {
 
     paragraphObserver = new MutationObserver(() => {
         // TODO: Handle paragraph mutations (image insertion, deletion, etc)
+        handleParagraphStyling(proseMirror)
         console.log('Paragraph mutation detected')
     })
 

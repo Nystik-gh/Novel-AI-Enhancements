@@ -58,19 +58,27 @@ const setupResizable = (container) => {
 
                 // Handle resize based on alignment
                 const maxWidth = target._safeBounds.width
+                const minWidthPercent = 10 // Minimum 10% width
+                const maxWidthPercent = 100 - ((PADDING * 2) / target._parentWidth) * 100 // Max width accounting for padding
 
                 if (event.edges.left || event.edges.right) {
-                    // Apply width constraints
-                    newWidth = Math.min(Math.max(newWidth, 50), maxWidth)
+                    // Convert pixel width to percentage
+                    let widthPercent = (newWidth / target._parentWidth) * 100
+                    widthPercent = Math.min(Math.max(widthPercent, minWidthPercent), maxWidthPercent)
+                    newWidth = (widthPercent / 100) * target._parentWidth
                 }
 
                 // Update width and position
                 const editor = document.querySelector('.ProseMirror')
                 if (editor) {
                     const position = calculatePosition(alignment, newWidth, target._parentWidth)
+                    const widthPercent = (newWidth / target._parentWidth) * 100
+
+                    // Store the percentage in the dataset for persistence
+                    target.dataset.widthPercent = widthPercent.toFixed(2)
 
                     // Apply new width and position
-                    target.style.width = `${newWidth}px`
+                    target.style.width = `${widthPercent}%`
                     Object.assign(target.style, position)
                 }
             },
@@ -80,7 +88,7 @@ const setupResizable = (container) => {
                 ratio: 'preserve',
             }),
         ],
-        inertia: true,
+        inertia: false,
     })
 }
 

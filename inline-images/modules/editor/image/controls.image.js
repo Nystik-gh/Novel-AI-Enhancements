@@ -60,7 +60,7 @@ const injectControlStyles = () => {
         .naie-image-container.locked .naie-controls {
             flex-direction: row-reverse;
             opacity: 0;
-            transition: opacity 0.2s;
+            transition: opacity 0.2s ease 300ms;
         }
 
         .naie-image-container.locked:hover .naie-controls {

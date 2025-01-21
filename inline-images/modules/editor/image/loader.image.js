@@ -38,6 +38,7 @@ const loadImagesFromState = async () => {
     Promise.all(loadPromises)
         .then((containers) => {
             console.log('All images loaded successfully:', containers.length)
+            handleParagraphStyling(document.querySelector('.ProseMirror'))
             // You can trigger additional actions here when all images are loaded
         })
         .catch((error) => {

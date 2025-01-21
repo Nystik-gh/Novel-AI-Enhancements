@@ -170,7 +170,7 @@ const injectControlStyles = () => {
         .naie-image-container.locked .naie-controls {
             flex-direction: row-reverse;
             opacity: 0;
-            transition: opacity 0.2s;
+            transition: opacity 0.2s ease 300ms;
         }
 
         .naie-image-container.locked:hover .naie-controls {
@@ -385,18 +385,21 @@ const getImageDataUrl = (url) =>
         })
     })
 
-const createImageContainer = async (url, width = 200, y = 0, alignment = 'left') => {
+const createImageContainer = async (url, width = 30, y = 0, alignment = 'left') => {
     const container = document.createElement('div')
     container.className = 'naie-image-container'
-    container.style.width = `${width}px`
+    container.style.width = `${width}%`  // Use percentage for width
     container.style.top = `${y}px`
     container.dataset.alignment = alignment
     container.dataset.url = url
     container.dataset.id = crypto.randomUUID()
+    container.dataset.widthPercent = width.toString()
 
     const editor = document.querySelector('.ProseMirror')
     if (editor) {
-        const position = calculatePosition(alignment, width, editor.getBoundingClientRect().width)
+        const editorWidth = editor.getBoundingClientRect().width
+        const pixelWidth = (width / 100) * editorWidth
+        const position = calculatePosition(alignment, pixelWidth, editorWidth)
         Object.assign(container.style, position)
     }
 
@@ -433,7 +436,7 @@ const createImageContainer = async (url, width = 200, y = 0, alignment = 'left')
     })
 }
 
-const addImageToLayer = async (url, width = 200, y = 0, alignment = 'left', startLocked = false) => {
+const addImageToLayer = async (url, width = 30, y = 0, alignment = 'left', startLocked = false) => {
     const imageLayer = document.querySelector('.naie-image-layer')
     if (!imageLayer) {
         console.error('Image layer not found')
@@ -518,19 +521,27 @@ const setupResizable = (container) => {
 
                 // Handle resize based on alignment
                 const maxWidth = target._safeBounds.width
+                const minWidthPercent = 10 // Minimum 10% width
+                const maxWidthPercent = 100 - ((PADDING * 2) / target._parentWidth) * 100 // Max width accounting for padding
 
                 if (event.edges.left || event.edges.right) {
-                    // Apply width constraints
-                    newWidth = Math.min(Math.max(newWidth, 50), maxWidth)
+                    // Convert pixel width to percentage
+                    let widthPercent = (newWidth / target._parentWidth) * 100
+                    widthPercent = Math.min(Math.max(widthPercent, minWidthPercent), maxWidthPercent)
+                    newWidth = (widthPercent / 100) * target._parentWidth
                 }
 
                 // Update width and position
                 const editor = document.querySelector('.ProseMirror')
                 if (editor) {
                     const position = calculatePosition(alignment, newWidth, target._parentWidth)
+                    const widthPercent = (newWidth / target._parentWidth) * 100
+
+                    // Store the percentage in the dataset for persistence
+                    target.dataset.widthPercent = widthPercent.toFixed(2)
 
                     // Apply new width and position
-                    target.style.width = `${newWidth}px`
+                    target.style.width = `${widthPercent}%`
                     Object.assign(target.style, position)
                 }
             },
@@ -540,7 +551,7 @@ const setupResizable = (container) => {
                 ratio: 'preserve',
             }),
         ],
-        inertia: true,
+        inertia: false,
     })
 }
 
@@ -609,7 +620,7 @@ const loadImagesFromState = async () => {
     // Clear existing images first
     imageLayer.querySelectorAll('.naie-image-container').forEach((container) => container.remove())
 
-    await NAIE.MISC.sleep(200)
+    await NAIE.MISC.sleep(100)
 
     // Create array of promises for loading all images
     const loadPromises = storyImages.images.map(async (imageData) => {
@@ -628,6 +639,7 @@ const loadImagesFromState = async () => {
     Promise.all(loadPromises)
         .then((containers) => {
             console.log('All images loaded successfully:', containers.length)
+            handleParagraphStyling(document.querySelector('.ProseMirror'))
             // You can trigger additional actions here when all images are loaded
         })
         .catch((error) => {
@@ -955,6 +967,57 @@ const setupImageButtonObserver = () => {
 /* ---- end of imagebutton.editor.js --- */
 
 
+/* ######## paragraphs.editor.js ####### */
+
+const handleParagraphStyling = (proseMirror) => {
+    let styleTag = document.querySelector('style[data-naie-image-positions]')
+
+    // Create style tag if it doesn't exist
+    if (!styleTag) {
+        styleTag = document.createElement('style')
+        styleTag.setAttribute('data-naie-image-positions', 'true')
+        document.head.appendChild(styleTag)
+    }
+
+    // Clear existing styles
+    styleTag.innerHTML = ''
+
+    const containers = document.querySelectorAll('.naie-image-container') // Outer loop for containers
+
+    containers.forEach((container) => {
+        const image = container.querySelector('img')
+        // Wait for the image to be loaded before checking its dimensions
+        image.onload = () => {
+            const imageRect = image.getBoundingClientRect()
+            const imageWidthPercent = container.dataset.widthPercent
+
+            const paragraphs = proseMirror.querySelectorAll('p') // Inner loop for paragraphs
+
+            paragraphs.forEach((p, i) => {
+                const rect = p.getBoundingClientRect()
+
+                // Check if the <p> intersects with the image
+                const intersects = !(rect.top > imageRect.bottom || rect.bottom < imageRect.top)
+
+                if (intersects) {
+                    // Add CSS for this specific <p> tag by targeting nth-child
+                    const nthChildSelector = `.ProseMirror p:nth-child(${i + 1})`
+                    styleTag.innerHTML += `${nthChildSelector} { width: calc(${100 - imageWidthPercent}% - 4rem); background: teal; }\n`
+                }
+            })
+        }
+
+        // If the image is already loaded, trigger the onload function manually
+        if (image.complete) {
+            image.onload() // Trigger it immediately if the image is cached or already loaded
+        }
+    })
+}
+
+
+/* ---- end of paragraphs.editor.js ---- */
+
+
 /* ####### prosemirror.editor.js ####### */
 
 let paragraphObserver = null
@@ -972,6 +1035,7 @@ const observeParagraphs = (proseMirror) => {
 
     paragraphObserver = new MutationObserver(() => {
         // TODO: Handle paragraph mutations (image insertion, deletion, etc)
+        handleParagraphStyling(proseMirror)
         console.log('Paragraph mutation detected')
     })
 
