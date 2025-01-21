@@ -10,7 +10,7 @@
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/core/dist/naie-core.user.js?version=9
-// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/crypto/dist/naie-crypto.user.js?version=6
+// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/crypto/dist/naie-crypto.user.js?version=8
 // @require      https://unpkg.com/interactjs/dist/interact.min.js
 // @run-at       document-start
 // ==/UserScript==
@@ -1073,7 +1073,15 @@ const handleParagraphStyling = (proseMirror) => {
         const image = container.querySelector('img')
         // Wait for the image to be loaded before checking its dimensions
         image.onload = () => {
+            const proseMirror = document.querySelector('.ProseMirror')
+            const editorRect = proseMirror.getBoundingClientRect()
+            const scrollTop = proseMirror.scrollTop
+            
             const imageRect = image.getBoundingClientRect()
+            // Get image position relative to editor, accounting for scroll
+            const imageTop = imageRect.top - editorRect.top + scrollTop
+            const imageBottom = imageRect.bottom - editorRect.top + scrollTop
+            
             const imageWidthPercent = container.dataset.widthPercent
             const alignment = container.dataset.alignment || 'left'
 
@@ -1081,25 +1089,34 @@ const handleParagraphStyling = (proseMirror) => {
 
             paragraphs.forEach((p, i) => {
                 const rect = p.getBoundingClientRect()
+                // Get paragraph position relative to editor, accounting for scroll
+                const paragraphTop = rect.top - editorRect.top + scrollTop
+                const paragraphBottom = rect.bottom - editorRect.top + scrollTop
 
                 // For proper intersection, we need to check if one rectangle is not entirely
                 // above or below the other. This is the correct way to check for overlap.
                 const verticalOverlap = !(
                     (
-                        rect.bottom < imageRect.top || // paragraph ends before image starts
-                        rect.top > imageRect.bottom
-                    ) // paragraph starts after image ends
+                        paragraphBottom < imageTop || // paragraph ends before image starts
+                        paragraphTop > imageBottom    // paragraph starts after image ends
+                    )
                 )
 
                 console.log(`Paragraph ${i + 1} rect:`, {
-                    top: rect.top,
-                    bottom: rect.bottom,
+                    top: paragraphTop,
+                    bottom: paragraphBottom,
                     height: rect.height,
+                    originalTop: rect.top,
+                    originalBottom: rect.bottom,
+                    scrollTop
                 })
                 console.log(`Image rect:`, {
-                    top: imageRect.top,
-                    bottom: imageRect.bottom,
+                    top: imageTop,
+                    bottom: imageBottom,
                     height: imageRect.height,
+                    originalTop: imageRect.top,
+                    originalBottom: imageRect.bottom,
+                    scrollTop
                 })
                 console.log(`Overlap:`, verticalOverlap)
 

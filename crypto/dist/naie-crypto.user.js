@@ -249,25 +249,25 @@ const createKeystoreState = () => {
     }
 
     const getAuthToken = () => {
-        const sessionData = JSON.parse(localStorage.getItem("session"))
+        const sessionData = JSON.parse(localStorage.getItem('session'))
         return sessionData.auth_token
     }
 
     const fetchKeystoreManually = async () => {
         try {
             const authToken = getAuthToken()
-            const response = await fetch(`${NAIE.API_URL}/user/keystore`, {
+            const response = await fetch(`${API_BASE_URL}/user/keystore`, {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${authToken}`,
-                    'Content-Type': 'application/json'
-                }
+                    Authorization: `Bearer ${authToken}`,
+                    'Content-Type': 'application/json',
+                },
             })
-            
+
             if (!response.ok) {
                 throw new Error('Failed to fetch keystore')
             }
-            
+
             const data = await response.json()
             if (data) {
                 keystoreData = data
@@ -288,7 +288,7 @@ const createKeystoreState = () => {
                 throw new Error('Failed to fetch keystore')
             }
         }
-        
+
         const keys = await decryptKeyStore(keystoreData.keystore)
         return keys[keyId]
     }
