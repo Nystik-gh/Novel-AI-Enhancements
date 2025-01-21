@@ -42,7 +42,7 @@ const getOrCreateImageStore = (lorebook) => {
 const loadImagesFromLorebook = async (entityWrapper) => {
     try {
         /** @type {StoryContent} */
-        let decrypted = await NAIE.CRYPTO.decompressDecryptObject(entityWrapper.data)
+        let decrypted = await NAIE.CRYPTO.decompressDecryptObject(entityWrapper)
 
         const imageStore = findImageStoreEntry(decrypted.lorebook)
         if (!imageStore) {
@@ -62,6 +62,27 @@ const loadImagesFromLorebook = async (entityWrapper) => {
 }
 
 /**
+ * Updates the lorebook images
+ * @param {StoryContent} decrypted - The decrypted lorebook content
+ * @param {StoryImageMeta} imageMeta - The image metadata to save
+ * @returns {StoryContent} The updated lorebook content
+ */
+const updateLorebookImages = (decrypted, imageMeta) => {
+    // If there are no images, remove any existing image store
+    if (!imageMeta.images?.length) {
+        const existingStore = findImageStoreEntry(decrypted.lorebook)
+        if (existingStore) {
+            decrypted.lorebook.entries = decrypted.lorebook.entries.filter((e) => e.displayName !== NAIE_IMAGE_STORE_ENTRY_NAME)
+        }
+    } else {
+        // Only create/update image store if we have images
+        const imageStore = getOrCreateImageStore(decrypted.lorebook)
+        imageStore.text = JSON.stringify(imageMeta)
+    }
+    return decrypted
+}
+
+/**
  * Saves images to a lorebook entry
  * @param {EntityWrapper} entityWrapper - The wrapped lorebook entry
  * @param {StoryImageMeta} imageMeta - The image metadata to save
@@ -70,15 +91,13 @@ const loadImagesFromLorebook = async (entityWrapper) => {
 const saveImagesToLorebook = async (entityWrapper, imageMeta) => {
     try {
         /** @type {StoryContent} */
-        let decrypted = await NAIE.CRYPTO.decompressDecryptObject(entityWrapper.data)
+        let decrypted = await NAIE.CRYPTO.decompressDecryptObject(entityWrapper)
 
-        const imageStore = getOrCreateImageStore(decrypted.lorebook)
-        imageStore.text = JSON.stringify(imageMeta)
-        //imageStore.lastUpdatedAt = Date.now()
+        decrypted = updateLorebookImages(decrypted, imageMeta)
 
         // Encrypt the modified entry
-        console.log('modified content', decrypted)
-        const encrypted = await NAIE.CRYPTO.encryptCompressObject(decrypted)
+        //console.log('modified content', decrypted)
+        const encrypted = await NAIE.CRYPTO.encryptCompressObject({ ...entityWrapper, data: decrypted })
         return {
             ...entityWrapper,
             data: encrypted,

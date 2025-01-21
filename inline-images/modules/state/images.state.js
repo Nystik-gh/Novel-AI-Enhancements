@@ -41,20 +41,24 @@ const createStoryImageState = () => {
         })
     }
 
-    const updateImageInStory = (storyId, imageId, newImageData) => {
+    const upsertImageInStory = (storyId, imageId, newImageData) => {
         if (!storyImageMap.has(storyId)) {
+            addImageToStory(storyId, newImageData)
             return
         }
 
         const currentMeta = storyImageMap.get(storyId)
-        storyImageMap.set(storyId, {
-            images: currentMeta.images.map((img) => {
-                if (img.id === imageId) {
-                    return { ...img, ...newImageData }
-                }
-                return img
-            }),
-        })
+        const existingImageIndex = currentMeta.images.findIndex(img => img.id === imageId)
+
+        if (existingImageIndex === -1) {
+            // Image doesn't exist, add it
+            addImageToStory(storyId, newImageData)
+        } else {
+            // Image exists, update it
+            const updatedImages = [...currentMeta.images]
+            updatedImages[existingImageIndex] = { ...updatedImages[existingImageIndex], ...newImageData }
+            storyImageMap.set(storyId, { images: updatedImages })
+        }
     }
 
     return {
@@ -64,6 +68,6 @@ const createStoryImageState = () => {
         deleteStoryImages,
         addImageToStory,
         removeImageFromStory,
-        updateImageInStory,
+        upsertImageInStory,
     }
 }

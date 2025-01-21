@@ -12,12 +12,14 @@
 // @require      ./modules/*
 // @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/core/dist/naie-core.user.js?version=9
 // @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/crypto/dist/naie-crypto.user.js?version=4
+// @require      https://unpkg.com/interactjs/dist/interact.min.js
 // @run-at       document-start
 // ==/UserScript==
 'use strict'
 // state vars
 /** @type {StoryImageState} */
 let storyImagesState = null
+let currentStoryId = null
 
 let scriptInit = false
 const wRef = unsafeWindow ? unsafeWindow : window
@@ -25,19 +27,24 @@ const wRef = unsafeWindow ? unsafeWindow : window
 /** @type {NAIEWithCrypto} */
 let NAIE = wRef.NAIE_INSTANCE
 
+// Initialize everything
 const init = () => {
+    currentStoryId = getStoryIdFromUrl()
+    if (scriptInit) return
+
     initializeNetworkHooks()
+    setupUrlChangeListener()
+
     document.addEventListener('DOMContentLoaded', async () => {
-        if (!scriptInit) {
-            try {
-                NAIE.CORE.registerScript('inline-images')
-                await registerPreflight()
-                NAIE.CORE.markScriptReady('inline-images')
-                scriptInit = true
-            } catch (e) {
-                NAIE.LOGGING.getLogger().error(e)
-                alert('Failed to initialize inline images script.\n\nDisable the script and report the issue.')
-            }
+        if (scriptInit) return
+        scriptInit = true
+        try {
+            NAIE.CORE.registerScript('inline-images')
+            await registerPreflight()
+            NAIE.CORE.markScriptReady('inline-images')
+        } catch (e) {
+            NAIE.LOGGING.getLogger().error(e)
+            alert('Failed to initialize inline images script.\n\nDisable the script and report the issue.')
         }
     })
 }

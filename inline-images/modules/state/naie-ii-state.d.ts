@@ -7,7 +7,6 @@ interface ImageRecord {
     align: string,
     offset: number,
     width: number
-    margin: number
 }
 
 /**
@@ -67,5 +66,5 @@ interface StoryImageState {
      * @param imageId - ID of the image to update
      * @param newImageData - Partial image data containing properties to update
      */
-    updateImageInStory: (storyId: string, imageId: string, newImageData: Partial<ImageRecord>) => void
+    upsertImageInStory: (storyId: string, imageId: string, newImageData: Partial<ImageRecord>) => void
 }

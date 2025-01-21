@@ -11,9 +11,13 @@ const registerStorycontentGetHooks = () => {
             /** @type {EntityWrapper} */
             let data = await copy.json()
 
-            console.log('rawdata', data)
+            //console.log('rawdata', data)
 
             const imageStore = await loadImagesFromLorebook(data)
+
+            //console.log('waiting for early preflight finished')
+            await waitForEarlyPreflight()
+            //console.log('early preflight finished')
 
             storyImagesState.setStoryImages(data.meta, imageStore)
 

@@ -123,7 +123,7 @@ const createLorebookImageStore = (categoryId) => {
         lastUpdatedAt: Date.now(),
         displayName: NAIE_IMAGE_STORE_ENTRY_NAME,
         id: generateId(),
-        keys: ['inline-image-store'],
+        keys: [NAIE_IMAGE_STORE_ENTRY_NAME],
         searchRange: 1000,
         enabled: false,
         forceActivation: false,
