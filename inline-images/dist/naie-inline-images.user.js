@@ -10,7 +10,7 @@
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/core/dist/naie-core.user.js?version=9
-// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/crypto/dist/naie-crypto.user.js?version=5
+// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/crypto/dist/naie-crypto.user.js?version=6
 // @require      https://unpkg.com/interactjs/dist/interact.min.js
 // @run-at       document-start
 // ==/UserScript==
@@ -632,6 +632,9 @@ const removeImageInteractions = (container) => {
 
 /* ########## loader.image.js ########## */
 
+// Track which images are currently being loaded
+const loadingImages = new Set()
+
 const loadImagesFromState = async () => {
     if (!currentStoryId) {
         console.log('No story ID available, skipping image load')
@@ -658,41 +661,62 @@ const loadImagesFromState = async () => {
     // Create array of promises for loading all images
     const loadPromises = storyImages.images
         .map(async (imageData) => {
-            // Get the target paragraph position
-            const proseMirror = document.querySelector('.ProseMirror')
-            const paragraphs = proseMirror.querySelectorAll('p')
-            const targetParagraph = paragraphs[imageData.anchorIndex]
-
-            console.log('targetParagraph', targetParagraph, imageData.anchorIndex)
-
-            if (!targetParagraph) {
-                console.error('Target paragraph not found for image:', imageData.id)
+            // Skip if this image is already being loaded
+            if (loadingImages.has(imageData.id)) {
+                console.log('Image already being loaded, skipping:', imageData.id)
                 return null
             }
+            
+            // Mark this image as being loaded
+            loadingImages.add(imageData.id)
+            
+            try {
+                // Remove any existing instances of this image
+                const existingContainer = imageLayer.querySelector(`.naie-image-container[data-id="${imageData.id}"]`)
+                if (existingContainer) {
+                    console.log('Removing existing instance of image:', imageData.id)
+                    existingContainer.remove()
+                }
 
-            const paragraphRect = targetParagraph.getBoundingClientRect()
-            const editorRect = proseMirror.getBoundingClientRect()
-            const scrollTop = proseMirror.scrollTop
+                // Get the target paragraph position
+                const proseMirror = document.querySelector('.ProseMirror')
+                const paragraphs = proseMirror.querySelectorAll('p')
+                const targetParagraph = paragraphs[imageData.anchorIndex]
 
-            // Calculate position relative to the editor's top, accounting for scroll
-            const relativeTop = paragraphRect.top - editorRect.top + scrollTop
-            const absoluteOffset = relativeTop + (imageData.offset || 0)
+                console.log('targetParagraph', targetParagraph, imageData.anchorIndex)
 
-            console.log('paragraphRect', paragraphRect)
-            console.log('editorRect', editorRect)
-            console.log('scrollTop', scrollTop)
-            console.log('absoluteOffset', absoluteOffset)
+                if (!targetParagraph) {
+                    console.error('Target paragraph not found for image:', imageData.id)
+                    return null
+                }
 
-            // Create container with calculated absolute position
-            const container = await createImageContainer(imageData.url, imageData.width, absoluteOffset, imageData.align)
+                const paragraphRect = targetParagraph.getBoundingClientRect()
+                const editorRect = proseMirror.getBoundingClientRect()
+                const scrollTop = proseMirror.scrollTop
 
-            // Override the generated ID with the stored one
-            container.dataset.id = imageData.id
+                // Calculate position relative to the editor's top, accounting for scroll
+                const relativeTop = paragraphRect.top - editorRect.top + scrollTop
+                const absoluteOffset = relativeTop + (imageData.offset || 0)
 
-            // Append to image layer and set to locked mode
-            imageLayer.appendChild(container)
-            setContainerMode(container, 'locked')
-            return container
+                console.log('paragraphRect', paragraphRect)
+                console.log('editorRect', editorRect)
+                console.log('scrollTop', scrollTop)
+                console.log('absoluteOffset', absoluteOffset)
+
+                // Create container with calculated absolute position
+                const container = await createImageContainer(imageData.url, imageData.width, absoluteOffset, imageData.align)
+
+                // Override the generated ID with the stored one
+                container.dataset.id = imageData.id
+
+                // Append to image layer and set to locked mode
+                imageLayer.appendChild(container)
+                setContainerMode(container, 'locked')
+                return container
+            } finally {
+                // Always remove from loading set, even if there was an error
+                loadingImages.delete(imageData.id)
+            }
         })
         .filter(Boolean) // Filter out any null containers from failed loads
 
@@ -1051,18 +1075,38 @@ const handleParagraphStyling = (proseMirror) => {
         image.onload = () => {
             const imageRect = image.getBoundingClientRect()
             const imageWidthPercent = container.dataset.widthPercent
+            const alignment = container.dataset.alignment || 'left'
 
             const paragraphs = proseMirror.querySelectorAll('p') // Inner loop for paragraphs
 
             paragraphs.forEach((p, i) => {
                 const rect = p.getBoundingClientRect()
 
-                // Check if the <p> intersects with the image
-                const intersects = !(rect.top > imageRect.bottom || rect.bottom < imageRect.top)
+                // For proper intersection, we need to check if one rectangle is not entirely
+                // above or below the other. This is the correct way to check for overlap.
+                const verticalOverlap = !(
+                    (
+                        rect.bottom < imageRect.top || // paragraph ends before image starts
+                        rect.top > imageRect.bottom
+                    ) // paragraph starts after image ends
+                )
 
-                if (intersects) {
+                console.log(`Paragraph ${i + 1} rect:`, {
+                    top: rect.top,
+                    bottom: rect.bottom,
+                    height: rect.height,
+                })
+                console.log(`Image rect:`, {
+                    top: imageRect.top,
+                    bottom: imageRect.bottom,
+                    height: imageRect.height,
+                })
+                console.log(`Overlap:`, verticalOverlap)
+
+                if (verticalOverlap) {
                     // Add CSS for this specific <p> tag by targeting nth-child
                     const nthChildSelector = `.ProseMirror p:nth-child(${i + 1})`
+                    const margin = alignment === 'left' ? 'margin-right' : 'margin-left'
                     styleTag.innerHTML += `${nthChildSelector} { width: calc(${100 - imageWidthPercent}% - 4rem); background: teal; }\n`
                 }
             })
@@ -1093,13 +1137,13 @@ const initInlineImages = (proseMirror) => {
     if (resizeObserver) {
         resizeObserver.disconnect()
     }
-    
+
     resizeObserver = new ResizeObserver(() => {
         console.log('Editor resized, reloading images and updating styles')
         loadImagesFromState()
-        handleParagraphStyling(proseMirror)
+        //handleParagraphStyling(proseMirror)
     })
-    
+
     resizeObserver.observe(proseMirror)
 }
 
@@ -1127,7 +1171,7 @@ const destroyParagraphObserver = () => {
         paragraphObserver.disconnect()
         paragraphObserver = null
     }
-    
+
     if (resizeObserver) {
         resizeObserver.disconnect()
         resizeObserver = null

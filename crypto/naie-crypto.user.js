@@ -9,6 +9,9 @@
 // @run-at       document-start
 // ==/UserScript==
 'use strict'
+
+const API_BASE_URL = 'https://api.novelai.net'
+
 ;(() => {
     let scriptInit = false
     const wRef = unsafeWindow ? unsafeWindow : window

@@ -19,18 +19,38 @@ const handleParagraphStyling = (proseMirror) => {
         image.onload = () => {
             const imageRect = image.getBoundingClientRect()
             const imageWidthPercent = container.dataset.widthPercent
+            const alignment = container.dataset.alignment || 'left'
 
             const paragraphs = proseMirror.querySelectorAll('p') // Inner loop for paragraphs
 
             paragraphs.forEach((p, i) => {
                 const rect = p.getBoundingClientRect()
 
-                // Check if the <p> intersects with the image
-                const intersects = !(rect.top > imageRect.bottom || rect.bottom < imageRect.top)
+                // For proper intersection, we need to check if one rectangle is not entirely
+                // above or below the other. This is the correct way to check for overlap.
+                const verticalOverlap = !(
+                    (
+                        rect.bottom < imageRect.top || // paragraph ends before image starts
+                        rect.top > imageRect.bottom
+                    ) // paragraph starts after image ends
+                )
 
-                if (intersects) {
+                console.log(`Paragraph ${i + 1} rect:`, {
+                    top: rect.top,
+                    bottom: rect.bottom,
+                    height: rect.height,
+                })
+                console.log(`Image rect:`, {
+                    top: imageRect.top,
+                    bottom: imageRect.bottom,
+                    height: imageRect.height,
+                })
+                console.log(`Overlap:`, verticalOverlap)
+
+                if (verticalOverlap) {
                     // Add CSS for this specific <p> tag by targeting nth-child
                     const nthChildSelector = `.ProseMirror p:nth-child(${i + 1})`
+                    const margin = alignment === 'left' ? 'margin-right' : 'margin-left'
                     styleTag.innerHTML += `${nthChildSelector} { width: calc(${100 - imageWidthPercent}% - 4rem); background: teal; }\n`
                 }
             })

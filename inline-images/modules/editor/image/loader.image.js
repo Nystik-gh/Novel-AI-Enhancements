@@ -1,3 +1,6 @@
+// Track which images are currently being loaded
+const loadingImages = new Set()
+
 const loadImagesFromState = async () => {
     if (!currentStoryId) {
         console.log('No story ID available, skipping image load')
@@ -24,41 +27,62 @@ const loadImagesFromState = async () => {
     // Create array of promises for loading all images
     const loadPromises = storyImages.images
         .map(async (imageData) => {
-            // Get the target paragraph position
-            const proseMirror = document.querySelector('.ProseMirror')
-            const paragraphs = proseMirror.querySelectorAll('p')
-            const targetParagraph = paragraphs[imageData.anchorIndex]
-
-            console.log('targetParagraph', targetParagraph, imageData.anchorIndex)
-
-            if (!targetParagraph) {
-                console.error('Target paragraph not found for image:', imageData.id)
+            // Skip if this image is already being loaded
+            if (loadingImages.has(imageData.id)) {
+                console.log('Image already being loaded, skipping:', imageData.id)
                 return null
             }
+            
+            // Mark this image as being loaded
+            loadingImages.add(imageData.id)
+            
+            try {
+                // Remove any existing instances of this image
+                const existingContainer = imageLayer.querySelector(`.naie-image-container[data-id="${imageData.id}"]`)
+                if (existingContainer) {
+                    console.log('Removing existing instance of image:', imageData.id)
+                    existingContainer.remove()
+                }
 
-            const paragraphRect = targetParagraph.getBoundingClientRect()
-            const editorRect = proseMirror.getBoundingClientRect()
-            const scrollTop = proseMirror.scrollTop
+                // Get the target paragraph position
+                const proseMirror = document.querySelector('.ProseMirror')
+                const paragraphs = proseMirror.querySelectorAll('p')
+                const targetParagraph = paragraphs[imageData.anchorIndex]
 
-            // Calculate position relative to the editor's top, accounting for scroll
-            const relativeTop = paragraphRect.top - editorRect.top + scrollTop
-            const absoluteOffset = relativeTop + (imageData.offset || 0)
+                console.log('targetParagraph', targetParagraph, imageData.anchorIndex)
 
-            console.log('paragraphRect', paragraphRect)
-            console.log('editorRect', editorRect)
-            console.log('scrollTop', scrollTop)
-            console.log('absoluteOffset', absoluteOffset)
+                if (!targetParagraph) {
+                    console.error('Target paragraph not found for image:', imageData.id)
+                    return null
+                }
 
-            // Create container with calculated absolute position
-            const container = await createImageContainer(imageData.url, imageData.width, absoluteOffset, imageData.align)
+                const paragraphRect = targetParagraph.getBoundingClientRect()
+                const editorRect = proseMirror.getBoundingClientRect()
+                const scrollTop = proseMirror.scrollTop
 
-            // Override the generated ID with the stored one
-            container.dataset.id = imageData.id
+                // Calculate position relative to the editor's top, accounting for scroll
+                const relativeTop = paragraphRect.top - editorRect.top + scrollTop
+                const absoluteOffset = relativeTop + (imageData.offset || 0)
 
-            // Append to image layer and set to locked mode
-            imageLayer.appendChild(container)
-            setContainerMode(container, 'locked')
-            return container
+                console.log('paragraphRect', paragraphRect)
+                console.log('editorRect', editorRect)
+                console.log('scrollTop', scrollTop)
+                console.log('absoluteOffset', absoluteOffset)
+
+                // Create container with calculated absolute position
+                const container = await createImageContainer(imageData.url, imageData.width, absoluteOffset, imageData.align)
+
+                // Override the generated ID with the stored one
+                container.dataset.id = imageData.id
+
+                // Append to image layer and set to locked mode
+                imageLayer.appendChild(container)
+                setContainerMode(container, 'locked')
+                return container
+            } finally {
+                // Always remove from loading set, even if there was an error
+                loadingImages.delete(imageData.id)
+            }
         })
         .filter(Boolean) // Filter out any null containers from failed loads
 

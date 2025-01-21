@@ -10,13 +10,13 @@ const initInlineImages = (proseMirror) => {
     if (resizeObserver) {
         resizeObserver.disconnect()
     }
-    
+
     resizeObserver = new ResizeObserver(() => {
         console.log('Editor resized, reloading images and updating styles')
         loadImagesFromState()
-        handleParagraphStyling(proseMirror)
+        //handleParagraphStyling(proseMirror)
     })
-    
+
     resizeObserver.observe(proseMirror)
 }
 
@@ -44,7 +44,7 @@ const destroyParagraphObserver = () => {
         paragraphObserver.disconnect()
         paragraphObserver = null
     }
-    
+
     if (resizeObserver) {
         resizeObserver.disconnect()
         resizeObserver = null
