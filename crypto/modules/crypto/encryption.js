@@ -7,7 +7,16 @@ const encryptObject = async (obj) => {
     const encrypted = sodium.crypto_secretbox_easy(sodium.from_string(JSON.stringify(obj.data)), nonce, new Uint8Array(key))
 
     const combined = new Uint8Array([...nonce, ...encrypted])
-    return btoa(String.fromCharCode.apply(null, combined))
+
+    // Safe conversion of large Uint8Array to base64
+    let binaryString = ''
+    const chunkSize = 8192 // Process in chunks to avoid stack overflow
+    for (let i = 0; i < combined.length; i += chunkSize) {
+        const chunk = combined.slice(i, i + chunkSize)
+        binaryString += String.fromCharCode(...chunk)
+    }
+
+    return btoa(binaryString)
 }
 
 const encryptCompressObject = async (obj) => {
@@ -29,5 +38,13 @@ const encryptCompressObject = async (obj) => {
     const COMPRESSION_PREFIX = new Uint8Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1])
     const finalData = new Uint8Array([...COMPRESSION_PREFIX, ...nonce, ...encrypted])
 
-    return btoa(String.fromCharCode.apply(null, finalData))
+    // Safe conversion of large Uint8Array to base64
+    let binaryString = ''
+    const chunkSize = 8192 // Process in chunks to avoid stack overflow
+    for (let i = 0; i < finalData.length; i += chunkSize) {
+        const chunk = finalData.slice(i, i + chunkSize)
+        binaryString += String.fromCharCode(...chunk)
+    }
+
+    return btoa(binaryString)
 }

@@ -11,7 +11,7 @@
 // @grant        GM_setValue
 // @require      ./modules/*
 // @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/core/dist/naie-core.user.js?version=9
-// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/crypto/dist/naie-crypto.user.js?version=8
+// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/crypto/dist/naie-crypto.user.js?version=9
 // @require      https://unpkg.com/interactjs/dist/interact.min.js
 // @run-at       document-start
 // ==/UserScript==
@@ -20,6 +20,8 @@
 /** @type {StoryImageState} */
 let storyImagesState = null
 let currentStoryId = null
+
+let paragraphPositionState = null
 
 let scriptInit = false
 const wRef = unsafeWindow ? unsafeWindow : window
@@ -34,6 +36,12 @@ const init = () => {
 
     initializeNetworkHooks()
     setupUrlChangeListener()
+
+    paragraphPositionState = createElementPositionState()
+
+    NAIE.DOM.waitForElement('body', null, document).then(() => {
+        watchForEditor()
+    })
 
     document.addEventListener('DOMContentLoaded', async () => {
         if (scriptInit) return
@@ -51,6 +59,7 @@ const init = () => {
 
 // ;INJECT DEPENDENCIES;
 
+const polyfillLoaded = injectAnchorPositionPolyfill()
 // Only initialize on the stories page
 if (window.location.pathname.startsWith('/stories')) {
     scriptInit = false

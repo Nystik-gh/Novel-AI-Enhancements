@@ -10,7 +10,6 @@ const registerPreflight = async () => {
 
     NAIE.PREFLIGHT.registerHook('main', 'inline-images-init-main', 10, async () => {
         setupImageButtonObserver()
-        watchForEditor()
         NAIE.SERVICES.statusIndicator.displayMessage('Inline Images initialized')
         notifyMainHookComplete()
     })

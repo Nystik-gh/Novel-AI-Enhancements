@@ -10,7 +10,7 @@
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/core/dist/naie-core.user.js?version=9
-// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/crypto/dist/naie-crypto.user.js?version=8
+// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/crypto/dist/naie-crypto.user.js?version=9
 // @require      https://unpkg.com/interactjs/dist/interact.min.js
 // @run-at       document-start
 // ==/UserScript==
@@ -19,6 +19,8 @@
 /** @type {StoryImageState} */
 let storyImagesState = null
 let currentStoryId = null
+
+let paragraphPositionState = null
 
 let scriptInit = false
 const wRef = unsafeWindow ? unsafeWindow : window
@@ -33,6 +35,12 @@ const init = () => {
 
     initializeNetworkHooks()
     setupUrlChangeListener()
+
+    paragraphPositionState = createElementPositionState()
+
+    NAIE.DOM.waitForElement('body', null, document).then(() => {
+        watchForEditor()
+    })
 
     document.addEventListener('DOMContentLoaded', async () => {
         if (scriptInit) return
@@ -124,11 +132,23 @@ const injectControlStyles = () => {
             pointer-events: all;
         }
 
-
         .naie-image-container img {
             max-width: 100%;
             height: auto;
             display: block;
+        }
+
+        .naie-modal.transparent {
+            background: transparent;
+            border: none;
+            padding: 0;
+            min-width: unset;
+        }
+
+        .naie-modal.transparent img {
+            max-width: 90vw;
+            max-height: 90vh;
+            object-fit: contain;
         }
 
         .naie-image-container .naie-image-remove {
@@ -180,6 +200,34 @@ const injectControlStyles = () => {
         .naie-alignment-controls {
             display: flex;
             gap: 4px;
+        }
+
+        .naie-control-button {
+            width: 24px;
+            height: 24px;
+            border: none;
+            background: #4a4a4a;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            padding: 0;
+            transition: background-color 0.2s;
+        }
+
+        .naie-control-button:hover {
+            background: #5a5a5a;
+        }
+
+        .naie-control-button.edit {
+            font-size: 12px;
+        }
+
+        .naie-control-button.fullscreen {
+            font-size: 16px;
         }
 
         .naie-control-button {
@@ -284,7 +332,7 @@ const createControls = (container) => {
         triggerSave()
     })
 
-    controls.append(alignmentControls, lockButton)
+    controls.append(alignmentControls, lockButton, createFullscreenButton(container))
     return controls
 }
 
@@ -296,11 +344,25 @@ const createEditButton = (container) => {
     return button
 }
 
+const createFullscreenButton = (container) => {
+    const button = document.createElement('button')
+    button.className = 'naie-control-button fullscreen'
+    button.innerHTML = '⤢'
+    button.onclick = () => {
+        const img = container.querySelector('img')
+        if (img) {
+            showImageModal(img.src)
+        }
+    }
+    return button
+}
+
 const setContainerMode = (container, mode) => {
     injectControlStyles()
 
     // Remove existing controls
-    container.querySelectorAll('.naie-controls, .naie-control-button.edit').forEach((el) => el.remove())
+    const controls = container.querySelector('.naie-controls')
+    controls?.remove()
 
     if (mode === 'editing') {
         container.classList.remove('locked')
@@ -314,6 +376,7 @@ const setContainerMode = (container, mode) => {
         const controls = document.createElement('div')
         controls.className = 'naie-controls'
         controls.appendChild(createEditButton(container))
+        controls.appendChild(createFullscreenButton(container))
         container.appendChild(controls)
 
         // Remove interactions
@@ -355,6 +418,41 @@ const findNearestParagraph = (container) => {
 const initializeImageControls = (container, startLocked = false) => {
     injectControlStyles()
     setContainerMode(container, startLocked ? 'locked' : 'editing')
+}
+
+const showImageModal = (imgSrc) => {
+    injectModalStyles()
+
+    const overlay = document.createElement('div')
+    overlay.className = 'naie-modal-overlay'
+
+    const modal = document.createElement('div')
+    modal.className = 'naie-modal transparent'
+
+    const closeButton = document.createElement('button')
+    closeButton.className = 'close-button'
+    const closeIcon = document.createElement('div')
+    closeButton.appendChild(closeIcon)
+
+    const img = document.createElement('img')
+    img.src = imgSrc
+
+    const handleClose = () => overlay.remove()
+
+    closeButton.onclick = handleClose
+
+    // Add keyboard support
+    overlay.addEventListener('keydown', e => {
+        if (e.key === 'Escape') handleClose()
+    })
+
+    modal.append(closeButton, img)
+    overlay.append(modal)
+    document.body.append(overlay)
+
+    // Prevent clicks on overlay from bubbling
+    modal.addEventListener('click', e => e.stopPropagation())
+    overlay.addEventListener('click', handleClose)
 }
 
 
@@ -635,7 +733,25 @@ const removeImageInteractions = (container) => {
 // Track which images are currently being loaded
 const loadingImages = new Set()
 
+/**
+ * Calculate absolute positions of an element relative to the editor
+ * @param {HTMLElement} element - Element to calculate positions for
+ * @param {DOMRect} editorRect - Editor's bounding client rect
+ * @param {number} scrollTop - Editor's scroll top position
+ * @returns {{top: number, bottom: number, left: number, right: number}} Absolute positions
+ */
+const calculateAbsolutePosition = (element, editorRect, scrollTop) => {
+    const rect = element.getBoundingClientRect()
+    return {
+        top: rect.top - editorRect.top + scrollTop,
+        bottom: rect.bottom - editorRect.top + scrollTop,
+        left: rect.left - editorRect.left,
+        right: rect.right - editorRect.right,
+    }
+}
+
 const loadImagesFromState = async () => {
+    console.log('loadImagesFromState')
     if (!currentStoryId) {
         console.log('No story ID available, skipping image load')
         return
@@ -658,6 +774,27 @@ const loadImagesFromState = async () => {
 
     await NAIE.MISC.sleep(100)
 
+    // Get the target paragraph positions
+    const proseMirror = document.querySelector('.ProseMirror')
+    const paragraphs = proseMirror.querySelectorAll('p')
+    const editorRect = proseMirror.getBoundingClientRect()
+    const scrollTop = proseMirror.scrollTop
+
+    // Clear existing position state
+    paragraphPositionState.clear()
+
+    // Store positions for all paragraphs
+    /*paragraphs.forEach((paragraph, index) => {
+        const rect = paragraph.getBoundingClientRect()
+        const position = {
+            top: rect.top - editorRect.top + scrollTop,
+            bottom: rect.bottom - editorRect.top + scrollTop,
+            left: rect.left - editorRect.left,
+            right: rect.right - editorRect.left
+        }
+        paragraphPositionState.updatePosition(index, paragraph, index, position)
+    })*/
+
     // Create array of promises for loading all images
     const loadPromises = storyImages.images
         .map(async (imageData) => {
@@ -666,10 +803,10 @@ const loadImagesFromState = async () => {
                 console.log('Image already being loaded, skipping:', imageData.id)
                 return null
             }
-            
+
             // Mark this image as being loaded
             loadingImages.add(imageData.id)
-            
+
             try {
                 // Remove any existing instances of this image
                 const existingContainer = imageLayer.querySelector(`.naie-image-container[data-id="${imageData.id}"]`)
@@ -678,40 +815,30 @@ const loadImagesFromState = async () => {
                     existingContainer.remove()
                 }
 
-                // Get the target paragraph position
-                const proseMirror = document.querySelector('.ProseMirror')
-                const paragraphs = proseMirror.querySelectorAll('p')
                 const targetParagraph = paragraphs[imageData.anchorIndex]
 
-                console.log('targetParagraph', targetParagraph, imageData.anchorIndex)
-
                 if (!targetParagraph) {
-                    console.error('Target paragraph not found for image:', imageData.id)
+                    console.warn('Target paragraph not found:', imageData.anchorIndex)
                     return null
                 }
 
-                const paragraphRect = targetParagraph.getBoundingClientRect()
-                const editorRect = proseMirror.getBoundingClientRect()
-                const scrollTop = proseMirror.scrollTop
-
-                // Calculate position relative to the editor's top, accounting for scroll
-                const relativeTop = paragraphRect.top - editorRect.top + scrollTop
-                const absoluteOffset = relativeTop + (imageData.offset || 0)
-
-                console.log('paragraphRect', paragraphRect)
-                console.log('editorRect', editorRect)
-                console.log('scrollTop', scrollTop)
-                console.log('absoluteOffset', absoluteOffset)
-
-                // Create container with calculated absolute position
-                const container = await createImageContainer(imageData.url, imageData.width, absoluteOffset, imageData.align)
+                const position = calculateAbsolutePosition(targetParagraph, editorRect, scrollTop)
+                paragraphPositionState.updatePosition(imageData.anchorIndex, targetParagraph, imageData.anchorIndex, position)
+                const container = await createImageContainer(imageData.url, imageData.width, position.top, imageData.align)
 
                 // Override the generated ID with the stored one
                 container.dataset.id = imageData.id
 
+                // Listen for position changes of the target paragraph
+                paragraphPositionState.onKey('positionChanged', imageData.anchorIndex, (key, newState) => {
+                    console.log('positionChanged', key, newState)
+                    container.style.top = `${newState.position.top}px`
+                })
+
                 // Append to image layer and set to locked mode
                 imageLayer.appendChild(container)
                 setContainerMode(container, 'locked')
+
                 return container
             } finally {
                 // Always remove from loading set, even if there was an error
@@ -1054,6 +1181,147 @@ const setupImageButtonObserver = () => {
 
 /* ######## paragraphs.editor.js ####### */
 
+const handleParagraphStyling = async (proseMirror) => {
+    let styleTag = document.querySelector('style[data-naie-image-positions]')
+
+    // Create style tag if it doesn't exist
+    if (!styleTag) {
+        styleTag = document.createElement('style')
+        styleTag.setAttribute('data-naie-image-positions', 'true')
+        document.head.appendChild(styleTag)
+    }
+
+    // Clear existing styles
+    styleTag.innerHTML = ''
+
+    const containers = document.querySelectorAll('.naie-image-container')
+
+    const paragraphsToAdjust = []
+
+    const loadPromises = Array.from(containers).map((container) => {
+        return new Promise((resolve) => {
+            const image = container.querySelector('img')
+
+            const handleLoad = () => {
+                const editorRect = proseMirror.getBoundingClientRect()
+                const imageWidthPercent = container.dataset.widthPercent
+                const alignment = container.dataset.alignment || 'left'
+
+                const paragraphs = findOverlappingParagraphs(container)
+                paragraphsToAdjust.push(...paragraphs)
+                resolve(paragraphs)
+            }
+
+            if (image.complete) {
+                handleLoad()
+            } else {
+                image.onload = handleLoad
+            }
+        })
+    })
+
+    await Promise.all(loadPromises)
+
+    const allParagraphs = Array.from(proseMirror.children)
+
+    for (let i = 0; i < allParagraphs.length; i++) {
+        const p = allParagraphs[i]
+        const ovPidx = paragraphsToAdjust.indexOf(p)
+        if (ovPidx !== -1) {
+            const overlapping = paragraphsToAdjust[ovPidx]
+            const imgOverlapping = overlapping.imgOverlap
+
+            const nthChildSelector = `.ProseMirror p:nth-child(${i + 1})`
+            styleTag.innerHTML += `${nthChildSelector} { background: teal; }\n`
+        }
+    }
+}
+
+const findOverlappingParagraphs = (imgC) => {
+    const imageRect = imgC.getBoundingClientRect()
+
+    // First get paragraphs by vertical sampling
+    const paragraphs = new Set()
+    const points = 20 // Number of vertical points
+    const dy = imageRect.height / points
+    const x = imageRect.left + imageRect.width / 2
+
+    for (let i = 0; i <= points; i++) {
+        const y = imageRect.top + i * dy
+        const elements = document.elementsFromPoint(x, y)
+        elements.forEach((el) => {
+            if (el.tagName === 'P') {
+                paragraphs.add(el)
+            }
+        })
+    }
+
+    if (paragraphs.size === 0) return []
+
+    // Convert to array and sort by DOM order
+    const sampledParagraphs = Array.from(paragraphs)
+
+    // Extend backwards and forwards
+    const allParagraphsToCheck = new Set(sampledParagraphs)
+
+    // Get previous 10 paragraphs from first sampled paragraph
+    let current = sampledParagraphs[0]
+    for (let i = 0; i < 10; i++) {
+        current = current.previousElementSibling
+        if (!current || current.tagName !== 'P') break
+        allParagraphsToCheck.add(current)
+    }
+
+    // Get next 10 paragraphs from last sampled paragraph
+    current = sampledParagraphs[sampledParagraphs.length - 1]
+    for (let i = 0; i < 10; i++) {
+        current = current.nextElementSibling
+        if (!current || current.tagName !== 'P') break
+        allParagraphsToCheck.add(current)
+    }
+
+    //console.log('paragraphs', sampledParagraphs, allParagraphsToCheck)
+
+    // Check each paragraph for actual rect overlap
+    const overlappingParagraphs = Array.from(allParagraphsToCheck)
+        .filter((p) => {
+            const pRect = p.getBoundingClientRect()
+
+            // Convert rects to editor-relative coordinates
+            const relImageRect = {
+                top: imageRect.top,
+                bottom: imageRect.bottom,
+                left: imageRect.left,
+                right: imageRect.right,
+            }
+
+            const relPRect = {
+                top: pRect.top,
+                bottom: pRect.bottom,
+                left: pRect.left,
+                right: pRect.right,
+            }
+
+            console.log('rects', relImageRect, relPRect)
+
+            // Check for vertical overlap
+            const verticalOverlap = !(relImageRect.bottom < relPRect.top || relImageRect.top > relPRect.bottom)
+
+            // Check for horizontal overlap
+            const horizontalOverlap = !(relImageRect.right < relPRect.left || relImageRect.left > relPRect.right)
+
+            return verticalOverlap && horizontalOverlap
+        })
+        .map((p) => {
+            p.imgOverlap = imgC
+            return p
+        })
+
+    return overlappingParagraphs
+}
+
+/*
+
 const handleParagraphStyling = (proseMirror) => {
     let styleTag = document.querySelector('style[data-naie-image-positions]')
 
@@ -1067,60 +1335,49 @@ const handleParagraphStyling = (proseMirror) => {
     // Clear existing styles
     styleTag.innerHTML = ''
 
-    const containers = document.querySelectorAll('.naie-image-container') // Outer loop for containers
+    const containers = document.querySelectorAll('.naie-image-container')
 
     containers.forEach((container) => {
         const image = container.querySelector('img')
-        // Wait for the image to be loaded before checking its dimensions
         image.onload = () => {
-            const proseMirror = document.querySelector('.ProseMirror')
             const editorRect = proseMirror.getBoundingClientRect()
-            const scrollTop = proseMirror.scrollTop
-            
             const imageRect = image.getBoundingClientRect()
-            // Get image position relative to editor, accounting for scroll
-            const imageTop = imageRect.top - editorRect.top + scrollTop
-            const imageBottom = imageRect.bottom - editorRect.top + scrollTop
-            
             const imageWidthPercent = container.dataset.widthPercent
             const alignment = container.dataset.alignment || 'left'
 
-            const paragraphs = proseMirror.querySelectorAll('p') // Inner loop for paragraphs
+            // Use raw viewport-relative positions
+            const adjustedImageRect = {
+                top: imageRect.top,
+                bottom: imageRect.bottom,
+                height: imageRect.height,
+            }
+
+            const paragraphs = proseMirror.querySelectorAll('p')
 
             paragraphs.forEach((p, i) => {
                 const rect = p.getBoundingClientRect()
-                // Get paragraph position relative to editor, accounting for scroll
-                const paragraphTop = rect.top - editorRect.top + scrollTop
-                const paragraphBottom = rect.bottom - editorRect.top + scrollTop
+                const adjustedParagraphRect = {
+                    top: rect.top,
+                    bottom: rect.bottom,
+                    height: rect.height,
+                }
 
-                // For proper intersection, we need to check if one rectangle is not entirely
-                // above or below the other. This is the correct way to check for overlap.
+                // Add a small buffer to prevent edge-case overlaps
+                const buffer = 5
                 const verticalOverlap = !(
-                    (
-                        paragraphBottom < imageTop || // paragraph ends before image starts
-                        paragraphTop > imageBottom    // paragraph starts after image ends
-                    )
+                    adjustedParagraphRect.bottom + buffer < adjustedImageRect.top ||
+                    adjustedParagraphRect.top - buffer > adjustedImageRect.bottom
                 )
 
-                console.log(`Paragraph ${i + 1} rect:`, {
-                    top: paragraphTop,
-                    bottom: paragraphBottom,
-                    height: rect.height,
-                    originalTop: rect.top,
-                    originalBottom: rect.bottom,
-                    scrollTop
-                })
-                console.log(`Image rect:`, {
-                    top: imageTop,
-                    bottom: imageBottom,
-                    height: imageRect.height,
-                    originalTop: imageRect.top,
-                    originalBottom: imageRect.bottom,
-                    scrollTop
-                })
-                console.log(`Overlap:`, verticalOverlap)
-
                 if (verticalOverlap) {
+                    console.log('\n=== Overlap Check ===')
+                    console.log('Editor rect:', editorRect)
+                    console.log(`Paragraph ${i + 1} raw rect:`, rect)
+                    console.log('Image raw rect:', imageRect)
+                    console.log(`Adjusted Paragraph ${i + 1}:`, adjustedParagraphRect)
+                    console.log('Adjusted Image:', adjustedImageRect)
+                    console.log('Vertical Overlap:', verticalOverlap)
+
                     // Add CSS for this specific <p> tag by targeting nth-child
                     const nthChildSelector = `.ProseMirror p:nth-child(${i + 1})`
                     const margin = alignment === 'left' ? 'margin-right' : 'margin-left'
@@ -1136,6 +1393,8 @@ const handleParagraphStyling = (proseMirror) => {
     })
 }
 
+*/
+
 
 /* ---- end of paragraphs.editor.js ---- */
 
@@ -1143,24 +1402,80 @@ const handleParagraphStyling = (proseMirror) => {
 /* ####### prosemirror.editor.js ####### */
 
 let paragraphObserver = null
+let resizeTimeout = null
 let resizeObserver = null
 
 const initInlineImages = (proseMirror) => {
     console.log('Initializing inline images for editor')
     injectImageLayer()
-    // TODO: Initialize drag-drop zones and image handling
 
-    // Set up resize observer
+    // Clean up any existing observer
     if (resizeObserver) {
         resizeObserver.disconnect()
     }
 
-    resizeObserver = new ResizeObserver(() => {
-        console.log('Editor resized, reloading images and updating styles')
-        loadImagesFromState()
-        //handleParagraphStyling(proseMirror)
+    // Create new resize observer
+    resizeObserver = new ResizeObserver((entries) => {
+        console.log('Editor resized, updating paragraph positions')
+        const editorRect = proseMirror.getBoundingClientRect()
+        const scrollTop = proseMirror.scrollTop
+
+        // Get currently tracked paragraphs
+        const positions = paragraphPositionState.getAllPositions()
+
+        // Update only tracked paragraphs that need updating
+        for (const [index, state] of positions) {
+            // Only update if element is no longer connected or exists
+            if (!state.element.isConnected) {
+                // Try to find the paragraph at this index
+                const paragraph = proseMirror.querySelector(`p:nth-child(${index + 1})`)
+                if (paragraph) {
+                    state.element = paragraph
+                } else {
+                    // Paragraph no longer exists at this index
+                    paragraphPositionState.removePosition(index)
+                    continue
+                }
+            }
+
+            // Update position for the paragraph
+            const position = calculateAbsolutePosition(state.element, editorRect, scrollTop)
+            paragraphPositionState.updatePosition(index, state.element, index, position)
+        }
+
+        // Debounce the resize callback
+        /*clearTimeout(resizeTimeout)
+        resizeTimeout = setTimeout(() => {
+            console.log('Editor resized, updating paragraph positions')
+            const editorRect = proseMirror.getBoundingClientRect()
+            const scrollTop = proseMirror.scrollTop
+
+            // Get currently tracked paragraphs
+            const positions = paragraphPositionState.getAllPositions()
+
+            // Update only tracked paragraphs that need updating
+            for (const [index, state] of positions) {
+                // Only update if element is no longer connected or exists
+                if (!state.element.isConnected) {
+                    // Try to find the paragraph at this index
+                    const paragraph = proseMirror.querySelector(`p:nth-child(${index + 1})`)
+                    if (paragraph) {
+                        state.element = paragraph
+                    } else {
+                        // Paragraph no longer exists at this index
+                        paragraphPositionState.removePosition(index)
+                        continue
+                    }
+                }
+
+                // Update position for the paragraph
+                const position = calculateAbsolutePosition(state.element, editorRect, scrollTop)
+                paragraphPositionState.updatePosition(index, state.element, index, position)
+            }
+        }, 5) // Debounce set to 50ms for smooth visual updates while maintaining performance*/
     })
 
+    // Start observing the editor
     resizeObserver.observe(proseMirror)
 }
 
@@ -1171,7 +1486,7 @@ const observeParagraphs = (proseMirror) => {
 
     paragraphObserver = new MutationObserver(() => {
         // TODO: Handle paragraph mutations (image insertion, deletion, etc)
-        handleParagraphStyling(proseMirror)
+        //handleParagraphStyling(proseMirror)
         console.log('Paragraph mutation detected')
     })
 
@@ -1258,7 +1573,6 @@ const watchForEditor = () => {
         initInlineImages(proseMirror)
         proseMirror.setAttribute('data-naie-images-initialized', 'true')
         observeParagraphs(proseMirror)
-        handleStoryChange() // Load images on initial check
     }
 }
 
@@ -1587,7 +1901,6 @@ const registerPreflight = async () => {
 
     NAIE.PREFLIGHT.registerHook('main', 'inline-images-init-main', 10, async () => {
         setupImageButtonObserver()
-        watchForEditor()
         NAIE.SERVICES.statusIndicator.displayMessage('Inline Images initialized')
         notifyMainHookComplete()
     })
@@ -1595,6 +1908,119 @@ const registerPreflight = async () => {
 
 
 /* ---- end of register.preflight.js --- */
+
+
+/* ##### element-position.state.js ##### */
+
+/**
+ * Creates a state manager for tracking element positions
+ * @returns {Object} State manager instance
+ */
+function createElementPositionState() {
+    const emitter = new NAIE.MISC.Emitter();
+    /** @type {Map<number, {element: HTMLElement, index: number, position: {top: number, bottom: number, left: number, right: number}}>} */
+    const positions = new Map();
+
+    return {
+        /**
+         * Update or add an element's position state
+         * @param {number} key - Numerical index key
+         * @param {HTMLElement} element - Element reference
+         * @param {number} index - Element index
+         * @param {{top: number, bottom: number, left: number, right: number}} position - Element's position coordinates
+         */
+        updatePosition(key, element, index, position) {
+            const previousState = positions.get(key);
+            const newState = { element, index, position };
+            
+            positions.set(key, newState);
+            
+            // Emit change event if state changed
+            if (!previousState || 
+                previousState.index !== index || 
+                previousState.position.top !== position.top ||
+                previousState.position.bottom !== position.bottom ||
+                previousState.position.left !== position.left ||
+                previousState.position.right !== position.right ||
+                previousState.element !== element) {
+                emitter.emit('positionChanged', key, newState, previousState);
+            }
+        },
+
+        /**
+         * Get position state for a key
+         * @param {number} key 
+         * @returns {{element: HTMLElement, index: number, position: {top: number, bottom: number, left: number, right: number}} | undefined}
+         */
+        getPosition(key) {
+            return positions.get(key);
+        },
+
+        /**
+         * Get all positions
+         * @returns {Map<number, {element: HTMLElement, index: number, position: {top: number, bottom: number, left: number, right: number}}>}
+         */
+        getAllPositions() {
+            return positions;
+        },
+
+        /**
+         * Remove position state for a key
+         * @param {number} key 
+         */
+        removePosition(key) {
+            const previousState = positions.get(key);
+            if (previousState) {
+                positions.delete(key);
+                emitter.emit('positionRemoved', key, previousState);
+            }
+        },
+
+        /**
+         * Clear all position states
+         */
+        clear() {
+            positions.clear();
+            emitter.emit('cleared');
+        },
+
+        /**
+         * Subscribe to state events
+         * @param {string} event - Event name
+         * @param {Function} callback - Event handler
+         */
+        on(event, callback) {
+            emitter.on(event, callback);
+        },
+
+        /**
+         * Subscribe to state events for a specific key
+         * @param {string} event - Event name
+         * @param {number} key - Key to filter events for
+         * @param {Function} callback - Event handler
+         */
+        onKey(event, key, callback) {
+            emitter.on(event, (...args) => {
+                // For events that pass key as first argument (positionChanged, positionRemoved)
+                if (args[0] === key) {
+                    callback(...args);
+                }
+            });
+        },
+
+        /**
+         * Unsubscribe from state events
+         * @param {string} event - Event name
+         * @param {Function} callback - Event handler to remove
+         */
+        off(event, callback) {
+            emitter.off(event, callback);
+        }
+    };
+}
+
+
+/* -- end of element-position.state.js - */
 
 
 /* ########## images.state.js ########## */
@@ -1856,6 +2282,7 @@ const initializeNetworkHooks = () => {
 
 
 
+const polyfillLoaded = injectAnchorPositionPolyfill()
 // Only initialize on the stories page
 if (window.location.pathname.startsWith('/stories')) {
     scriptInit = false

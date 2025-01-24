@@ -1,22 +1,78 @@
 let paragraphObserver = null
+let resizeTimeout = null
 let resizeObserver = null
 
 const initInlineImages = (proseMirror) => {
     console.log('Initializing inline images for editor')
     injectImageLayer()
-    // TODO: Initialize drag-drop zones and image handling
 
-    // Set up resize observer
+    // Clean up any existing observer
     if (resizeObserver) {
         resizeObserver.disconnect()
     }
 
-    resizeObserver = new ResizeObserver(() => {
-        console.log('Editor resized, reloading images and updating styles')
-        loadImagesFromState()
-        //handleParagraphStyling(proseMirror)
+    // Create new resize observer
+    resizeObserver = new ResizeObserver((entries) => {
+        console.log('Editor resized, updating paragraph positions')
+        const editorRect = proseMirror.getBoundingClientRect()
+        const scrollTop = proseMirror.scrollTop
+
+        // Get currently tracked paragraphs
+        const positions = paragraphPositionState.getAllPositions()
+
+        // Update only tracked paragraphs that need updating
+        for (const [index, state] of positions) {
+            // Only update if element is no longer connected or exists
+            if (!state.element.isConnected) {
+                // Try to find the paragraph at this index
+                const paragraph = proseMirror.querySelector(`p:nth-child(${index + 1})`)
+                if (paragraph) {
+                    state.element = paragraph
+                } else {
+                    // Paragraph no longer exists at this index
+                    paragraphPositionState.removePosition(index)
+                    continue
+                }
+            }
+
+            // Update position for the paragraph
+            const position = calculateAbsolutePosition(state.element, editorRect, scrollTop)
+            paragraphPositionState.updatePosition(index, state.element, index, position)
+        }
+
+        // Debounce the resize callback
+        /*clearTimeout(resizeTimeout)
+        resizeTimeout = setTimeout(() => {
+            console.log('Editor resized, updating paragraph positions')
+            const editorRect = proseMirror.getBoundingClientRect()
+            const scrollTop = proseMirror.scrollTop
+
+            // Get currently tracked paragraphs
+            const positions = paragraphPositionState.getAllPositions()
+
+            // Update only tracked paragraphs that need updating
+            for (const [index, state] of positions) {
+                // Only update if element is no longer connected or exists
+                if (!state.element.isConnected) {
+                    // Try to find the paragraph at this index
+                    const paragraph = proseMirror.querySelector(`p:nth-child(${index + 1})`)
+                    if (paragraph) {
+                        state.element = paragraph
+                    } else {
+                        // Paragraph no longer exists at this index
+                        paragraphPositionState.removePosition(index)
+                        continue
+                    }
+                }
+
+                // Update position for the paragraph
+                const position = calculateAbsolutePosition(state.element, editorRect, scrollTop)
+                paragraphPositionState.updatePosition(index, state.element, index, position)
+            }
+        }, 5) // Debounce set to 50ms for smooth visual updates while maintaining performance*/
     })
 
+    // Start observing the editor
     resizeObserver.observe(proseMirror)
 }
 
@@ -27,7 +83,7 @@ const observeParagraphs = (proseMirror) => {
 
     paragraphObserver = new MutationObserver(() => {
         // TODO: Handle paragraph mutations (image insertion, deletion, etc)
-        handleParagraphStyling(proseMirror)
+        //handleParagraphStyling(proseMirror)
         console.log('Paragraph mutation detected')
     })
 
@@ -114,6 +170,5 @@ const watchForEditor = () => {
         initInlineImages(proseMirror)
         proseMirror.setAttribute('data-naie-images-initialized', 'true')
         observeParagraphs(proseMirror)
-        handleStoryChange() // Load images on initial check
     }
 }

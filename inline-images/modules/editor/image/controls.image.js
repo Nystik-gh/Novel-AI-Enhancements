@@ -14,11 +14,23 @@ const injectControlStyles = () => {
             pointer-events: all;
         }
 
-
         .naie-image-container img {
             max-width: 100%;
             height: auto;
             display: block;
+        }
+
+        .naie-modal.transparent {
+            background: transparent;
+            border: none;
+            padding: 0;
+            min-width: unset;
+        }
+
+        .naie-modal.transparent img {
+            max-width: 90vw;
+            max-height: 90vh;
+            object-fit: contain;
         }
 
         .naie-image-container .naie-image-remove {
@@ -70,6 +82,34 @@ const injectControlStyles = () => {
         .naie-alignment-controls {
             display: flex;
             gap: 4px;
+        }
+
+        .naie-control-button {
+            width: 24px;
+            height: 24px;
+            border: none;
+            background: #4a4a4a;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            padding: 0;
+            transition: background-color 0.2s;
+        }
+
+        .naie-control-button:hover {
+            background: #5a5a5a;
+        }
+
+        .naie-control-button.edit {
+            font-size: 12px;
+        }
+
+        .naie-control-button.fullscreen {
+            font-size: 16px;
         }
 
         .naie-control-button {
@@ -174,7 +214,7 @@ const createControls = (container) => {
         triggerSave()
     })
 
-    controls.append(alignmentControls, lockButton)
+    controls.append(alignmentControls, lockButton, createFullscreenButton(container))
     return controls
 }
 
@@ -186,11 +226,25 @@ const createEditButton = (container) => {
     return button
 }
 
+const createFullscreenButton = (container) => {
+    const button = document.createElement('button')
+    button.className = 'naie-control-button fullscreen'
+    button.innerHTML = '⤢'
+    button.onclick = () => {
+        const img = container.querySelector('img')
+        if (img) {
+            showImageModal(img.src)
+        }
+    }
+    return button
+}
+
 const setContainerMode = (container, mode) => {
     injectControlStyles()
 
     // Remove existing controls
-    container.querySelectorAll('.naie-controls, .naie-control-button.edit').forEach((el) => el.remove())
+    const controls = container.querySelector('.naie-controls')
+    controls?.remove()
 
     if (mode === 'editing') {
         container.classList.remove('locked')
@@ -204,6 +258,7 @@ const setContainerMode = (container, mode) => {
         const controls = document.createElement('div')
         controls.className = 'naie-controls'
         controls.appendChild(createEditButton(container))
+        controls.appendChild(createFullscreenButton(container))
         container.appendChild(controls)
 
         // Remove interactions
@@ -245,4 +300,39 @@ const findNearestParagraph = (container) => {
 const initializeImageControls = (container, startLocked = false) => {
     injectControlStyles()
     setContainerMode(container, startLocked ? 'locked' : 'editing')
+}
+
+const showImageModal = (imgSrc) => {
+    injectModalStyles()
+
+    const overlay = document.createElement('div')
+    overlay.className = 'naie-modal-overlay'
+
+    const modal = document.createElement('div')
+    modal.className = 'naie-modal transparent'
+
+    const closeButton = document.createElement('button')
+    closeButton.className = 'close-button'
+    const closeIcon = document.createElement('div')
+    closeButton.appendChild(closeIcon)
+
+    const img = document.createElement('img')
+    img.src = imgSrc
+
+    const handleClose = () => overlay.remove()
+
+    closeButton.onclick = handleClose
+
+    // Add keyboard support
+    overlay.addEventListener('keydown', e => {
+        if (e.key === 'Escape') handleClose()
+    })
+
+    modal.append(closeButton, img)
+    overlay.append(modal)
+    document.body.append(overlay)
+
+    // Prevent clicks on overlay from bubbling
+    modal.addEventListener('click', e => e.stopPropagation())
+    overlay.addEventListener('click', handleClose)
 }

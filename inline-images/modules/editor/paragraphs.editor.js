@@ -1,3 +1,144 @@
+const handleParagraphStyling = async (proseMirror) => {
+    let styleTag = document.querySelector('style[data-naie-image-positions]')
+
+    // Create style tag if it doesn't exist
+    if (!styleTag) {
+        styleTag = document.createElement('style')
+        styleTag.setAttribute('data-naie-image-positions', 'true')
+        document.head.appendChild(styleTag)
+    }
+
+    // Clear existing styles
+    styleTag.innerHTML = ''
+
+    const containers = document.querySelectorAll('.naie-image-container')
+
+    const paragraphsToAdjust = []
+
+    const loadPromises = Array.from(containers).map((container) => {
+        return new Promise((resolve) => {
+            const image = container.querySelector('img')
+
+            const handleLoad = () => {
+                const editorRect = proseMirror.getBoundingClientRect()
+                const imageWidthPercent = container.dataset.widthPercent
+                const alignment = container.dataset.alignment || 'left'
+
+                const paragraphs = findOverlappingParagraphs(container)
+                paragraphsToAdjust.push(...paragraphs)
+                resolve(paragraphs)
+            }
+
+            if (image.complete) {
+                handleLoad()
+            } else {
+                image.onload = handleLoad
+            }
+        })
+    })
+
+    await Promise.all(loadPromises)
+
+    const allParagraphs = Array.from(proseMirror.children)
+
+    for (let i = 0; i < allParagraphs.length; i++) {
+        const p = allParagraphs[i]
+        const ovPidx = paragraphsToAdjust.indexOf(p)
+        if (ovPidx !== -1) {
+            const overlapping = paragraphsToAdjust[ovPidx]
+            const imgOverlapping = overlapping.imgOverlap
+
+            const nthChildSelector = `.ProseMirror p:nth-child(${i + 1})`
+            styleTag.innerHTML += `${nthChildSelector} { background: teal; }\n`
+        }
+    }
+}
+
+const findOverlappingParagraphs = (imgC) => {
+    const imageRect = imgC.getBoundingClientRect()
+
+    // First get paragraphs by vertical sampling
+    const paragraphs = new Set()
+    const points = 20 // Number of vertical points
+    const dy = imageRect.height / points
+    const x = imageRect.left + imageRect.width / 2
+
+    for (let i = 0; i <= points; i++) {
+        const y = imageRect.top + i * dy
+        const elements = document.elementsFromPoint(x, y)
+        elements.forEach((el) => {
+            if (el.tagName === 'P') {
+                paragraphs.add(el)
+            }
+        })
+    }
+
+    if (paragraphs.size === 0) return []
+
+    // Convert to array and sort by DOM order
+    const sampledParagraphs = Array.from(paragraphs)
+
+    // Extend backwards and forwards
+    const allParagraphsToCheck = new Set(sampledParagraphs)
+
+    // Get previous 10 paragraphs from first sampled paragraph
+    let current = sampledParagraphs[0]
+    for (let i = 0; i < 10; i++) {
+        current = current.previousElementSibling
+        if (!current || current.tagName !== 'P') break
+        allParagraphsToCheck.add(current)
+    }
+
+    // Get next 10 paragraphs from last sampled paragraph
+    current = sampledParagraphs[sampledParagraphs.length - 1]
+    for (let i = 0; i < 10; i++) {
+        current = current.nextElementSibling
+        if (!current || current.tagName !== 'P') break
+        allParagraphsToCheck.add(current)
+    }
+
+    //console.log('paragraphs', sampledParagraphs, allParagraphsToCheck)
+
+    // Check each paragraph for actual rect overlap
+    const overlappingParagraphs = Array.from(allParagraphsToCheck)
+        .filter((p) => {
+            const pRect = p.getBoundingClientRect()
+
+            // Convert rects to editor-relative coordinates
+            const relImageRect = {
+                top: imageRect.top,
+                bottom: imageRect.bottom,
+                left: imageRect.left,
+                right: imageRect.right,
+            }
+
+            const relPRect = {
+                top: pRect.top,
+                bottom: pRect.bottom,
+                left: pRect.left,
+                right: pRect.right,
+            }
+
+            console.log('rects', relImageRect, relPRect)
+
+            // Check for vertical overlap
+            const verticalOverlap = !(relImageRect.bottom < relPRect.top || relImageRect.top > relPRect.bottom)
+
+            // Check for horizontal overlap
+            const horizontalOverlap = !(relImageRect.right < relPRect.left || relImageRect.left > relPRect.right)
+
+            return verticalOverlap && horizontalOverlap
+        })
+        .map((p) => {
+            p.imgOverlap = imgC
+            return p
+        })
+
+    return overlappingParagraphs
+}
+
+/*
+
 const handleParagraphStyling = (proseMirror) => {
     let styleTag = document.querySelector('style[data-naie-image-positions]')
 
@@ -11,60 +152,49 @@ const handleParagraphStyling = (proseMirror) => {
     // Clear existing styles
     styleTag.innerHTML = ''
 
-    const containers = document.querySelectorAll('.naie-image-container') // Outer loop for containers
+    const containers = document.querySelectorAll('.naie-image-container')
 
     containers.forEach((container) => {
         const image = container.querySelector('img')
-        // Wait for the image to be loaded before checking its dimensions
         image.onload = () => {
-            const proseMirror = document.querySelector('.ProseMirror')
             const editorRect = proseMirror.getBoundingClientRect()
-            const scrollTop = proseMirror.scrollTop
-            
             const imageRect = image.getBoundingClientRect()
-            // Get image position relative to editor, accounting for scroll
-            const imageTop = imageRect.top - editorRect.top + scrollTop
-            const imageBottom = imageRect.bottom - editorRect.top + scrollTop
-            
             const imageWidthPercent = container.dataset.widthPercent
             const alignment = container.dataset.alignment || 'left'
 
-            const paragraphs = proseMirror.querySelectorAll('p') // Inner loop for paragraphs
+            // Use raw viewport-relative positions
+            const adjustedImageRect = {
+                top: imageRect.top,
+                bottom: imageRect.bottom,
+                height: imageRect.height,
+            }
+
+            const paragraphs = proseMirror.querySelectorAll('p')
 
             paragraphs.forEach((p, i) => {
                 const rect = p.getBoundingClientRect()
-                // Get paragraph position relative to editor, accounting for scroll
-                const paragraphTop = rect.top - editorRect.top + scrollTop
-                const paragraphBottom = rect.bottom - editorRect.top + scrollTop
+                const adjustedParagraphRect = {
+                    top: rect.top,
+                    bottom: rect.bottom,
+                    height: rect.height,
+                }
 
-                // For proper intersection, we need to check if one rectangle is not entirely
-                // above or below the other. This is the correct way to check for overlap.
+                // Add a small buffer to prevent edge-case overlaps
+                const buffer = 5
                 const verticalOverlap = !(
-                    (
-                        paragraphBottom < imageTop || // paragraph ends before image starts
-                        paragraphTop > imageBottom    // paragraph starts after image ends
-                    )
+                    adjustedParagraphRect.bottom + buffer < adjustedImageRect.top ||
+                    adjustedParagraphRect.top - buffer > adjustedImageRect.bottom
                 )
 
-                console.log(`Paragraph ${i + 1} rect:`, {
-                    top: paragraphTop,
-                    bottom: paragraphBottom,
-                    height: rect.height,
-                    originalTop: rect.top,
-                    originalBottom: rect.bottom,
-                    scrollTop
-                })
-                console.log(`Image rect:`, {
-                    top: imageTop,
-                    bottom: imageBottom,
-                    height: imageRect.height,
-                    originalTop: imageRect.top,
-                    originalBottom: imageRect.bottom,
-                    scrollTop
-                })
-                console.log(`Overlap:`, verticalOverlap)
-
                 if (verticalOverlap) {
+                    console.log('\n=== Overlap Check ===')
+                    console.log('Editor rect:', editorRect)
+                    console.log(`Paragraph ${i + 1} raw rect:`, rect)
+                    console.log('Image raw rect:', imageRect)
+                    console.log(`Adjusted Paragraph ${i + 1}:`, adjustedParagraphRect)
+                    console.log('Adjusted Image:', adjustedImageRect)
+                    console.log('Vertical Overlap:', verticalOverlap)
+
                     // Add CSS for this specific <p> tag by targeting nth-child
                     const nthChildSelector = `.ProseMirror p:nth-child(${i + 1})`
                     const margin = alignment === 'left' ? 'margin-right' : 'margin-left'
@@ -79,3 +209,5 @@ const handleParagraphStyling = (proseMirror) => {
         }
     })
 }
+
+*/
