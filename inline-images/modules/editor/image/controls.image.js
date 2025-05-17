@@ -237,12 +237,15 @@ const setContainerMode = (container, mode) => {
     const controls = container.querySelector('.naie-controls')
     controls?.remove()
 
+    // Set the mode in the dataset for loader.image.js to check
     if (mode === 'editing') {
+        container.dataset.mode = 'edit'
         container.classList.remove('locked')
         container.appendChild(createControls(container))
         setupImageInteractions(container)
     } else {
         // locked
+        container.dataset.mode = 'locked'
         container.classList.add('locked')
 
         // Add edit button that shows on hover

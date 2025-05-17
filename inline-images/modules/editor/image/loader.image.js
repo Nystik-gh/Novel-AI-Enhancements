@@ -101,12 +101,16 @@ const loadImagesFromState = async () => {
 
                 // Override the generated ID with the stored one
                 container.dataset.id = imageData.id
+                container.dataset.anchorIndex = anchorIndex
 
-                // Listen for position changes of the target paragraph
-                paragraphPositionState.onKey('positionChanged', anchorIndex, (key, newState) => {
-                    console.log('positionChanged', key, newState)
-                    container.style.top = `${newState.position.top}px`
-                })
+                // Listen for position changes of the target paragraph, but ignore if in edit mode
+                const positionUpdateHandler = (key, newState) => {
+                    if (container.dataset.mode !== 'edit') {
+                        console.log('positionChanged', key, newState)
+                        container.style.top = `${newState.position.top}px`
+                    }
+                }
+                paragraphPositionState.onKey('positionChanged', anchorIndex, positionUpdateHandler)
 
                 // Append to image layer and set to locked mode
                 imageLayer.appendChild(container)

@@ -17,8 +17,6 @@ const handleParagraphStyling = async (proseMirror) => {
 
     const paragraphs = Array.from(proseMirror.children)
 
-    const paragraphsToAdjust = new Set()
-
     paragraphs.forEach((p, i) => {
         const pRect = p.getBoundingClientRect()
 
@@ -34,16 +32,35 @@ const handleParagraphStyling = async (proseMirror) => {
                     pRect.top > containerRect.bottom
                 )
             ) {
-                p.imgOverlap = container
-                p.index = i + 1
-                paragraphsToAdjust.add(p)
+                const alignment = container.dataset.alignment || 'left'
+                const containerHeight = containerRect.height
+                const containerWidthPercent = parseFloat(container.dataset.widthPercent || '0')
+
+                if (alignment === 'center') {
+                    // Add bottom margin to the previous paragraph
+                    if (i > 0) {
+                        const prevNthChildSelector = `.ProseMirror p:nth-child(${i})`
+                        styleTag.innerHTML += `${prevNthChildSelector} { margin-bottom: ${containerHeight}px; }
+`
+                    }
+
+                    // Add top margin to the current paragraph
+                    const nthChildSelector = `.ProseMirror p:nth-child(${i + 1})`
+                    styleTag.innerHTML += `${nthChildSelector} { margin-top: ${containerHeight}px; }
+`
+                } else if (alignment === 'left') {
+                    // Adjust right padding for left-aligned images
+                    const nthChildSelector = `.ProseMirror p:nth-child(${i + 1})`
+                    styleTag.innerHTML += `${nthChildSelector} { padding-left: calc(${containerWidthPercent}% + 6rem); }
+`
+                } else if (alignment === 'right') {
+                    // Adjust left padding for right-aligned images
+                    const nthChildSelector = `.ProseMirror p:nth-child(${i + 1})`
+                    styleTag.innerHTML += `${nthChildSelector} { padding-right: calc(${containerWidthPercent}% + 6rem); }
+`
+                }
             }
         })
-    })
-
-    paragraphsToAdjust.forEach((p) => {
-        const nthChildSelector = `.ProseMirror p:nth-child(${p.index})`
-        styleTag.innerHTML += `${nthChildSelector} { background: teal; }\n`
     })
 }
 

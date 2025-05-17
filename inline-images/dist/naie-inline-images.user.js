@@ -355,12 +355,15 @@ const setContainerMode = (container, mode) => {
     const controls = container.querySelector('.naie-controls')
     controls?.remove()
 
+    // Set the mode in the dataset for loader.image.js to check
     if (mode === 'editing') {
+        container.dataset.mode = 'edit'
         container.classList.remove('locked')
         container.appendChild(createControls(container))
         setupImageInteractions(container)
     } else {
         // locked
+        container.dataset.mode = 'locked'
         container.classList.add('locked')
 
         // Add edit button that shows on hover
@@ -857,12 +860,16 @@ const loadImagesFromState = async () => {
 
                 // Override the generated ID with the stored one
                 container.dataset.id = imageData.id
+                container.dataset.anchorIndex = anchorIndex
 
-                // Listen for position changes of the target paragraph
-                paragraphPositionState.onKey('positionChanged', anchorIndex, (key, newState) => {
-                    console.log('positionChanged', key, newState)
-                    container.style.top = `${newState.position.top}px`
-                })
+                // Listen for position changes of the target paragraph, but ignore if in edit mode
+                const positionUpdateHandler = (key, newState) => {
+                    if (container.dataset.mode !== 'edit') {
+                        console.log('positionChanged', key, newState)
+                        container.style.top = `${newState.position.top}px`
+                    }
+                }
+                paragraphPositionState.onKey('positionChanged', anchorIndex, positionUpdateHandler)
 
                 // Append to image layer and set to locked mode
                 imageLayer.appendChild(container)
@@ -1310,8 +1317,6 @@ const handleParagraphStyling = async (proseMirror) => {
 
     const paragraphs = Array.from(proseMirror.children)
 
-    const paragraphsToAdjust = new Set()
-
     paragraphs.forEach((p, i) => {
         const pRect = p.getBoundingClientRect()
 
@@ -1327,16 +1332,35 @@ const handleParagraphStyling = async (proseMirror) => {
                     pRect.top > containerRect.bottom
                 )
             ) {
-                p.imgOverlap = container
-                p.index = i + 1
-                paragraphsToAdjust.add(p)
+                const alignment = container.dataset.alignment || 'left'
+                const containerHeight = containerRect.height
+                const containerWidthPercent = parseFloat(container.dataset.widthPercent || '0')
+
+                if (alignment === 'center') {
+                    // Add bottom margin to the previous paragraph
+                    if (i > 0) {
+                        const prevNthChildSelector = `.ProseMirror p:nth-child(${i})`
+                        styleTag.innerHTML += `${prevNthChildSelector} { margin-bottom: ${containerHeight}px; }
+`
+                    }
+
+                    // Add top margin to the current paragraph
+                    const nthChildSelector = `.ProseMirror p:nth-child(${i + 1})`
+                    styleTag.innerHTML += `${nthChildSelector} { margin-top: ${containerHeight}px; }
+`
+                } else if (alignment === 'left') {
+                    // Adjust right padding for left-aligned images
+                    const nthChildSelector = `.ProseMirror p:nth-child(${i + 1})`
+                    styleTag.innerHTML += `${nthChildSelector} { padding-left: calc(${containerWidthPercent}% + 3rem); }
+`
+                } else if (alignment === 'right') {
+                    // Adjust left padding for right-aligned images
+                    const nthChildSelector = `.ProseMirror p:nth-child(${i + 1})`
+                    styleTag.innerHTML += `${nthChildSelector} { padding-right: calc(${containerWidthPercent}% + 3rem); }
+`
+                }
             }
         })
-    })
-
-    paragraphsToAdjust.forEach((p) => {
-        const nthChildSelector = `.ProseMirror p:nth-child(${p.index})`
-        styleTag.innerHTML += `${nthChildSelector} { background: teal; }\n`
     })
 }
 
