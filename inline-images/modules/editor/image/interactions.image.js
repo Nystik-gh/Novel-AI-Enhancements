@@ -1,5 +1,24 @@
 const PADDING = 40 // Padding for the draggable area
 
+// Add debounce function to avoid excessive styling updates
+const debounce = (func, wait) => {
+    let timeout
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout)
+            func(...args)
+        }
+        clearTimeout(timeout)
+        timeout = setTimeout(later, wait)
+    }
+}
+
+// Create debounced version of handleParagraphStyling
+const debouncedHandleStyling = debounce(() => {
+    const proseMirror = document.querySelector('.ProseMirror')
+    if (proseMirror) handleParagraphStyling(proseMirror)
+}, 50)
+
 const setupDraggable = (container) => {
     interact(container).draggable({
         inertia: true,
@@ -21,6 +40,13 @@ const setupDraggable = (container) => {
                 const maxY = target._parentHeight - target.offsetHeight
 
                 target.style.top = `${Math.min(Math.max(newY, minY), maxY)}px`
+
+                // Update paragraph styling as image is moved
+                debouncedHandleStyling()
+            },
+            end() {
+                // Ensure final styling is applied when drag ends
+                debouncedHandleStyling()
             },
         },
         modifiers: [
@@ -80,7 +106,14 @@ const setupResizable = (container) => {
                     // Apply new width and position
                     target.style.width = `${widthPercent}%`
                     Object.assign(target.style, position)
+
+                    // Update paragraph styling as image is resized
+                    debouncedHandleStyling()
                 }
+            },
+            end() {
+                // Ensure final styling is applied when resize ends
+                debouncedHandleStyling()
             },
         },
         modifiers: [

@@ -59,7 +59,6 @@ const init = () => {
 
 // ;INJECT DEPENDENCIES;
 
-const polyfillLoaded = injectAnchorPositionPolyfill()
 // Only initialize on the stories page
 if (window.location.pathname.startsWith('/stories')) {
     scriptInit = false

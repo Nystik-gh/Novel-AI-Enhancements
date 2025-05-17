@@ -87,21 +87,22 @@ const injectControlStyles = () => {
         .naie-control-button {
             width: 24px;
             height: 24px;
+            min-width: 24px;
             border: none;
-            background: #4a4a4a;
+            background: rgba(60,60,60,0.35);
             color: white;
             border-radius: 4px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 14px;
-            padding: 0;
+            font-size: 12px;
+            padding: 4px 8px;
             transition: background-color 0.2s;
         }
 
         .naie-control-button:hover {
-            background: #5a5a5a;
+            background: rgba(60,60,60,0.7);
         }
 
         .naie-control-button.edit {
@@ -110,20 +111,6 @@ const injectControlStyles = () => {
 
         .naie-control-button.fullscreen {
             font-size: 16px;
-        }
-
-        .naie-control-button {
-            background: none;
-            border: none;
-            color: white;
-            padding: 4px 8px;
-            border-radius: 2px;
-            cursor: pointer;
-            font-size: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 24px;
         }
 
         .naie-control-button svg {
@@ -137,11 +124,11 @@ const injectControlStyles = () => {
         }
 
         .naie-control-button:hover {
-            background: rgba(0,0,0,0.2);
+            background: rgba(60,60,60,0.7);
         }
 
         .naie-control-button.active {
-            background: rgba(0,0,0,0.5);
+            background: rgba(60,60,60,0.85);
         }
     `
     document.head.appendChild(styleTag)
@@ -214,7 +201,11 @@ const createControls = (container) => {
         triggerSave()
     })
 
-    controls.append(alignmentControls, lockButton, createFullscreenButton(container))
+    const wrapper = document.createElement('div')
+    wrapper.className = 'naie-alignment-controls'
+    wrapper.append(lockButton, createFullscreenButton(container))
+
+    controls.append(alignmentControls, wrapper)
     return controls
 }
 
@@ -324,7 +315,7 @@ const showImageModal = (imgSrc) => {
     closeButton.onclick = handleClose
 
     // Add keyboard support
-    overlay.addEventListener('keydown', e => {
+    overlay.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') handleClose()
     })
 
@@ -333,6 +324,6 @@ const showImageModal = (imgSrc) => {
     document.body.append(overlay)
 
     // Prevent clicks on overlay from bubbling
-    modal.addEventListener('click', e => e.stopPropagation())
+    modal.addEventListener('click', (e) => e.stopPropagation())
     overlay.addEventListener('click', handleClose)
 }

@@ -8,6 +8,57 @@ const handleParagraphStyling = async (proseMirror) => {
         document.head.appendChild(styleTag)
     }
 
+    console.log('styleTag', styleTag)
+
+    // Clear existing styles
+    styleTag.innerHTML = ''
+
+    const containers = document.querySelectorAll('.naie-image-container')
+
+    const paragraphs = Array.from(proseMirror.children)
+
+    const paragraphsToAdjust = new Set()
+
+    paragraphs.forEach((p, i) => {
+        const pRect = p.getBoundingClientRect()
+
+        containers.forEach((container) => {
+            const containerRect = container.getBoundingClientRect()
+
+            // Check if paragraph overlaps with the container
+            if (
+                !(
+                    pRect.right < containerRect.left ||
+                    pRect.left > containerRect.right ||
+                    pRect.bottom < containerRect.top ||
+                    pRect.top > containerRect.bottom
+                )
+            ) {
+                p.imgOverlap = container
+                p.index = i + 1
+                paragraphsToAdjust.add(p)
+            }
+        })
+    })
+
+    paragraphsToAdjust.forEach((p) => {
+        const nthChildSelector = `.ProseMirror p:nth-child(${p.index})`
+        styleTag.innerHTML += `${nthChildSelector} { background: teal; }\n`
+    })
+}
+
+/*const handleParagraphStyling = async (proseMirror) => {
+    let styleTag = document.querySelector('style[data-naie-image-positions]')
+
+    // Create style tag if it doesn't exist
+    if (!styleTag) {
+        styleTag = document.createElement('style')
+        styleTag.setAttribute('data-naie-image-positions', 'true')
+        document.head.appendChild(styleTag)
+    }
+
+    console.log('styleTag', styleTag)
+
     // Clear existing styles
     styleTag.innerHTML = ''
 
@@ -37,6 +88,8 @@ const handleParagraphStyling = async (proseMirror) => {
         })
     })
 
+    console.log('paragraphsToAdjust', paragraphsToAdjust)
+
     await Promise.all(loadPromises)
 
     const allParagraphs = Array.from(proseMirror.children)
@@ -52,7 +105,7 @@ const handleParagraphStyling = async (proseMirror) => {
             styleTag.innerHTML += `${nthChildSelector} { background: teal; }\n`
         }
     }
-}
+}*/
 
 const findOverlappingParagraphs = (imgC) => {
     const imageRect = imgC.getBoundingClientRect()

@@ -205,21 +205,22 @@ const injectControlStyles = () => {
         .naie-control-button {
             width: 24px;
             height: 24px;
+            min-width: 24px;
             border: none;
-            background: #4a4a4a;
+            background: rgba(60,60,60,0.35);
             color: white;
             border-radius: 4px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 14px;
-            padding: 0;
+            font-size: 12px;
+            padding: 4px 8px;
             transition: background-color 0.2s;
         }
 
         .naie-control-button:hover {
-            background: #5a5a5a;
+            background: rgba(60,60,60,0.7);
         }
 
         .naie-control-button.edit {
@@ -228,20 +229,6 @@ const injectControlStyles = () => {
 
         .naie-control-button.fullscreen {
             font-size: 16px;
-        }
-
-        .naie-control-button {
-            background: none;
-            border: none;
-            color: white;
-            padding: 4px 8px;
-            border-radius: 2px;
-            cursor: pointer;
-            font-size: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 24px;
         }
 
         .naie-control-button svg {
@@ -255,11 +242,11 @@ const injectControlStyles = () => {
         }
 
         .naie-control-button:hover {
-            background: rgba(0,0,0,0.2);
+            background: rgba(60,60,60,0.7);
         }
 
         .naie-control-button.active {
-            background: rgba(0,0,0,0.5);
+            background: rgba(60,60,60,0.85);
         }
     `
     document.head.appendChild(styleTag)
@@ -332,7 +319,11 @@ const createControls = (container) => {
         triggerSave()
     })
 
-    controls.append(alignmentControls, lockButton, createFullscreenButton(container))
+    const wrapper = document.createElement('div')
+    wrapper.className = 'naie-alignment-controls'
+    wrapper.append(lockButton, createFullscreenButton(container))
+
+    controls.append(alignmentControls, wrapper)
     return controls
 }
 
@@ -442,7 +433,7 @@ const showImageModal = (imgSrc) => {
     closeButton.onclick = handleClose
 
     // Add keyboard support
-    overlay.addEventListener('keydown', e => {
+    overlay.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') handleClose()
     })
 
@@ -451,7 +442,7 @@ const showImageModal = (imgSrc) => {
     document.body.append(overlay)
 
     // Prevent clicks on overlay from bubbling
-    modal.addEventListener('click', e => e.stopPropagation())
+    modal.addEventListener('click', (e) => e.stopPropagation())
     overlay.addEventListener('click', handleClose)
 }
 
@@ -594,6 +585,25 @@ const addImageToLayer = async (url, width = 30, y = 0, alignment = 'left', start
 
 const PADDING = 40 // Padding for the draggable area
 
+// Add debounce function to avoid excessive styling updates
+const debounce = (func, wait) => {
+    let timeout
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout)
+            func(...args)
+        }
+        clearTimeout(timeout)
+        timeout = setTimeout(later, wait)
+    }
+}
+
+// Create debounced version of handleParagraphStyling
+const debouncedHandleStyling = debounce(() => {
+    const proseMirror = document.querySelector('.ProseMirror')
+    if (proseMirror) handleParagraphStyling(proseMirror)
+}, 50)
+
 const setupDraggable = (container) => {
     interact(container).draggable({
         inertia: true,
@@ -615,6 +625,13 @@ const setupDraggable = (container) => {
                 const maxY = target._parentHeight - target.offsetHeight
 
                 target.style.top = `${Math.min(Math.max(newY, minY), maxY)}px`
+
+                // Update paragraph styling as image is moved
+                debouncedHandleStyling()
+            },
+            end() {
+                // Ensure final styling is applied when drag ends
+                debouncedHandleStyling()
             },
         },
         modifiers: [
@@ -674,7 +691,14 @@ const setupResizable = (container) => {
                     // Apply new width and position
                     target.style.width = `${widthPercent}%`
                     Object.assign(target.style, position)
+
+                    // Update paragraph styling as image is resized
+                    debouncedHandleStyling()
                 }
+            },
+            end() {
+                // Ensure final styling is applied when resize ends
+                debouncedHandleStyling()
             },
         },
         modifiers: [
@@ -815,22 +839,27 @@ const loadImagesFromState = async () => {
                     existingContainer.remove()
                 }
 
-                const targetParagraph = paragraphs[imageData.anchorIndex]
+                // Clamp anchorIndex to valid range
+                let anchorIndex = imageData.anchorIndex
+                if (anchorIndex < 0) anchorIndex = 0
+                if (anchorIndex >= paragraphs.length) anchorIndex = paragraphs.length - 1
+
+                const targetParagraph = paragraphs[anchorIndex]
 
                 if (!targetParagraph) {
-                    console.warn('Target paragraph not found:', imageData.anchorIndex)
+                    console.warn('Target paragraph not found:', anchorIndex)
                     return null
                 }
 
                 const position = calculateAbsolutePosition(targetParagraph, editorRect, scrollTop)
-                paragraphPositionState.updatePosition(imageData.anchorIndex, targetParagraph, imageData.anchorIndex, position)
+                paragraphPositionState.updatePosition(anchorIndex, targetParagraph, anchorIndex, position)
                 const container = await createImageContainer(imageData.url, imageData.width, position.top, imageData.align)
 
                 // Override the generated ID with the stored one
                 container.dataset.id = imageData.id
 
                 // Listen for position changes of the target paragraph
-                paragraphPositionState.onKey('positionChanged', imageData.anchorIndex, (key, newState) => {
+                paragraphPositionState.onKey('positionChanged', anchorIndex, (key, newState) => {
                     console.log('positionChanged', key, newState)
                     container.style.top = `${newState.position.top}px`
                 })
@@ -887,8 +916,14 @@ const getMemoryInput = () => {
     return expandButton.parentElement.querySelector('textarea')
 }
 
+const getAuthorNoteInput = () => {
+    const expandButton = document.querySelector(`button[aria-label="expand author's note"]`)
+    if (!expandButton) return null
+    return expandButton.parentElement.querySelector('textarea')
+}
+
 const lockMemoryInput = () => {
-    if (memoryLock) {
+    if (memoryLock && memoryLock.isLocked) {
         console.warn('Memory input already locked')
         return memoryLock
     }
@@ -909,23 +944,98 @@ const lockMemoryInput = () => {
     // Insert clone
     memory.parentNode.insertBefore(clone, memory.nextSibling)
 
-    return {
+    memoryLock = {
+        isLocked: true,
         unlock: () => {
             // Remove clone and restore original
+            memoryLock.isLocked = false
             clone.remove()
             memory.style.removeProperty('display')
+
+            // Clean up the save character sequence without triggering event
+            if (memory.value.includes(SAVE_CHARACTER_SEQUENCE)) {
+                const cleanValue = memory.value.replace(SAVE_CHARACTER_SEQUENCE, '')
+                NAIE.DOM.setNativeValue(memory, cleanValue)
+                // No simulateInputEvent call here to avoid triggering additional save
+            }
         },
     }
 }
 
-const triggerSave = () => {
+const triggerSave = async () => {
     console.log('triggering save')
     const memory = getMemoryInput()
-    if (!memory) return
+    const authornote = getAuthorNoteInput()
+    if (!memory || !authornote) return
 
-    memoryLock = lockMemoryInput()
-    NAIE.DOM.setNativeValue(memory, memory.value + SAVE_CHARACTER_SEQUENCE)
-    NAIE.DOM.simulateInputEvent(memory)
+    // Look for save indicator before triggering save
+    const saveIndicator = document.querySelector('.save-indicator')
+    if (!saveIndicator) {
+        console.error('Save indicator not found')
+        alert('Failed to save image position: Save indicator not found.')
+        return
+    }
+
+    // Store initial indicator text
+    const initialIndicatorText = saveIndicator.textContent || ''
+
+    try {
+        lockMemoryInput()
+
+        // Add save sequence and trigger input event
+        NAIE.DOM.setNativeValue(memory, memory.value + SAVE_CHARACTER_SEQUENCE)
+        NAIE.DOM.simulateInputEvent(memory)
+
+        // Wait for save indicator to show "Saving..."
+        const saved = await Promise.race([
+            new Promise((resolve) => {
+                const observer = new MutationObserver(() => {
+                    if (saveIndicator.textContent.includes('Saving')) {
+                        observer.disconnect()
+                        resolve(true)
+                    }
+                })
+                observer.observe(saveIndicator, { childList: true, subtree: true, characterData: true })
+            }),
+            NAIE.MISC.sleep(500).then(() => false), // Timeout after 500ms
+        ])
+
+        if (!saved) {
+            // If save didn't trigger, try removing the sequence
+            console.warn('Save not detected, removing sequence and trying again')
+            NAIE.DOM.setNativeValue(memory, memory.value.replace(SAVE_CHARACTER_SEQUENCE, ''))
+            NAIE.DOM.simulateInputEvent(memory)
+
+            // Check if save triggered now
+            const savedRetry = await Promise.race([
+                new Promise((resolve) => {
+                    const observer = new MutationObserver(() => {
+                        if (saveIndicator.textContent.includes('Saving')) {
+                            observer.disconnect()
+                            resolve(true)
+                        }
+                    })
+                    observer.observe(saveIndicator, { childList: true, subtree: true, characterData: true })
+                }),
+                NAIE.MISC.sleep(500).then(() => false),
+            ])
+
+            if (!savedRetry) {
+                throw new Error('Failed to trigger save after multiple attempts')
+            }
+        }
+
+        console.log('Save successfully triggered')
+        // Success case - don't unlock here as another function handles it
+    } catch (error) {
+        console.error('Save failed:', error)
+        alert('Failed to save image position. Please try again or save manually.')
+
+        // Only unlock on failure
+        if (memoryLock) {
+            memoryLock.unlock()
+        }
+    }
 }
 
 
@@ -1191,6 +1301,57 @@ const handleParagraphStyling = async (proseMirror) => {
         document.head.appendChild(styleTag)
     }
 
+    console.log('styleTag', styleTag)
+
+    // Clear existing styles
+    styleTag.innerHTML = ''
+
+    const containers = document.querySelectorAll('.naie-image-container')
+
+    const paragraphs = Array.from(proseMirror.children)
+
+    const paragraphsToAdjust = new Set()
+
+    paragraphs.forEach((p, i) => {
+        const pRect = p.getBoundingClientRect()
+
+        containers.forEach((container) => {
+            const containerRect = container.getBoundingClientRect()
+
+            // Check if paragraph overlaps with the container
+            if (
+                !(
+                    pRect.right < containerRect.left ||
+                    pRect.left > containerRect.right ||
+                    pRect.bottom < containerRect.top ||
+                    pRect.top > containerRect.bottom
+                )
+            ) {
+                p.imgOverlap = container
+                p.index = i + 1
+                paragraphsToAdjust.add(p)
+            }
+        })
+    })
+
+    paragraphsToAdjust.forEach((p) => {
+        const nthChildSelector = `.ProseMirror p:nth-child(${p.index})`
+        styleTag.innerHTML += `${nthChildSelector} { background: teal; }\n`
+    })
+}
+
+/*const handleParagraphStyling = async (proseMirror) => {
+    let styleTag = document.querySelector('style[data-naie-image-positions]')
+
+    // Create style tag if it doesn't exist
+    if (!styleTag) {
+        styleTag = document.createElement('style')
+        styleTag.setAttribute('data-naie-image-positions', 'true')
+        document.head.appendChild(styleTag)
+    }
+
+    console.log('styleTag', styleTag)
+
     // Clear existing styles
     styleTag.innerHTML = ''
 
@@ -1220,6 +1381,8 @@ const handleParagraphStyling = async (proseMirror) => {
         })
     })
 
+    console.log('paragraphsToAdjust', paragraphsToAdjust)
+
     await Promise.all(loadPromises)
 
     const allParagraphs = Array.from(proseMirror.children)
@@ -1235,7 +1398,7 @@ const handleParagraphStyling = async (proseMirror) => {
             styleTag.innerHTML += `${nthChildSelector} { background: teal; }\n`
         }
     }
-}
+}*/
 
 const findOverlappingParagraphs = (imgC) => {
     const imageRect = imgC.getBoundingClientRect()
@@ -1414,37 +1577,10 @@ const initInlineImages = (proseMirror) => {
         resizeObserver.disconnect()
     }
 
-    // Create new resize observer
+    // Create new resize observer with debouncing
     resizeObserver = new ResizeObserver((entries) => {
-        console.log('Editor resized, updating paragraph positions')
-        const editorRect = proseMirror.getBoundingClientRect()
-        const scrollTop = proseMirror.scrollTop
-
-        // Get currently tracked paragraphs
-        const positions = paragraphPositionState.getAllPositions()
-
-        // Update only tracked paragraphs that need updating
-        for (const [index, state] of positions) {
-            // Only update if element is no longer connected or exists
-            if (!state.element.isConnected) {
-                // Try to find the paragraph at this index
-                const paragraph = proseMirror.querySelector(`p:nth-child(${index + 1})`)
-                if (paragraph) {
-                    state.element = paragraph
-                } else {
-                    // Paragraph no longer exists at this index
-                    paragraphPositionState.removePosition(index)
-                    continue
-                }
-            }
-
-            // Update position for the paragraph
-            const position = calculateAbsolutePosition(state.element, editorRect, scrollTop)
-            paragraphPositionState.updatePosition(index, state.element, index, position)
-        }
-
-        // Debounce the resize callback
-        /*clearTimeout(resizeTimeout)
+        // Use debounce to avoid excessive updates
+        clearTimeout(resizeTimeout)
         resizeTimeout = setTimeout(() => {
             console.log('Editor resized, updating paragraph positions')
             const editorRect = proseMirror.getBoundingClientRect()
@@ -1472,7 +1608,7 @@ const initInlineImages = (proseMirror) => {
                 const position = calculateAbsolutePosition(state.element, editorRect, scrollTop)
                 paragraphPositionState.updatePosition(index, state.element, index, position)
             }
-        }, 5) // Debounce set to 50ms for smooth visual updates while maintaining performance*/
+        }, 50) // Debounce set to 50ms for smooth visual updates while maintaining performance
     })
 
     // Start observing the editor
@@ -1484,10 +1620,27 @@ const observeParagraphs = (proseMirror) => {
         return
     }
 
-    paragraphObserver = new MutationObserver(() => {
-        // TODO: Handle paragraph mutations (image insertion, deletion, etc)
-        //handleParagraphStyling(proseMirror)
-        console.log('Paragraph mutation detected')
+    // Create a debounced version of handleParagraphStyling
+    let mutationTimeout = null
+    const debouncedHandleParagraphStyling = () => {
+        clearTimeout(mutationTimeout)
+        mutationTimeout = setTimeout(() => {
+            handleParagraphStyling(proseMirror)
+            console.log('Paragraph mutation handled')
+        }, 100) // 100ms debounce
+    }
+
+    paragraphObserver = new MutationObserver((mutations) => {
+        // Check if the mutation is relevant before handling
+        const relevantMutation = mutations.some((mutation) => {
+            // Potentially add optimizations
+
+            return true
+        })
+
+        if (relevantMutation) {
+            debouncedHandleParagraphStyling()
+        }
     })
 
     paragraphObserver.observe(proseMirror, {
@@ -1496,7 +1649,57 @@ const observeParagraphs = (proseMirror) => {
         characterData: true,
         attributes: true,
     })
+
+    // Create event handlers with named functions so they can be removed later
+    pasteHandler = () => {
+        // Give the editor time to process the paste
+        setTimeout(() => handleParagraphStyling(proseMirror), 50)
+    }
+
+    inputHandler = () => {
+        // Slight delay to ensure content is updated
+        setTimeout(() => handleParagraphStyling(proseMirror), 50)
+    }
+
+    keydownHandler = (e) => {
+        // Check for keys that might delete content
+        if (e.key === 'Backspace' || e.key === 'Delete') {
+            // Give the editor time to process the deletion
+            setTimeout(() => handleParagraphStyling(proseMirror), 50)
+        }
+    }
+
+    // Add specific event listeners with our stored handlers
+    proseMirror.addEventListener('paste', pasteHandler)
+    proseMirror.addEventListener('input', inputHandler)
+    proseMirror.addEventListener('keydown', keydownHandler)
+
+    // Create and add the undo/redo handler to document
+    undoRedoHandler = (e) => {
+        // Ctrl+Z (Undo)
+        if (e.ctrlKey && !e.shiftKey && e.key === 'z') {
+            console.log('Undo detected')
+            // Wait a moment for the editor to update after the undo
+            setTimeout(() => handleParagraphStyling(document.querySelector('.ProseMirror')), 50)
+        }
+
+        // Ctrl+Shift+Z or Ctrl+Y (Redo)
+        if ((e.ctrlKey && e.shiftKey && e.key === 'z') || (e.ctrlKey && !e.shiftKey && e.key === 'y')) {
+            console.log('Redo detected')
+            // Wait a moment for the editor to update after the redo
+            setTimeout(() => handleParagraphStyling(document.querySelector('.ProseMirror')), 50)
+        }
+    }
+
+    // Add the undo/redo handler
+    document.addEventListener('keydown', undoRedoHandler)
 }
+
+// Store references to event handler functions so we can remove them later
+let pasteHandler = null
+let inputHandler = null
+let keydownHandler = null
+let undoRedoHandler = null
 
 const destroyParagraphObserver = () => {
     if (paragraphObserver) {
@@ -1508,6 +1711,23 @@ const destroyParagraphObserver = () => {
         resizeObserver.disconnect()
         resizeObserver = null
     }
+
+    // Remove event listeners from ProseMirror
+    const proseMirror = document.querySelector('.ProseMirror')
+    if (proseMirror) {
+        if (pasteHandler) proseMirror.removeEventListener('paste', pasteHandler)
+        if (inputHandler) proseMirror.removeEventListener('input', inputHandler)
+        if (keydownHandler) proseMirror.removeEventListener('keydown', keydownHandler)
+    }
+
+    // Remove global undo/redo event listener
+    if (undoRedoHandler) document.removeEventListener('keydown', undoRedoHandler)
+
+    // Reset event handler references
+    pasteHandler = null
+    inputHandler = null
+    keydownHandler = null
+    undoRedoHandler = null
 }
 
 const injectImageLayer = () => {
@@ -1548,8 +1768,16 @@ const injectImageLayer = () => {
     }
 }
 
+// Keep a reference to the editor observer so we can clean it up when needed
+let editorObserver = null
+
 const watchForEditor = () => {
-    const domObserver = new MutationObserver(() => {
+    // Clean up any existing observer
+    if (editorObserver) {
+        editorObserver.disconnect()
+    }
+
+    editorObserver = new MutationObserver(() => {
         const proseMirror = document.querySelector('.ProseMirror:not([data-shadowed]):not([data-shadow-editor])')
 
         if (proseMirror && !proseMirror.hasAttribute('data-naie-images-initialized')) {
@@ -1561,7 +1789,7 @@ const watchForEditor = () => {
         }
     })
 
-    domObserver.observe(document.body, {
+    editorObserver.observe(document.body, {
         childList: true,
         subtree: true,
     })
@@ -1574,6 +1802,38 @@ const watchForEditor = () => {
         proseMirror.setAttribute('data-naie-images-initialized', 'true')
         observeParagraphs(proseMirror)
     }
+}
+
+// Function to clean up all observers when the script is unloaded
+const cleanupAllObservers = () => {
+    if (paragraphObserver) {
+        paragraphObserver.disconnect()
+        paragraphObserver = null
+    }
+
+    if (resizeObserver) {
+        resizeObserver.disconnect()
+        resizeObserver = null
+    }
+
+    if (editorObserver) {
+        editorObserver.disconnect()
+        editorObserver = null
+    }
+
+    // Remove event listeners
+    destroyParagraphObserver()
+
+    // Clear any pending timeouts
+    if (resizeTimeout) {
+        clearTimeout(resizeTimeout)
+        resizeTimeout = null
+    }
+}
+
+// Export the cleanup function to the global scope
+if (typeof window !== 'undefined') {
+    window.NAIE_cleanupInlineImagesObservers = cleanupAllObservers
 }
 
 
@@ -2282,7 +2542,6 @@ const initializeNetworkHooks = () => {
 
 
 
-const polyfillLoaded = injectAnchorPositionPolyfill()
 // Only initialize on the stories page
 if (window.location.pathname.startsWith('/stories')) {
     scriptInit = false

@@ -83,22 +83,27 @@ const loadImagesFromState = async () => {
                     existingContainer.remove()
                 }
 
-                const targetParagraph = paragraphs[imageData.anchorIndex]
+                // Clamp anchorIndex to valid range
+                let anchorIndex = imageData.anchorIndex
+                if (anchorIndex < 0) anchorIndex = 0
+                if (anchorIndex >= paragraphs.length) anchorIndex = paragraphs.length - 1
+
+                const targetParagraph = paragraphs[anchorIndex]
 
                 if (!targetParagraph) {
-                    console.warn('Target paragraph not found:', imageData.anchorIndex)
+                    console.warn('Target paragraph not found:', anchorIndex)
                     return null
                 }
 
                 const position = calculateAbsolutePosition(targetParagraph, editorRect, scrollTop)
-                paragraphPositionState.updatePosition(imageData.anchorIndex, targetParagraph, imageData.anchorIndex, position)
+                paragraphPositionState.updatePosition(anchorIndex, targetParagraph, anchorIndex, position)
                 const container = await createImageContainer(imageData.url, imageData.width, position.top, imageData.align)
 
                 // Override the generated ID with the stored one
                 container.dataset.id = imageData.id
 
                 // Listen for position changes of the target paragraph
-                paragraphPositionState.onKey('positionChanged', imageData.anchorIndex, (key, newState) => {
+                paragraphPositionState.onKey('positionChanged', anchorIndex, (key, newState) => {
                     console.log('positionChanged', key, newState)
                     container.style.top = `${newState.position.top}px`
                 })
