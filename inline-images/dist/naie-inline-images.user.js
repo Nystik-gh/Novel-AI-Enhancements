@@ -1518,7 +1518,16 @@ const handleParagraphStyling = (proseMirror) => {
 
         // Handle containers in anchor order
         containersWithAnchor.forEach(({ container, alignment, anchorIdx }) => {
-            const containerRect = container.getBoundingClientRect()
+            // Normalize container rect to editor-relative coordinates
+            const containerRectRaw = container.getBoundingClientRect()
+            const containerRect = {
+                top: containerRectRaw.top - editorRect.top,
+                bottom: containerRectRaw.bottom - editorRect.top,
+                left: containerRectRaw.left - editorRect.left,
+                right: containerRectRaw.right - editorRect.left,
+                height: containerRectRaw.height,
+                width: containerRectRaw.width,
+            }
             const containerWidthPercent = parseFloat(container.dataset.widthPercent || '0')
             const containerHeight = containerRect.height
 
@@ -1532,7 +1541,23 @@ const handleParagraphStyling = (proseMirror) => {
                 // Left/right-aligned: loop paragraphs from anchorIdx
                 for (let i = anchorIdx; i < paragraphs.length; i++) {
                     const p = paragraphs[i]
-                    const pRect = p.getBoundingClientRect()
+                    // Convert both rects to editor-relative coordinates
+                    const pRectRaw = p.getBoundingClientRect()
+                    const containerRectRaw = container.getBoundingClientRect()
+                    const editorTop = editorRect.top
+                    const editorLeft = editorRect.left
+                    const pRect = {
+                        top: pRectRaw.top - editorTop,
+                        bottom: pRectRaw.bottom - editorTop,
+                        left: pRectRaw.left - editorLeft,
+                        right: pRectRaw.right - editorLeft,
+                    }
+                    const containerRect = {
+                        top: containerRectRaw.top - editorTop,
+                        bottom: containerRectRaw.bottom - editorTop,
+                        left: containerRectRaw.left - editorLeft,
+                        right: containerRectRaw.right - editorLeft,
+                    }
                     let isOverlapping = !(
                         pRect.right < containerRect.left ||
                         pRect.left > containerRect.right ||
@@ -1553,7 +1578,7 @@ const handleParagraphStyling = (proseMirror) => {
                         }
                     }
 
-                    // Stop if paragraph is no longer vertically overlapping
+                    // Stop if paragraph is no longer vertically overlapping (editor-relative)
                     if (pRect.top > containerRect.bottom) break
                 }
             }
