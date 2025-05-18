@@ -6,10 +6,10 @@
 // @match        https://novelai.net/*
 // @grant        none
 // @run-at       document-start
-// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/main/core/dist/naie-core.user.js
+// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/core/dist/naie-core.user.js?version=10
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=novelai.net
 // @author       Nystik (https://gitlab.com/Nystik)
-// @downloadUrl  hhttps://github.com/Nystik-gh/Novel-AI-Enhancements/raw/main/subshelves/dist/naie-subshelves.user.js
+// @downloadUrl  https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/main/subshelves/dist/naie-subshelves.user.js
 // @homepageUrl  https://github.com/Nystik-gh/Novel-AI-Enhancements
 // @supportUrl   https://github.com/Nystik-gh/Novel-AI-Enhancements/issues
 // ==/UserScript==
@@ -2230,7 +2230,7 @@ const initializeNetworkHooks = () => {
 
 
 // Check if the current path is /stories before initializing
-if (window.location.pathname.startsWith('/stories')) {
+if (wRef.location.pathname.startsWith('/stories')) {
     scriptInit = false
     init()
 }

@@ -2,7 +2,7 @@ const sodiumUrl = 'https://raw.githubusercontent.com/jedisct1/libsodium.js/refs/
 
 const initSodium = async () => {
     return new Promise((resolve, reject) => {
-        unsafeWindow.sodium = {
+        wRef.sodium = {
             onload: function (sodium) {
                 resolve(sodium)
             },

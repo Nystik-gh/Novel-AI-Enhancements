@@ -1,5 +1,5 @@
 const getStoryIdFromUrl = () => {
-    const urlParams = new URLSearchParams(window.location.search)
+    const urlParams = new URLSearchParams(wRef.location.search)
     return urlParams.get('id')
 }
 
@@ -15,7 +15,7 @@ const handleUrlChange = () => {
 
 const setupUrlChangeListener = () => {
     // Create URL change observer using both popstate and pushstate
-    window.addEventListener('popstate', handleUrlChange)
+    wRef.addEventListener('popstate', handleUrlChange)
 
     // Intercept history.pushState
     const originalPushState = history.pushState
@@ -32,7 +32,7 @@ const setupUrlChangeListener = () => {
     }
 
     // Also watch for hash changes (just in case)
-    window.addEventListener('hashchange', handleUrlChange)
+    wRef.addEventListener('hashchange', handleUrlChange)
 
     // Initial check
     handleUrlChange()

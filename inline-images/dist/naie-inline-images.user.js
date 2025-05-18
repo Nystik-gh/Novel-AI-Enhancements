@@ -9,7 +9,7 @@
 // @grant        GM_xmlhttpRequest
 // @grant        GM_getValue
 // @grant        GM_setValue
-// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/core/dist/naie-core.user.js?version=9
+// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/core/dist/naie-core.user.js?version=10
 // @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/crypto/dist/naie-crypto.user.js?version=9
 // @require      https://unpkg.com/interactjs/dist/interact.min.js
 // @run-at       document-start
@@ -1949,11 +1949,6 @@ const cleanupAllObservers = () => {
     }
 }
 
-// Export the cleanup function to the global scope
-if (typeof window !== 'undefined') {
-    window.NAIE_cleanupInlineImagesObservers = cleanupAllObservers
-}
-
 
 /* ---- end of prosemirror.editor.js --- */
 
@@ -2493,7 +2488,7 @@ const createStoryImageState = () => {
 /* ############ story.url.js ########### */
 
 const getStoryIdFromUrl = () => {
-    const urlParams = new URLSearchParams(window.location.search)
+    const urlParams = new URLSearchParams(wRef.location.search)
     return urlParams.get('id')
 }
 
@@ -2509,7 +2504,7 @@ const handleUrlChange = () => {
 
 const setupUrlChangeListener = () => {
     // Create URL change observer using both popstate and pushstate
-    window.addEventListener('popstate', handleUrlChange)
+    wRef.addEventListener('popstate', handleUrlChange)
 
     // Intercept history.pushState
     const originalPushState = history.pushState
@@ -2526,7 +2521,7 @@ const setupUrlChangeListener = () => {
     }
 
     // Also watch for hash changes (just in case)
-    window.addEventListener('hashchange', handleUrlChange)
+    wRef.addEventListener('hashchange', handleUrlChange)
 
     // Initial check
     handleUrlChange()
@@ -2670,7 +2665,7 @@ const initializeNetworkHooks = () => {
 
 
 // Only initialize on the stories page
-if (window.location.pathname.startsWith('/stories')) {
+if (wRef.location.pathname.startsWith('/stories')) {
     scriptInit = false
     init()
 }

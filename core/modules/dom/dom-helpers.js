@@ -8,7 +8,7 @@ const dom_findElementWithMaskImage = (elements, urlSubstrings) => {
     return [...elements].filter((element) => {
         if (!element) return false
 
-        const computedStyle = window.getComputedStyle(element)
+        const computedStyle = wRef.getComputedStyle(element)
         const maskImageValue = computedStyle.getPropertyValue('mask-image') || computedStyle.getPropertyValue('-webkit-mask-image')
 
         return maskImageValue && urlSubstrings.every((sub) => maskImageValue.includes(sub))

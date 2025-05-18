@@ -700,7 +700,7 @@ const dom_findElementWithMaskImage = (elements, urlSubstrings) => {
     return [...elements].filter((element) => {
         if (!element) return false
 
-        const computedStyle = window.getComputedStyle(element)
+        const computedStyle = wRef.getComputedStyle(element)
         const maskImageValue = computedStyle.getPropertyValue('mask-image') || computedStyle.getPropertyValue('-webkit-mask-image')
 
         return maskImageValue && urlSubstrings.every((sub) => maskImageValue.includes(sub))
@@ -1222,7 +1222,7 @@ const extensions_createNAIEindicatorElement = () => {
     `
 
     // Copy relevant styles from save indicator
-    const saveStyles = window.getComputedStyle(saveIndicator)
+    const saveStyles = wRef.getComputedStyle(saveIndicator)
     container.style.font = saveStyles.font
     container.style.color = saveStyles.color
 
@@ -1269,19 +1269,19 @@ const extensions_createIndicatorManager = (logContainer, maxRows, duration = 200
 
         isInserting = true
         const message = messageManager.popMessage()
-        
+
         const messageElement = document.createElement('div')
         messageElement.className = 'notification'
         messageElement.textContent = message
-        
+
         // Calculate time since last insert
         const now = Date.now()
         const timeSinceLastInsert = now - lastInsertTime
         const delayNeeded = Math.max(0, staggerDelay - timeSinceLastInsert)
-        
+
         // Only wait if we need to
         if (delayNeeded > 0) {
-            await new Promise(r => setTimeout(r, delayNeeded))
+            await new Promise((r) => setTimeout(r, delayNeeded))
         }
 
         logContainer.appendChild(messageElement)
@@ -2224,15 +2224,15 @@ const createNAIEInstance = () => {
     // Force a reload when the app navigates to or from /stories
     // This is to make sure we only load the script when we access /stories
 
-    let previousPath = window.location.pathname
+    let previousPath = wRef.location.pathname
     const handleUrlChange = () => {
-        const currentPath = window.location.pathname
+        const currentPath = wRef.location.pathname
 
         if (
             (previousPath.startsWith('/stories') && !currentPath.startsWith('/stories')) ||
             (!previousPath.startsWith('/stories') && currentPath.startsWith('/stories'))
         ) {
-            window.location.reload()
+            wRef.location.reload()
         }
 
         previousPath = currentPath
@@ -2245,7 +2245,7 @@ const createNAIEInstance = () => {
     handleUrlChange() // Initial check
 
     // Check if the current path is /stories before initializing
-    if (window.location.pathname.startsWith('/stories')) {
+    if (wRef.location.pathname.startsWith('/stories')) {
         coreInit()
     }
 })()

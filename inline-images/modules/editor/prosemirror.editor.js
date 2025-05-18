@@ -265,8 +265,3 @@ const cleanupAllObservers = () => {
         resizeTimeout = null
     }
 }
-
-// Export the cleanup function to the global scope
-if (typeof window !== 'undefined') {
-    window.NAIE_cleanupInlineImagesObservers = cleanupAllObservers
-}

@@ -45,15 +45,15 @@
     // Force a reload when the app navigates to or from /stories
     // This is to make sure we only load the script when we access /stories
 
-    let previousPath = window.location.pathname
+    let previousPath = wRef.location.pathname
     const handleUrlChange = () => {
-        const currentPath = window.location.pathname
+        const currentPath = wRef.location.pathname
 
         if (
             (previousPath.startsWith('/stories') && !currentPath.startsWith('/stories')) ||
             (!previousPath.startsWith('/stories') && currentPath.startsWith('/stories'))
         ) {
-            window.location.reload()
+            wRef.location.reload()
         }
 
         previousPath = currentPath
@@ -66,7 +66,7 @@
     handleUrlChange() // Initial check
 
     // Check if the current path is /stories before initializing
-    if (window.location.pathname.startsWith('/stories')) {
+    if (wRef.location.pathname.startsWith('/stories')) {
         coreInit()
     }
 })()
