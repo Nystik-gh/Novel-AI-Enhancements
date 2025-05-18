@@ -16,7 +16,7 @@ const debounce = (func, wait) => {
 // Create debounced version of handleParagraphStyling
 const debouncedHandleStyling = debounce(() => {
     const proseMirror = document.querySelector('.ProseMirror')
-    if (proseMirror) handleParagraphStyling(proseMirror)
+    if (proseMirror) runParagraphStylingOnce(proseMirror)
 }, 50)
 
 const setupDraggable = (container) => {

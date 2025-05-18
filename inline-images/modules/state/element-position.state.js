@@ -3,9 +3,9 @@
  * @returns {Object} State manager instance
  */
 function createElementPositionState() {
-    const emitter = new NAIE.MISC.Emitter();
+    const emitter = new NAIE.MISC.Emitter()
     /** @type {Map<number, {element: HTMLElement, index: number, position: {top: number, bottom: number, left: number, right: number}}>} */
-    const positions = new Map();
+    const positions = new Map()
 
     return {
         /**
@@ -15,31 +15,32 @@ function createElementPositionState() {
          * @param {number} index - Element index
          * @param {{top: number, bottom: number, left: number, right: number}} position - Element's position coordinates
          */
-        updatePosition(key, element, index, position) {
-            const previousState = positions.get(key);
-            const newState = { element, index, position };
-            
-            positions.set(key, newState);
-            
+        updatePosition(key, element, index, position, offset = 0) {
+            const previousState = positions.get(key)
+            const newState = { element, index, position, offset }
+            positions.set(key, newState)
             // Emit change event if state changed
-            if (!previousState || 
-                previousState.index !== index || 
+            if (
+                !previousState ||
+                previousState.index !== index ||
                 previousState.position.top !== position.top ||
                 previousState.position.bottom !== position.bottom ||
                 previousState.position.left !== position.left ||
                 previousState.position.right !== position.right ||
-                previousState.element !== element) {
-                emitter.emit('positionChanged', key, newState, previousState);
+                previousState.element !== element ||
+                previousState.offset !== offset
+            ) {
+                emitter.emit('positionChanged', key, newState, previousState)
             }
         },
 
         /**
          * Get position state for a key
-         * @param {number} key 
+         * @param {number} key
          * @returns {{element: HTMLElement, index: number, position: {top: number, bottom: number, left: number, right: number}} | undefined}
          */
         getPosition(key) {
-            return positions.get(key);
+            return positions.get(key)
         },
 
         /**
@@ -47,18 +48,18 @@ function createElementPositionState() {
          * @returns {Map<number, {element: HTMLElement, index: number, position: {top: number, bottom: number, left: number, right: number}}>}
          */
         getAllPositions() {
-            return positions;
+            return positions
         },
 
         /**
          * Remove position state for a key
-         * @param {number} key 
+         * @param {number} key
          */
         removePosition(key) {
-            const previousState = positions.get(key);
+            const previousState = positions.get(key)
             if (previousState) {
-                positions.delete(key);
-                emitter.emit('positionRemoved', key, previousState);
+                positions.delete(key)
+                emitter.emit('positionRemoved', key, previousState)
             }
         },
 
@@ -66,8 +67,8 @@ function createElementPositionState() {
          * Clear all position states
          */
         clear() {
-            positions.clear();
-            emitter.emit('cleared');
+            positions.clear()
+            emitter.emit('cleared')
         },
 
         /**
@@ -76,7 +77,7 @@ function createElementPositionState() {
          * @param {Function} callback - Event handler
          */
         on(event, callback) {
-            emitter.on(event, callback);
+            emitter.on(event, callback)
         },
 
         /**
@@ -87,11 +88,10 @@ function createElementPositionState() {
          */
         onKey(event, key, callback) {
             emitter.on(event, (...args) => {
-                // For events that pass key as first argument (positionChanged, positionRemoved)
                 if (args[0] === key) {
-                    callback(...args);
+                    callback(...args)
                 }
-            });
+            })
         },
 
         /**
@@ -100,7 +100,7 @@ function createElementPositionState() {
          * @param {Function} callback - Event handler to remove
          */
         off(event, callback) {
-            emitter.off(event, callback);
-        }
-    };
+            emitter.off(event, callback)
+        },
+    }
 }

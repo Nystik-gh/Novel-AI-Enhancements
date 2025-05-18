@@ -63,6 +63,8 @@ const loadImagesFromState = async () => {
         paragraphPositionState.updatePosition(index, paragraph, index, position)
     })*/
 
+    console.log('intial image load')
+
     // Create array of promises for loading all images
     const loadPromises = storyImages.images
         .map(async (imageData) => {
@@ -95,21 +97,56 @@ const loadImagesFromState = async () => {
                     return null
                 }
 
-                const position = calculateAbsolutePosition(targetParagraph, editorRect, scrollTop)
-                paragraphPositionState.updatePosition(anchorIndex, targetParagraph, anchorIndex, position)
-                const container = await createImageContainer(imageData.url, imageData.width, position.top, imageData.align)
+                const position = calculateAbsolutePosition(targetParagraph, editorRect, scrollTop, 0)
+                paragraphPositionState.updatePosition(anchorIndex, targetParagraph, anchorIndex, position, imageData.offset)
+                const container = await createImageContainer(
+                    imageData.url,
+                    imageData.width,
+                    position.top,
+                    imageData.align,
+                    imageData.offset,
+                )
+
+                console.log(
+                    anchorIndex,
+                    'setting initial container position: top: ' + position.top,
+                    'offset: ' + imageData.offset,
+                    'sum: ' + (position.top + imageData.offset),
+                )
+
+                storyImagesState.upsertImageInStory(currentStoryId, imageData.id, {
+                    ...imageData,
+                    anchorIndex: anchorIndex,
+                })
 
                 // Override the generated ID with the stored one
                 container.dataset.id = imageData.id
                 container.dataset.anchorIndex = anchorIndex
 
                 // Listen for position changes of the target paragraph, but ignore if in edit mode
-                const positionUpdateHandler = (key, newState) => {
+                /*const positionUpdateHandler = (key, newState) => {
                     if (container.dataset.mode !== 'edit') {
                         console.log('positionChanged', key, newState)
-                        container.style.top = `${newState.position.top}px`
+                        container.style.top = `${newState.position.top + newState.offset}px`
+                    }
+                }*/
+
+                const positionUpdateHandler = () => {
+                    if (container.dataset.mode !== 'edit') {
+                        const anchorIdx = parseInt(container.dataset.anchorIndex, 10)
+                        if (!isNaN(anchorIdx)) {
+                            const proseMirror = document.querySelector('.ProseMirror')
+                            const paragraphs = Array.from(proseMirror.children)
+                            if (paragraphs[anchorIdx]) {
+                                const editorRect = proseMirror.getBoundingClientRect()
+                                const scrollTop = proseMirror.scrollTop
+                                const position = calculateAbsolutePosition(paragraphs[anchorIdx], editorRect, scrollTop)
+                                container.style.top = `${position.top + (parseFloat(imageData.offset) || 5)}px`
+                            }
+                        }
                     }
                 }
+
                 paragraphPositionState.onKey('positionChanged', anchorIndex, positionUpdateHandler)
 
                 // Append to image layer and set to locked mode
@@ -128,12 +165,23 @@ const loadImagesFromState = async () => {
     Promise.all(loadPromises)
         .then((containers) => {
             console.log('All images loaded successfully:', containers.length)
-            handleParagraphStyling(document.querySelector('.ProseMirror'))
+            runParagraphStylingOnce(document.querySelector('.ProseMirror'))
             // You can trigger additional actions here when all images are loaded
         })
         .catch((error) => {
             console.error('Failed to load some images:', error)
         })
+}
+
+async function waitForParagraphCount(minCount, timeout = 2000) {
+    const proseMirror = document.querySelector('.ProseMirror')
+    const start = Date.now()
+    while (Date.now() - start < timeout) {
+        const paragraphs = proseMirror ? proseMirror.querySelectorAll('p') : []
+        if (paragraphs.length >= minCount) return true
+        await NAIE.MISC.sleep(50)
+    }
+    return false
 }
 
 // Function to handle story changes
@@ -145,5 +193,18 @@ const handleStoryChange = async () => {
 
     // Wait for image layer to be ready
     await NAIE.DOM.waitForElement('.naie-image-layer', 1000)
+
+    // Get expected paragraph count from images
+    const storyImages = await storyImagesState.getStoryImages(currentStoryId)
+    let maxAnchorIndex = 0
+    if (storyImages && storyImages.images && storyImages.images.length > 0) {
+        maxAnchorIndex = Math.max(...storyImages.images.map((img) => img.anchorIndex || 0)) + 1
+    }
+
+    // Wait for enough paragraphs to exist
+    if (maxAnchorIndex > 0) {
+        await waitForParagraphCount(maxAnchorIndex, 2000)
+    }
+
     await loadImagesFromState()
 }

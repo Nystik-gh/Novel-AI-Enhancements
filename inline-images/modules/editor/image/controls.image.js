@@ -16,6 +16,7 @@ const injectControlStyles = () => {
 
         .naie-image-container img {
             max-width: 100%;
+            width: 100%;
             height: auto;
             display: block;
         }
@@ -143,7 +144,14 @@ const createAlignmentButton = (alignment, isActive, onClick) => {
         center: centerAlignIcon,
         right: rightAlignIcon,
     }[alignment]
-    button.onclick = onClick
+    button.onclick = (e) => {
+        onClick(e)
+        // Trigger paragraph styling after alignment change
+        const proseMirror = document.querySelector('.ProseMirror')
+        if (proseMirror) {
+            runParagraphStylingOnce(proseMirror)
+        }
+    }
     return button
 }
 
@@ -183,6 +191,7 @@ const createControls = (container) => {
 
     // Lock button
     const lockButton = createLockButton(async () => {
+        setContainerMode(container, 'locked')
         const { index, offset } = findNearestParagraph(container)
 
         const imageRecord = {
@@ -197,7 +206,7 @@ const createControls = (container) => {
         await storyImagesState.upsertImageInStory(currentStoryId, imageRecord.id, imageRecord)
 
         console.log('state', storyImagesState.getMap())
-        setContainerMode(container, 'locked')
+
         triggerSave()
     })
 
@@ -239,6 +248,7 @@ const setContainerMode = (container, mode) => {
 
     // Set the mode in the dataset for loader.image.js to check
     if (mode === 'editing') {
+        pauseResizeObserver()
         container.dataset.mode = 'edit'
         container.classList.remove('locked')
         container.appendChild(createControls(container))
@@ -257,6 +267,8 @@ const setContainerMode = (container, mode) => {
 
         // Remove interactions
         removeImageInteractions(container)
+
+        resumeResizeObserver()
     }
 }
 
@@ -266,6 +278,7 @@ const findNearestParagraph = (container) => {
     const paragraphs = proseMirror.querySelectorAll('p')
     const imageRect = container.getBoundingClientRect()
     const imageTop = imageRect.top
+    const alignment = container.dataset.alignment || 'left'
 
     let nearestIndex = 0
     let nearestDistance = Infinity
@@ -273,13 +286,51 @@ const findNearestParagraph = (container) => {
 
     paragraphs.forEach((p, i) => {
         const rect = p.getBoundingClientRect()
-        const distance = Math.abs(rect.top - imageTop)
-        if (distance < nearestDistance) {
-            nearestDistance = distance
-            nearestIndex = i
-            nearestTop = rect.top
+        if (rect.top <= imageTop) {
+            const distance = Math.abs(rect.top - imageTop)
+            if (distance < nearestDistance) {
+                nearestDistance = distance
+                nearestIndex = i
+                nearestTop = rect.top
+            }
         }
     })
+
+    if (container.dataset.mode === 'edit' && alignment === 'center') {
+        const rect = paragraphs[nearestIndex].getBoundingClientRect()
+        if (rect.top <= imageTop && rect.bottom > imageTop && rect.bottom < imageRect.bottom) {
+            if (nearestIndex + 1 < paragraphs.length) {
+                nearestIndex += 1
+                nearestTop = paragraphs[nearestIndex].getBoundingClientRect().top
+            }
+        }
+    }
+
+    /*if (alignment === 'center') {
+        // For center alignment, find the paragraph with closest top that is above the image
+        paragraphs.forEach((p, i) => {
+            const rect = p.getBoundingClientRect()
+            if (rect.top <= imageTop) {
+                const distance = Math.abs(rect.top - imageTop)
+                if (distance < nearestDistance) {
+                    nearestDistance = distance
+                    nearestIndex = i
+                    nearestTop = rect.top
+                }
+            }
+        })
+    } else {
+        // Default: closest top regardless of above/below
+        paragraphs.forEach((p, i) => {
+            const rect = p.getBoundingClientRect()
+            const distance = Math.abs(rect.top - imageTop)
+            if (distance < nearestDistance) {
+                nearestDistance = distance
+                nearestIndex = i
+                nearestTop = rect.top
+            }
+        })
+    }*/
 
     // Calculate relative offset from the nearest paragraph
     const relativeOffset = imageTop - nearestTop

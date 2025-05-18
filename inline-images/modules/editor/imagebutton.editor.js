@@ -155,7 +155,8 @@ const showImageUrlModal = () => {
 
     const handleInsert = () => {
         if (input.value) {
-            addImageToLayer(input.value, 30, 0, 'right')
+            const position = getVisibleEditorPosition()
+            addImageToLayer(input.value, 30, position.y, 'right', 5)
             console.log('Insert image:', input.value)
         }
         overlay.remove()
@@ -237,4 +238,44 @@ const setupImageButtonObserver = () => {
     injectImageButton()
 
     return observer
+}
+
+const getVisibleEditorPosition = () => {
+    const proseMirror = document.querySelector('.ProseMirror')
+    if (!proseMirror) return { y: 0, paragraphIndex: 0 }
+
+    // Get editor dimensions
+    const editorRect = proseMirror.getBoundingClientRect()
+
+    // Find all paragraphs
+    const paragraphs = Array.from(proseMirror.children)
+
+    // Find paragraphs that are visible in the viewport - much simpler!
+    const visibleParagraphs = paragraphs.filter((p) => {
+        const rect = p.getBoundingClientRect()
+
+        // Paragraph is visible if it overlaps with the editor's visible area
+        return rect.top > 0 && rect.bottom > 0
+    })
+
+    // If no paragraphs are visible, return default
+    if (visibleParagraphs.length === 0) {
+        return {
+            y: editorRect.height / 3,
+            paragraphIndex: 0,
+        }
+    }
+
+    // Find the middle visible paragraph
+    const paragraphIndex = 4
+    const selectedParagraph = visibleParagraphs[paragraphIndex]
+
+    // Calculate the Y position - we still need scrollTop here to get document coordinates
+    const paragraphRect = selectedParagraph.getBoundingClientRect()
+    const y = paragraphRect.top - editorRect.top + proseMirror.scrollTop
+
+    return {
+        y,
+        paragraphIndex,
+    }
 }

@@ -1,128 +1,117 @@
-const handleParagraphStyling = async (proseMirror) => {
-    let styleTag = document.querySelector('style[data-naie-image-positions]')
+// --- Paragraph styling handler with run-once-at-a-time logic ---
+let paragraphStylingBusy = false
+let paragraphStylingQueued = false
 
-    // Create style tag if it doesn't exist
-    if (!styleTag) {
-        styleTag = document.createElement('style')
-        styleTag.setAttribute('data-naie-image-positions', 'true')
-        document.head.appendChild(styleTag)
+async function runParagraphStylingOnce(proseMirror) {
+    console.log('attempt to run paragraph styling', !paragraphStylingBusy)
+    if (paragraphStylingBusy) {
+        paragraphStylingQueued = true
+        return
     }
-
-    console.log('styleTag', styleTag)
-
-    // Clear existing styles
-    styleTag.innerHTML = ''
-
-    const containers = document.querySelectorAll('.naie-image-container')
-
-    const paragraphs = Array.from(proseMirror.children)
-
-    paragraphs.forEach((p, i) => {
-        const pRect = p.getBoundingClientRect()
-
-        containers.forEach((container) => {
-            const containerRect = container.getBoundingClientRect()
-
-            // Check if paragraph overlaps with the container
-            if (
-                !(
-                    pRect.right < containerRect.left ||
-                    pRect.left > containerRect.right ||
-                    pRect.bottom < containerRect.top ||
-                    pRect.top > containerRect.bottom
-                )
-            ) {
-                const alignment = container.dataset.alignment || 'left'
-                const containerHeight = containerRect.height
-                const containerWidthPercent = parseFloat(container.dataset.widthPercent || '0')
-
-                if (alignment === 'center') {
-                    // Add bottom margin to the previous paragraph
-                    if (i > 0) {
-                        const prevNthChildSelector = `.ProseMirror p:nth-child(${i})`
-                        styleTag.innerHTML += `${prevNthChildSelector} { margin-bottom: ${containerHeight}px; }
-`
-                    }
-
-                    // Add top margin to the current paragraph
-                    const nthChildSelector = `.ProseMirror p:nth-child(${i + 1})`
-                    styleTag.innerHTML += `${nthChildSelector} { margin-top: ${containerHeight}px; }
-`
-                } else if (alignment === 'left') {
-                    // Adjust right padding for left-aligned images
-                    const nthChildSelector = `.ProseMirror p:nth-child(${i + 1})`
-                    styleTag.innerHTML += `${nthChildSelector} { padding-left: calc(${containerWidthPercent}% + 6rem); }
-`
-                } else if (alignment === 'right') {
-                    // Adjust left padding for right-aligned images
-                    const nthChildSelector = `.ProseMirror p:nth-child(${i + 1})`
-                    styleTag.innerHTML += `${nthChildSelector} { padding-right: calc(${containerWidthPercent}% + 6rem); }
-`
-                }
-            }
-        })
-    })
-}
-
-/*const handleParagraphStyling = async (proseMirror) => {
-    let styleTag = document.querySelector('style[data-naie-image-positions]')
-
-    // Create style tag if it doesn't exist
-    if (!styleTag) {
-        styleTag = document.createElement('style')
-        styleTag.setAttribute('data-naie-image-positions', 'true')
-        document.head.appendChild(styleTag)
-    }
-
-    console.log('styleTag', styleTag)
-
-    // Clear existing styles
-    styleTag.innerHTML = ''
-
-    const containers = document.querySelectorAll('.naie-image-container')
-
-    const paragraphsToAdjust = []
-
-    const loadPromises = Array.from(containers).map((container) => {
-        return new Promise((resolve) => {
-            const image = container.querySelector('img')
-
-            const handleLoad = () => {
-                const editorRect = proseMirror.getBoundingClientRect()
-                const imageWidthPercent = container.dataset.widthPercent
-                const alignment = container.dataset.alignment || 'left'
-
-                const paragraphs = findOverlappingParagraphs(container)
-                paragraphsToAdjust.push(...paragraphs)
-                resolve(paragraphs)
-            }
-
-            if (image.complete) {
-                handleLoad()
-            } else {
-                image.onload = handleLoad
-            }
-        })
-    })
-
-    console.log('paragraphsToAdjust', paragraphsToAdjust)
-
-    await Promise.all(loadPromises)
-
-    const allParagraphs = Array.from(proseMirror.children)
-
-    for (let i = 0; i < allParagraphs.length; i++) {
-        const p = allParagraphs[i]
-        const ovPidx = paragraphsToAdjust.indexOf(p)
-        if (ovPidx !== -1) {
-            const overlapping = paragraphsToAdjust[ovPidx]
-            const imgOverlapping = overlapping.imgOverlap
-
-            const nthChildSelector = `.ProseMirror p:nth-child(${i + 1})`
-            styleTag.innerHTML += `${nthChildSelector} { background: teal; }\n`
+    paragraphStylingBusy = true
+    try {
+        console.log('running paragraph styling')
+        await handleParagraphStyling(proseMirror)
+        console.log('paragraph styling complete')
+    } finally {
+        console.log('unlocking paragraph styling')
+        paragraphStylingBusy = false
+        if (paragraphStylingQueued) {
+            paragraphStylingQueued = false
+            // Run again for any missed updates
+            console.log('re-running paragraph styling due to queue')
+            runParagraphStylingOnce(proseMirror)
         }
     }
-}*/
+}
+
+const handleParagraphStyling = (proseMirror) => {
+    return new Promise((resolve) => {
+        let styleTag = document.querySelector('style[data-naie-image-positions]')
+
+        // Create style tag if it doesn't exist
+        if (!styleTag) {
+            styleTag = document.createElement('style')
+            styleTag.setAttribute('data-naie-image-positions', 'true')
+            document.head.appendChild(styleTag)
+        }
+
+        console.log('styleTag', styleTag)
+
+        // Clear existing styles
+
+        const containers = document.querySelectorAll('.naie-image-container')
+
+        // Sort containers by anchor index (or expected anchor index)
+        const containersWithAnchor = Array.from(containers).map((container) => {
+            const alignment = container.dataset.alignment || 'left'
+            let anchorIdx = container.dataset.anchorIndex !== undefined ? parseInt(container.dataset.anchorIndex) : -1
+            let calcIdx = findNearestParagraph(container).index
+            if (container.dataset.mode === 'edit') {
+                anchorIdx = calcIdx
+            }
+
+            return { container, alignment, anchorIdx }
+        })
+
+        styleTag.innerHTML = ''
+
+        containersWithAnchor.sort((a, b) => a.anchorIdx - b.anchorIdx)
+
+        const editorRect = proseMirror.getBoundingClientRect()
+        const scrollTop = proseMirror.scrollTop
+        const paragraphs = Array.from(proseMirror.children)
+
+        // Handle containers in anchor order
+        containersWithAnchor.forEach(({ container, alignment, anchorIdx }) => {
+            const containerRect = container.getBoundingClientRect()
+            const containerWidthPercent = parseFloat(container.dataset.widthPercent || '0')
+            const containerHeight = containerRect.height
+
+            if (alignment === 'center') {
+                // Center-aligned: margin/padding logic for anchor paragraph only
+                if (anchorIdx >= 0 && anchorIdx < paragraphs.length) {
+                    const nthChildSelector = `.ProseMirror p:nth-child(${anchorIdx + 1})`
+                    styleTag.innerHTML += `${nthChildSelector} { padding-top: calc(${containerHeight}px + 2rem) !important; background: rgba(128, 0, 128, 0.1) !important; }\n`
+                }
+            } else {
+                // Left/right-aligned: loop paragraphs from anchorIdx
+                for (let i = anchorIdx; i < paragraphs.length; i++) {
+                    const p = paragraphs[i]
+                    const pRect = p.getBoundingClientRect()
+                    let isOverlapping = !(
+                        pRect.right < containerRect.left ||
+                        pRect.left > containerRect.right ||
+                        pRect.bottom < containerRect.top ||
+                        pRect.top > containerRect.bottom
+                    )
+                    let isAnchor = i === anchorIdx
+                    const nthChildSelector = `.ProseMirror p:nth-child(${i + 1})`
+                    if (isOverlapping) {
+                        if (alignment === 'left') {
+                            styleTag.innerHTML += `${nthChildSelector} { padding-left: calc(${containerWidthPercent}% + 4rem); background: ${
+                                isAnchor ? 'rgba(128, 0, 128, 0.1) !important;' : 'rgba(0, 128, 128, 0.1) !important;'
+                            }  }\n`
+                        } else if (alignment === 'right') {
+                            styleTag.innerHTML += `${nthChildSelector} { padding-right: calc(${containerWidthPercent}% + 4rem); background: ${
+                                isAnchor ? 'rgba(128, 0, 128, 0.1) !important;' : 'rgba(0, 128, 128, 0.1) !important;'
+                            } }\n`
+                        }
+                    }
+
+                    // Stop if paragraph is no longer vertically overlapping
+                    if (pRect.top > containerRect.bottom) break
+                }
+            }
+
+            /*const imgState = storyImagesState.getImageState(currentStoryId, container.dataset.id)
+            const pos = calculateAbsolutePosition(paragraphs[anchorIdx], editorRect, scrollTop)
+            paragraphPositionState.updatePosition(anchorIdx, paragraphs[anchorIdx], anchorIdx, pos, imgState.offset)*/
+        })
+
+        resolve()
+    })
+}
 
 const findOverlappingParagraphs = (imgC) => {
     const imageRect = imgC.getBoundingClientRect()
@@ -206,78 +195,3 @@ const findOverlappingParagraphs = (imgC) => {
 
     return overlappingParagraphs
 }
-
-/*
-
-const handleParagraphStyling = (proseMirror) => {
-    let styleTag = document.querySelector('style[data-naie-image-positions]')
-
-    // Create style tag if it doesn't exist
-    if (!styleTag) {
-        styleTag = document.createElement('style')
-        styleTag.setAttribute('data-naie-image-positions', 'true')
-        document.head.appendChild(styleTag)
-    }
-
-    // Clear existing styles
-    styleTag.innerHTML = ''
-
-    const containers = document.querySelectorAll('.naie-image-container')
-
-    containers.forEach((container) => {
-        const image = container.querySelector('img')
-        image.onload = () => {
-            const editorRect = proseMirror.getBoundingClientRect()
-            const imageRect = image.getBoundingClientRect()
-            const imageWidthPercent = container.dataset.widthPercent
-            const alignment = container.dataset.alignment || 'left'
-
-            // Use raw viewport-relative positions
-            const adjustedImageRect = {
-                top: imageRect.top,
-                bottom: imageRect.bottom,
-                height: imageRect.height,
-            }
-
-            const paragraphs = proseMirror.querySelectorAll('p')
-
-            paragraphs.forEach((p, i) => {
-                const rect = p.getBoundingClientRect()
-                const adjustedParagraphRect = {
-                    top: rect.top,
-                    bottom: rect.bottom,
-                    height: rect.height,
-                }
-
-                // Add a small buffer to prevent edge-case overlaps
-                const buffer = 5
-                const verticalOverlap = !(
-                    adjustedParagraphRect.bottom + buffer < adjustedImageRect.top ||
-                    adjustedParagraphRect.top - buffer > adjustedImageRect.bottom
-                )
-
-                if (verticalOverlap) {
-                    console.log('\n=== Overlap Check ===')
-                    console.log('Editor rect:', editorRect)
-                    console.log(`Paragraph ${i + 1} raw rect:`, rect)
-                    console.log('Image raw rect:', imageRect)
-                    console.log(`Adjusted Paragraph ${i + 1}:`, adjustedParagraphRect)
-                    console.log('Adjusted Image:', adjustedImageRect)
-                    console.log('Vertical Overlap:', verticalOverlap)
-
-                    // Add CSS for this specific <p> tag by targeting nth-child
-                    const nthChildSelector = `.ProseMirror p:nth-child(${i + 1})`
-                    const margin = alignment === 'left' ? 'margin-right' : 'margin-left'
-                    styleTag.innerHTML += `${nthChildSelector} { width: calc(${100 - imageWidthPercent}% - 4rem); background: teal; }\n`
-                }
-            })
-        }
-
-        // If the image is already loaded, trigger the onload function manually
-        if (image.complete) {
-            image.onload() // Trigger it immediately if the image is cached or already loaded
-        }
-    })
-}
-
-*/

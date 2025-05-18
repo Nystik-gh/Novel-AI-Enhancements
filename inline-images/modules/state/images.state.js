@@ -48,7 +48,7 @@ const createStoryImageState = () => {
         }
 
         const currentMeta = storyImageMap.get(storyId)
-        const existingImageIndex = currentMeta.images.findIndex(img => img.id === imageId)
+        const existingImageIndex = currentMeta.images.findIndex((img) => img.id === imageId)
 
         if (existingImageIndex === -1) {
             // Image doesn't exist, add it
@@ -61,6 +61,14 @@ const createStoryImageState = () => {
         }
     }
 
+    const getImageState = (storyId, imageId) => {
+        const currentMeta = storyImageMap.get(storyId)
+        if (!currentMeta) {
+            return null
+        }
+        return currentMeta.images.find((img) => img.id === imageId)
+    }
+
     return {
         getMap,
         getStoryImages,
@@ -69,5 +77,6 @@ const createStoryImageState = () => {
         addImageToStory,
         removeImageFromStory,
         upsertImageInStory,
+        getImageState,
     }
 }

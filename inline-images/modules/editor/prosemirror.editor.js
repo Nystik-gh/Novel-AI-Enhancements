@@ -1,6 +1,17 @@
 let paragraphObserver = null
 let resizeTimeout = null
 let resizeObserver = null
+let resizeObserverPaused = false
+
+const pauseResizeObserver = () => {
+    resizeObserverPaused = true
+    console.log('ResizeObserver paused')
+}
+
+const resumeResizeObserver = () => {
+    resizeObserverPaused = false
+    console.log('ResizeObserver resumed')
+}
 
 const initInlineImages = (proseMirror) => {
     console.log('Initializing inline images for editor')
@@ -13,6 +24,10 @@ const initInlineImages = (proseMirror) => {
 
     // Create new resize observer with debouncing
     resizeObserver = new ResizeObserver((entries) => {
+        if (resizeObserverPaused) {
+            console.log('ResizeObserver is paused, skipping update')
+            return
+        }
         // Use debounce to avoid excessive updates
         clearTimeout(resizeTimeout)
         resizeTimeout = setTimeout(() => {
@@ -39,8 +54,9 @@ const initInlineImages = (proseMirror) => {
                 }
 
                 // Update position for the paragraph
-                const position = calculateAbsolutePosition(state.element, editorRect, scrollTop)
-                paragraphPositionState.updatePosition(index, state.element, index, position)
+                const position = calculateAbsolutePosition(state.element, editorRect, scrollTop, 0)
+                paragraphPositionState.updatePosition(index, state.element, index, position, state.offset)
+                runParagraphStylingOnce(proseMirror)
             }
         }, 50) // Debounce set to 50ms for smooth visual updates while maintaining performance
     })
@@ -54,12 +70,12 @@ const observeParagraphs = (proseMirror) => {
         return
     }
 
-    // Create a debounced version of handleParagraphStyling
+    // Create a debounced version of runParagraphStylingOnce
     let mutationTimeout = null
-    const debouncedHandleParagraphStyling = () => {
+    const debouncedRunParagraphStylingOnce = () => {
         clearTimeout(mutationTimeout)
         mutationTimeout = setTimeout(() => {
-            handleParagraphStyling(proseMirror)
+            runParagraphStylingOnce(proseMirror)
             console.log('Paragraph mutation handled')
         }, 100) // 100ms debounce
     }
@@ -68,12 +84,10 @@ const observeParagraphs = (proseMirror) => {
         // Check if the mutation is relevant before handling
         const relevantMutation = mutations.some((mutation) => {
             // Potentially add optimizations
-
             return true
         })
-
         if (relevantMutation) {
-            debouncedHandleParagraphStyling()
+            debouncedRunParagraphStylingOnce()
         }
     })
 
@@ -86,46 +100,33 @@ const observeParagraphs = (proseMirror) => {
 
     // Create event handlers with named functions so they can be removed later
     pasteHandler = () => {
-        // Give the editor time to process the paste
-        setTimeout(() => handleParagraphStyling(proseMirror), 50)
+        setTimeout(() => runParagraphStylingOnce(proseMirror), 50)
     }
 
     inputHandler = () => {
-        // Slight delay to ensure content is updated
-        setTimeout(() => handleParagraphStyling(proseMirror), 50)
+        setTimeout(() => runParagraphStylingOnce(proseMirror), 50)
     }
 
     keydownHandler = (e) => {
-        // Check for keys that might delete content
         if (e.key === 'Backspace' || e.key === 'Delete') {
-            // Give the editor time to process the deletion
-            setTimeout(() => handleParagraphStyling(proseMirror), 50)
+            setTimeout(() => runParagraphStylingOnce(proseMirror), 50)
         }
     }
 
-    // Add specific event listeners with our stored handlers
     proseMirror.addEventListener('paste', pasteHandler)
     proseMirror.addEventListener('input', inputHandler)
     proseMirror.addEventListener('keydown', keydownHandler)
 
-    // Create and add the undo/redo handler to document
     undoRedoHandler = (e) => {
-        // Ctrl+Z (Undo)
         if (e.ctrlKey && !e.shiftKey && e.key === 'z') {
             console.log('Undo detected')
-            // Wait a moment for the editor to update after the undo
-            setTimeout(() => handleParagraphStyling(document.querySelector('.ProseMirror')), 50)
+            //setTimeout(() => runParagraphStylingOnce(document.querySelector('.ProseMirror')), 50)
         }
-
-        // Ctrl+Shift+Z or Ctrl+Y (Redo)
         if ((e.ctrlKey && e.shiftKey && e.key === 'z') || (e.ctrlKey && !e.shiftKey && e.key === 'y')) {
             console.log('Redo detected')
-            // Wait a moment for the editor to update after the redo
-            setTimeout(() => handleParagraphStyling(document.querySelector('.ProseMirror')), 50)
+            //setTimeout(() => runParagraphStylingOnce(document.querySelector('.ProseMirror')), 50)
         }
     }
-
-    // Add the undo/redo handler
     document.addEventListener('keydown', undoRedoHandler)
 }
 

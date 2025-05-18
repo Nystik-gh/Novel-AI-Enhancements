@@ -134,6 +134,7 @@ const injectControlStyles = () => {
 
         .naie-image-container img {
             max-width: 100%;
+            width: 100%;
             height: auto;
             display: block;
         }
@@ -261,7 +262,14 @@ const createAlignmentButton = (alignment, isActive, onClick) => {
         center: centerAlignIcon,
         right: rightAlignIcon,
     }[alignment]
-    button.onclick = onClick
+    button.onclick = (e) => {
+        onClick(e)
+        // Trigger paragraph styling after alignment change
+        const proseMirror = document.querySelector('.ProseMirror')
+        if (proseMirror) {
+            runParagraphStylingOnce(proseMirror)
+        }
+    }
     return button
 }
 
@@ -301,6 +309,7 @@ const createControls = (container) => {
 
     // Lock button
     const lockButton = createLockButton(async () => {
+        setContainerMode(container, 'locked')
         const { index, offset } = findNearestParagraph(container)
 
         const imageRecord = {
@@ -315,7 +324,7 @@ const createControls = (container) => {
         await storyImagesState.upsertImageInStory(currentStoryId, imageRecord.id, imageRecord)
 
         console.log('state', storyImagesState.getMap())
-        setContainerMode(container, 'locked')
+
         triggerSave()
     })
 
@@ -357,6 +366,7 @@ const setContainerMode = (container, mode) => {
 
     // Set the mode in the dataset for loader.image.js to check
     if (mode === 'editing') {
+        pauseResizeObserver()
         container.dataset.mode = 'edit'
         container.classList.remove('locked')
         container.appendChild(createControls(container))
@@ -375,6 +385,8 @@ const setContainerMode = (container, mode) => {
 
         // Remove interactions
         removeImageInteractions(container)
+
+        resumeResizeObserver()
     }
 }
 
@@ -384,6 +396,7 @@ const findNearestParagraph = (container) => {
     const paragraphs = proseMirror.querySelectorAll('p')
     const imageRect = container.getBoundingClientRect()
     const imageTop = imageRect.top
+    const alignment = container.dataset.alignment || 'left'
 
     let nearestIndex = 0
     let nearestDistance = Infinity
@@ -391,13 +404,51 @@ const findNearestParagraph = (container) => {
 
     paragraphs.forEach((p, i) => {
         const rect = p.getBoundingClientRect()
-        const distance = Math.abs(rect.top - imageTop)
-        if (distance < nearestDistance) {
-            nearestDistance = distance
-            nearestIndex = i
-            nearestTop = rect.top
+        if (rect.top <= imageTop) {
+            const distance = Math.abs(rect.top - imageTop)
+            if (distance < nearestDistance) {
+                nearestDistance = distance
+                nearestIndex = i
+                nearestTop = rect.top
+            }
         }
     })
+
+    if (container.dataset.mode === 'edit' && alignment === 'center') {
+        const rect = paragraphs[nearestIndex].getBoundingClientRect()
+        if (rect.top <= imageTop && rect.bottom > imageTop && rect.bottom < imageRect.bottom) {
+            if (nearestIndex + 1 < paragraphs.length) {
+                nearestIndex += 1
+                nearestTop = paragraphs[nearestIndex].getBoundingClientRect().top
+            }
+        }
+    }
+
+    /*if (alignment === 'center') {
+        // For center alignment, find the paragraph with closest top that is above the image
+        paragraphs.forEach((p, i) => {
+            const rect = p.getBoundingClientRect()
+            if (rect.top <= imageTop) {
+                const distance = Math.abs(rect.top - imageTop)
+                if (distance < nearestDistance) {
+                    nearestDistance = distance
+                    nearestIndex = i
+                    nearestTop = rect.top
+                }
+            }
+        })
+    } else {
+        // Default: closest top regardless of above/below
+        paragraphs.forEach((p, i) => {
+            const rect = p.getBoundingClientRect()
+            const distance = Math.abs(rect.top - imageTop)
+            if (distance < nearestDistance) {
+                nearestDistance = distance
+                nearestIndex = i
+                nearestTop = rect.top
+            }
+        })
+    }*/
 
     // Calculate relative offset from the nearest paragraph
     const relativeOffset = imageTop - nearestTop
@@ -510,15 +561,16 @@ const getImageDataUrl = (url) =>
         })
     })
 
-const createImageContainer = async (url, width = 30, y = 0, alignment = 'left') => {
+const createImageContainer = async (url, width = 30, y = 0, alignment = 'left', offset = 5) => {
     const container = document.createElement('div')
     container.className = 'naie-image-container'
-    container.style.width = `${width}%`  // Use percentage for width
-    container.style.top = `${y}px`
+    container.style.width = `${width}%` // Use percentage for width
+    container.style.top = `${y + offset}px`
     container.dataset.alignment = alignment
     container.dataset.url = url
     container.dataset.id = crypto.randomUUID()
     container.dataset.widthPercent = width.toString()
+    container.dataset.offset = offset
 
     const editor = document.querySelector('.ProseMirror')
     if (editor) {
@@ -561,7 +613,7 @@ const createImageContainer = async (url, width = 30, y = 0, alignment = 'left') 
     })
 }
 
-const addImageToLayer = async (url, width = 30, y = 0, alignment = 'left', startLocked = false) => {
+const addImageToLayer = async (url, width = 30, y = 0, alignment = 'left', offset = 5, startLocked = false) => {
     const imageLayer = document.querySelector('.naie-image-layer')
     if (!imageLayer) {
         console.error('Image layer not found')
@@ -570,7 +622,7 @@ const addImageToLayer = async (url, width = 30, y = 0, alignment = 'left', start
 
     try {
         // Wait for the container with loaded image
-        const container = await createImageContainer(url, width, y, alignment)
+        const container = await createImageContainer(url, width, y, alignment, offset)
         imageLayer.appendChild(container)
         initializeImageControls(container, startLocked)
         return container
@@ -604,7 +656,7 @@ const debounce = (func, wait) => {
 // Create debounced version of handleParagraphStyling
 const debouncedHandleStyling = debounce(() => {
     const proseMirror = document.querySelector('.ProseMirror')
-    if (proseMirror) handleParagraphStyling(proseMirror)
+    if (proseMirror) runParagraphStylingOnce(proseMirror)
 }, 50)
 
 const setupDraggable = (container) => {
@@ -822,6 +874,8 @@ const loadImagesFromState = async () => {
         paragraphPositionState.updatePosition(index, paragraph, index, position)
     })*/
 
+    console.log('intial image load')
+
     // Create array of promises for loading all images
     const loadPromises = storyImages.images
         .map(async (imageData) => {
@@ -854,21 +908,56 @@ const loadImagesFromState = async () => {
                     return null
                 }
 
-                const position = calculateAbsolutePosition(targetParagraph, editorRect, scrollTop)
-                paragraphPositionState.updatePosition(anchorIndex, targetParagraph, anchorIndex, position)
-                const container = await createImageContainer(imageData.url, imageData.width, position.top, imageData.align)
+                const position = calculateAbsolutePosition(targetParagraph, editorRect, scrollTop, 0)
+                paragraphPositionState.updatePosition(anchorIndex, targetParagraph, anchorIndex, position, imageData.offset)
+                const container = await createImageContainer(
+                    imageData.url,
+                    imageData.width,
+                    position.top,
+                    imageData.align,
+                    imageData.offset,
+                )
+
+                console.log(
+                    anchorIndex,
+                    'setting initial container position: top: ' + position.top,
+                    'offset: ' + imageData.offset,
+                    'sum: ' + (position.top + imageData.offset),
+                )
+
+                storyImagesState.upsertImageInStory(currentStoryId, imageData.id, {
+                    ...imageData,
+                    anchorIndex: anchorIndex,
+                })
 
                 // Override the generated ID with the stored one
                 container.dataset.id = imageData.id
                 container.dataset.anchorIndex = anchorIndex
 
                 // Listen for position changes of the target paragraph, but ignore if in edit mode
-                const positionUpdateHandler = (key, newState) => {
+                /*const positionUpdateHandler = (key, newState) => {
                     if (container.dataset.mode !== 'edit') {
                         console.log('positionChanged', key, newState)
-                        container.style.top = `${newState.position.top}px`
+                        container.style.top = `${newState.position.top + newState.offset}px`
+                    }
+                }*/
+
+                const positionUpdateHandler = () => {
+                    if (container.dataset.mode !== 'edit') {
+                        const anchorIdx = parseInt(container.dataset.anchorIndex, 10)
+                        if (!isNaN(anchorIdx)) {
+                            const proseMirror = document.querySelector('.ProseMirror')
+                            const paragraphs = Array.from(proseMirror.children)
+                            if (paragraphs[anchorIdx]) {
+                                const editorRect = proseMirror.getBoundingClientRect()
+                                const scrollTop = proseMirror.scrollTop
+                                const position = calculateAbsolutePosition(paragraphs[anchorIdx], editorRect, scrollTop)
+                                container.style.top = `${position.top + (parseFloat(imageData.offset) || 5)}px`
+                            }
+                        }
                     }
                 }
+
                 paragraphPositionState.onKey('positionChanged', anchorIndex, positionUpdateHandler)
 
                 // Append to image layer and set to locked mode
@@ -887,12 +976,23 @@ const loadImagesFromState = async () => {
     Promise.all(loadPromises)
         .then((containers) => {
             console.log('All images loaded successfully:', containers.length)
-            handleParagraphStyling(document.querySelector('.ProseMirror'))
+            runParagraphStylingOnce(document.querySelector('.ProseMirror'))
             // You can trigger additional actions here when all images are loaded
         })
         .catch((error) => {
             console.error('Failed to load some images:', error)
         })
+}
+
+async function waitForParagraphCount(minCount, timeout = 2000) {
+    const proseMirror = document.querySelector('.ProseMirror')
+    const start = Date.now()
+    while (Date.now() - start < timeout) {
+        const paragraphs = proseMirror ? proseMirror.querySelectorAll('p') : []
+        if (paragraphs.length >= minCount) return true
+        await NAIE.MISC.sleep(50)
+    }
+    return false
 }
 
 // Function to handle story changes
@@ -904,6 +1004,19 @@ const handleStoryChange = async () => {
 
     // Wait for image layer to be ready
     await NAIE.DOM.waitForElement('.naie-image-layer', 1000)
+
+    // Get expected paragraph count from images
+    const storyImages = await storyImagesState.getStoryImages(currentStoryId)
+    let maxAnchorIndex = 0
+    if (storyImages && storyImages.images && storyImages.images.length > 0) {
+        maxAnchorIndex = Math.max(...storyImages.images.map((img) => img.anchorIndex || 0)) + 1
+    }
+
+    // Wait for enough paragraphs to exist
+    if (maxAnchorIndex > 0) {
+        await waitForParagraphCount(maxAnchorIndex, 2000)
+    }
+
     await loadImagesFromState()
 }
 
@@ -1208,7 +1321,8 @@ const showImageUrlModal = () => {
 
     const handleInsert = () => {
         if (input.value) {
-            addImageToLayer(input.value, 30, 0, 'right')
+            const position = getVisibleEditorPosition()
+            addImageToLayer(input.value, 30, position.y, 'right', 5)
             console.log('Insert image:', input.value)
         }
         overlay.remove()
@@ -1292,137 +1406,166 @@ const setupImageButtonObserver = () => {
     return observer
 }
 
+const getVisibleEditorPosition = () => {
+    const proseMirror = document.querySelector('.ProseMirror')
+    if (!proseMirror) return { y: 0, paragraphIndex: 0 }
+
+    // Get editor dimensions
+    const editorRect = proseMirror.getBoundingClientRect()
+
+    // Find all paragraphs
+    const paragraphs = Array.from(proseMirror.children)
+
+    // Find paragraphs that are visible in the viewport - much simpler!
+    const visibleParagraphs = paragraphs.filter((p) => {
+        const rect = p.getBoundingClientRect()
+
+        // Paragraph is visible if it overlaps with the editor's visible area
+        return rect.top > 0 && rect.bottom > 0
+    })
+
+    // If no paragraphs are visible, return default
+    if (visibleParagraphs.length === 0) {
+        return {
+            y: editorRect.height / 3,
+            paragraphIndex: 0,
+        }
+    }
+
+    // Find the middle visible paragraph
+    const paragraphIndex = 4
+    const selectedParagraph = visibleParagraphs[paragraphIndex]
+
+    // Calculate the Y position - we still need scrollTop here to get document coordinates
+    const paragraphRect = selectedParagraph.getBoundingClientRect()
+    const y = paragraphRect.top - editorRect.top + proseMirror.scrollTop
+
+    return {
+        y,
+        paragraphIndex,
+    }
+}
+
 
 /* ---- end of imagebutton.editor.js --- */
 
 
 /* ######## paragraphs.editor.js ####### */
 
-const handleParagraphStyling = async (proseMirror) => {
-    let styleTag = document.querySelector('style[data-naie-image-positions]')
+// --- Paragraph styling handler with run-once-at-a-time logic ---
+let paragraphStylingBusy = false
+let paragraphStylingQueued = false
 
-    // Create style tag if it doesn't exist
-    if (!styleTag) {
-        styleTag = document.createElement('style')
-        styleTag.setAttribute('data-naie-image-positions', 'true')
-        document.head.appendChild(styleTag)
+async function runParagraphStylingOnce(proseMirror) {
+    console.log('attempt to run paragraph styling', !paragraphStylingBusy)
+    if (paragraphStylingBusy) {
+        paragraphStylingQueued = true
+        return
     }
-
-    console.log('styleTag', styleTag)
-
-    // Clear existing styles
-    styleTag.innerHTML = ''
-
-    const containers = document.querySelectorAll('.naie-image-container')
-
-    const paragraphs = Array.from(proseMirror.children)
-
-    paragraphs.forEach((p, i) => {
-        const pRect = p.getBoundingClientRect()
-
-        containers.forEach((container) => {
-            const containerRect = container.getBoundingClientRect()
-
-            // Check if paragraph overlaps with the container
-            if (
-                !(
-                    pRect.right < containerRect.left ||
-                    pRect.left > containerRect.right ||
-                    pRect.bottom < containerRect.top ||
-                    pRect.top > containerRect.bottom
-                )
-            ) {
-                const alignment = container.dataset.alignment || 'left'
-                const containerHeight = containerRect.height
-                const containerWidthPercent = parseFloat(container.dataset.widthPercent || '0')
-
-                if (alignment === 'center') {
-                    // Add bottom margin to the previous paragraph
-                    if (i > 0) {
-                        const prevNthChildSelector = `.ProseMirror p:nth-child(${i})`
-                        styleTag.innerHTML += `${prevNthChildSelector} { margin-bottom: ${containerHeight}px; }
-`
-                    }
-
-                    // Add top margin to the current paragraph
-                    const nthChildSelector = `.ProseMirror p:nth-child(${i + 1})`
-                    styleTag.innerHTML += `${nthChildSelector} { margin-top: ${containerHeight}px; }
-`
-                } else if (alignment === 'left') {
-                    // Adjust right padding for left-aligned images
-                    const nthChildSelector = `.ProseMirror p:nth-child(${i + 1})`
-                    styleTag.innerHTML += `${nthChildSelector} { padding-left: calc(${containerWidthPercent}% + 3rem); }
-`
-                } else if (alignment === 'right') {
-                    // Adjust left padding for right-aligned images
-                    const nthChildSelector = `.ProseMirror p:nth-child(${i + 1})`
-                    styleTag.innerHTML += `${nthChildSelector} { padding-right: calc(${containerWidthPercent}% + 3rem); }
-`
-                }
-            }
-        })
-    })
-}
-
-/*const handleParagraphStyling = async (proseMirror) => {
-    let styleTag = document.querySelector('style[data-naie-image-positions]')
-
-    // Create style tag if it doesn't exist
-    if (!styleTag) {
-        styleTag = document.createElement('style')
-        styleTag.setAttribute('data-naie-image-positions', 'true')
-        document.head.appendChild(styleTag)
-    }
-
-    console.log('styleTag', styleTag)
-
-    // Clear existing styles
-    styleTag.innerHTML = ''
-
-    const containers = document.querySelectorAll('.naie-image-container')
-
-    const paragraphsToAdjust = []
-
-    const loadPromises = Array.from(containers).map((container) => {
-        return new Promise((resolve) => {
-            const image = container.querySelector('img')
-
-            const handleLoad = () => {
-                const editorRect = proseMirror.getBoundingClientRect()
-                const imageWidthPercent = container.dataset.widthPercent
-                const alignment = container.dataset.alignment || 'left'
-
-                const paragraphs = findOverlappingParagraphs(container)
-                paragraphsToAdjust.push(...paragraphs)
-                resolve(paragraphs)
-            }
-
-            if (image.complete) {
-                handleLoad()
-            } else {
-                image.onload = handleLoad
-            }
-        })
-    })
-
-    console.log('paragraphsToAdjust', paragraphsToAdjust)
-
-    await Promise.all(loadPromises)
-
-    const allParagraphs = Array.from(proseMirror.children)
-
-    for (let i = 0; i < allParagraphs.length; i++) {
-        const p = allParagraphs[i]
-        const ovPidx = paragraphsToAdjust.indexOf(p)
-        if (ovPidx !== -1) {
-            const overlapping = paragraphsToAdjust[ovPidx]
-            const imgOverlapping = overlapping.imgOverlap
-
-            const nthChildSelector = `.ProseMirror p:nth-child(${i + 1})`
-            styleTag.innerHTML += `${nthChildSelector} { background: teal; }\n`
+    paragraphStylingBusy = true
+    try {
+        console.log('running paragraph styling')
+        await handleParagraphStyling(proseMirror)
+        console.log('paragraph styling complete')
+    } finally {
+        console.log('unlocking paragraph styling')
+        paragraphStylingBusy = false
+        if (paragraphStylingQueued) {
+            paragraphStylingQueued = false
+            // Run again for any missed updates
+            console.log('re-running paragraph styling due to queue')
+            runParagraphStylingOnce(proseMirror)
         }
     }
-}*/
+}
+
+const handleParagraphStyling = (proseMirror) => {
+    return new Promise((resolve) => {
+        let styleTag = document.querySelector('style[data-naie-image-positions]')
+
+        // Create style tag if it doesn't exist
+        if (!styleTag) {
+            styleTag = document.createElement('style')
+            styleTag.setAttribute('data-naie-image-positions', 'true')
+            document.head.appendChild(styleTag)
+        }
+
+        console.log('styleTag', styleTag)
+
+        // Clear existing styles
+
+        const containers = document.querySelectorAll('.naie-image-container')
+
+        // Sort containers by anchor index (or expected anchor index)
+        const containersWithAnchor = Array.from(containers).map((container) => {
+            const alignment = container.dataset.alignment || 'left'
+            let anchorIdx = container.dataset.anchorIndex !== undefined ? parseInt(container.dataset.anchorIndex) : -1
+            let calcIdx = findNearestParagraph(container).index
+            if (container.dataset.mode === 'edit') {
+                anchorIdx = calcIdx
+            }
+
+            return { container, alignment, anchorIdx }
+        })
+
+        styleTag.innerHTML = ''
+
+        containersWithAnchor.sort((a, b) => a.anchorIdx - b.anchorIdx)
+
+        const editorRect = proseMirror.getBoundingClientRect()
+        const scrollTop = proseMirror.scrollTop
+        const paragraphs = Array.from(proseMirror.children)
+
+        // Handle containers in anchor order
+        containersWithAnchor.forEach(({ container, alignment, anchorIdx }) => {
+            const containerRect = container.getBoundingClientRect()
+            const containerWidthPercent = parseFloat(container.dataset.widthPercent || '0')
+            const containerHeight = containerRect.height
+
+            if (alignment === 'center') {
+                // Center-aligned: margin/padding logic for anchor paragraph only
+                if (anchorIdx >= 0 && anchorIdx < paragraphs.length) {
+                    const nthChildSelector = `.ProseMirror p:nth-child(${anchorIdx + 1})`
+                    styleTag.innerHTML += `${nthChildSelector} { padding-top: calc(${containerHeight}px + 2rem) !important; background: rgba(128, 0, 128, 0.1) !important; }\n`
+                }
+            } else {
+                // Left/right-aligned: loop paragraphs from anchorIdx
+                for (let i = anchorIdx; i < paragraphs.length; i++) {
+                    const p = paragraphs[i]
+                    const pRect = p.getBoundingClientRect()
+                    let isOverlapping = !(
+                        pRect.right < containerRect.left ||
+                        pRect.left > containerRect.right ||
+                        pRect.bottom < containerRect.top ||
+                        pRect.top > containerRect.bottom
+                    )
+                    let isAnchor = i === anchorIdx
+                    const nthChildSelector = `.ProseMirror p:nth-child(${i + 1})`
+                    if (isOverlapping) {
+                        if (alignment === 'left') {
+                            styleTag.innerHTML += `${nthChildSelector} { padding-left: calc(${containerWidthPercent}% + 4rem); background: ${
+                                isAnchor ? 'rgba(128, 0, 128, 0.1) !important;' : 'rgba(0, 128, 128, 0.1) !important;'
+                            }  }\n`
+                        } else if (alignment === 'right') {
+                            styleTag.innerHTML += `${nthChildSelector} { padding-right: calc(${containerWidthPercent}% + 4rem); background: ${
+                                isAnchor ? 'rgba(128, 0, 128, 0.1) !important;' : 'rgba(0, 128, 128, 0.1) !important;'
+                            } }\n`
+                        }
+                    }
+
+                    // Stop if paragraph is no longer vertically overlapping
+                    if (pRect.top > containerRect.bottom) break
+                }
+            }
+
+            /*const imgState = storyImagesState.getImageState(currentStoryId, container.dataset.id)
+            const pos = calculateAbsolutePosition(paragraphs[anchorIdx], editorRect, scrollTop)
+            paragraphPositionState.updatePosition(anchorIdx, paragraphs[anchorIdx], anchorIdx, pos, imgState.offset)*/
+        })
+
+        resolve()
+    })
+}
 
 const findOverlappingParagraphs = (imgC) => {
     const imageRect = imgC.getBoundingClientRect()
@@ -1507,81 +1650,6 @@ const findOverlappingParagraphs = (imgC) => {
     return overlappingParagraphs
 }
 
-/*
-
-const handleParagraphStyling = (proseMirror) => {
-    let styleTag = document.querySelector('style[data-naie-image-positions]')
-
-    // Create style tag if it doesn't exist
-    if (!styleTag) {
-        styleTag = document.createElement('style')
-        styleTag.setAttribute('data-naie-image-positions', 'true')
-        document.head.appendChild(styleTag)
-    }
-
-    // Clear existing styles
-    styleTag.innerHTML = ''
-
-    const containers = document.querySelectorAll('.naie-image-container')
-
-    containers.forEach((container) => {
-        const image = container.querySelector('img')
-        image.onload = () => {
-            const editorRect = proseMirror.getBoundingClientRect()
-            const imageRect = image.getBoundingClientRect()
-            const imageWidthPercent = container.dataset.widthPercent
-            const alignment = container.dataset.alignment || 'left'
-
-            // Use raw viewport-relative positions
-            const adjustedImageRect = {
-                top: imageRect.top,
-                bottom: imageRect.bottom,
-                height: imageRect.height,
-            }
-
-            const paragraphs = proseMirror.querySelectorAll('p')
-
-            paragraphs.forEach((p, i) => {
-                const rect = p.getBoundingClientRect()
-                const adjustedParagraphRect = {
-                    top: rect.top,
-                    bottom: rect.bottom,
-                    height: rect.height,
-                }
-
-                // Add a small buffer to prevent edge-case overlaps
-                const buffer = 5
-                const verticalOverlap = !(
-                    adjustedParagraphRect.bottom + buffer < adjustedImageRect.top ||
-                    adjustedParagraphRect.top - buffer > adjustedImageRect.bottom
-                )
-
-                if (verticalOverlap) {
-                    console.log('\n=== Overlap Check ===')
-                    console.log('Editor rect:', editorRect)
-                    console.log(`Paragraph ${i + 1} raw rect:`, rect)
-                    console.log('Image raw rect:', imageRect)
-                    console.log(`Adjusted Paragraph ${i + 1}:`, adjustedParagraphRect)
-                    console.log('Adjusted Image:', adjustedImageRect)
-                    console.log('Vertical Overlap:', verticalOverlap)
-
-                    // Add CSS for this specific <p> tag by targeting nth-child
-                    const nthChildSelector = `.ProseMirror p:nth-child(${i + 1})`
-                    const margin = alignment === 'left' ? 'margin-right' : 'margin-left'
-                    styleTag.innerHTML += `${nthChildSelector} { width: calc(${100 - imageWidthPercent}% - 4rem); background: teal; }\n`
-                }
-            })
-        }
-
-        // If the image is already loaded, trigger the onload function manually
-        if (image.complete) {
-            image.onload() // Trigger it immediately if the image is cached or already loaded
-        }
-    })
-}
-
-*/
-
 
 /* ---- end of paragraphs.editor.js ---- */
 
@@ -1591,6 +1659,17 @@ const handleParagraphStyling = (proseMirror) => {
 let paragraphObserver = null
 let resizeTimeout = null
 let resizeObserver = null
+let resizeObserverPaused = false
+
+const pauseResizeObserver = () => {
+    resizeObserverPaused = true
+    console.log('ResizeObserver paused')
+}
+
+const resumeResizeObserver = () => {
+    resizeObserverPaused = false
+    console.log('ResizeObserver resumed')
+}
 
 const initInlineImages = (proseMirror) => {
     console.log('Initializing inline images for editor')
@@ -1603,6 +1682,10 @@ const initInlineImages = (proseMirror) => {
 
     // Create new resize observer with debouncing
     resizeObserver = new ResizeObserver((entries) => {
+        if (resizeObserverPaused) {
+            console.log('ResizeObserver is paused, skipping update')
+            return
+        }
         // Use debounce to avoid excessive updates
         clearTimeout(resizeTimeout)
         resizeTimeout = setTimeout(() => {
@@ -1629,8 +1712,9 @@ const initInlineImages = (proseMirror) => {
                 }
 
                 // Update position for the paragraph
-                const position = calculateAbsolutePosition(state.element, editorRect, scrollTop)
-                paragraphPositionState.updatePosition(index, state.element, index, position)
+                const position = calculateAbsolutePosition(state.element, editorRect, scrollTop, 0)
+                paragraphPositionState.updatePosition(index, state.element, index, position, state.offset)
+                runParagraphStylingOnce(proseMirror)
             }
         }, 50) // Debounce set to 50ms for smooth visual updates while maintaining performance
     })
@@ -1644,12 +1728,12 @@ const observeParagraphs = (proseMirror) => {
         return
     }
 
-    // Create a debounced version of handleParagraphStyling
+    // Create a debounced version of runParagraphStylingOnce
     let mutationTimeout = null
-    const debouncedHandleParagraphStyling = () => {
+    const debouncedRunParagraphStylingOnce = () => {
         clearTimeout(mutationTimeout)
         mutationTimeout = setTimeout(() => {
-            handleParagraphStyling(proseMirror)
+            runParagraphStylingOnce(proseMirror)
             console.log('Paragraph mutation handled')
         }, 100) // 100ms debounce
     }
@@ -1658,12 +1742,10 @@ const observeParagraphs = (proseMirror) => {
         // Check if the mutation is relevant before handling
         const relevantMutation = mutations.some((mutation) => {
             // Potentially add optimizations
-
             return true
         })
-
         if (relevantMutation) {
-            debouncedHandleParagraphStyling()
+            debouncedRunParagraphStylingOnce()
         }
     })
 
@@ -1676,46 +1758,33 @@ const observeParagraphs = (proseMirror) => {
 
     // Create event handlers with named functions so they can be removed later
     pasteHandler = () => {
-        // Give the editor time to process the paste
-        setTimeout(() => handleParagraphStyling(proseMirror), 50)
+        setTimeout(() => runParagraphStylingOnce(proseMirror), 50)
     }
 
     inputHandler = () => {
-        // Slight delay to ensure content is updated
-        setTimeout(() => handleParagraphStyling(proseMirror), 50)
+        setTimeout(() => runParagraphStylingOnce(proseMirror), 50)
     }
 
     keydownHandler = (e) => {
-        // Check for keys that might delete content
         if (e.key === 'Backspace' || e.key === 'Delete') {
-            // Give the editor time to process the deletion
-            setTimeout(() => handleParagraphStyling(proseMirror), 50)
+            setTimeout(() => runParagraphStylingOnce(proseMirror), 50)
         }
     }
 
-    // Add specific event listeners with our stored handlers
     proseMirror.addEventListener('paste', pasteHandler)
     proseMirror.addEventListener('input', inputHandler)
     proseMirror.addEventListener('keydown', keydownHandler)
 
-    // Create and add the undo/redo handler to document
     undoRedoHandler = (e) => {
-        // Ctrl+Z (Undo)
         if (e.ctrlKey && !e.shiftKey && e.key === 'z') {
             console.log('Undo detected')
-            // Wait a moment for the editor to update after the undo
-            setTimeout(() => handleParagraphStyling(document.querySelector('.ProseMirror')), 50)
+            //setTimeout(() => runParagraphStylingOnce(document.querySelector('.ProseMirror')), 50)
         }
-
-        // Ctrl+Shift+Z or Ctrl+Y (Redo)
         if ((e.ctrlKey && e.shiftKey && e.key === 'z') || (e.ctrlKey && !e.shiftKey && e.key === 'y')) {
             console.log('Redo detected')
-            // Wait a moment for the editor to update after the redo
-            setTimeout(() => handleParagraphStyling(document.querySelector('.ProseMirror')), 50)
+            //setTimeout(() => runParagraphStylingOnce(document.querySelector('.ProseMirror')), 50)
         }
     }
-
-    // Add the undo/redo handler
     document.addEventListener('keydown', undoRedoHandler)
 }
 
@@ -2201,9 +2270,9 @@ const registerPreflight = async () => {
  * @returns {Object} State manager instance
  */
 function createElementPositionState() {
-    const emitter = new NAIE.MISC.Emitter();
+    const emitter = new NAIE.MISC.Emitter()
     /** @type {Map<number, {element: HTMLElement, index: number, position: {top: number, bottom: number, left: number, right: number}}>} */
-    const positions = new Map();
+    const positions = new Map()
 
     return {
         /**
@@ -2213,31 +2282,32 @@ function createElementPositionState() {
          * @param {number} index - Element index
          * @param {{top: number, bottom: number, left: number, right: number}} position - Element's position coordinates
          */
-        updatePosition(key, element, index, position) {
-            const previousState = positions.get(key);
-            const newState = { element, index, position };
-            
-            positions.set(key, newState);
-            
+        updatePosition(key, element, index, position, offset = 0) {
+            const previousState = positions.get(key)
+            const newState = { element, index, position, offset }
+            positions.set(key, newState)
             // Emit change event if state changed
-            if (!previousState || 
-                previousState.index !== index || 
+            if (
+                !previousState ||
+                previousState.index !== index ||
                 previousState.position.top !== position.top ||
                 previousState.position.bottom !== position.bottom ||
                 previousState.position.left !== position.left ||
                 previousState.position.right !== position.right ||
-                previousState.element !== element) {
-                emitter.emit('positionChanged', key, newState, previousState);
+                previousState.element !== element ||
+                previousState.offset !== offset
+            ) {
+                emitter.emit('positionChanged', key, newState, previousState)
             }
         },
 
         /**
          * Get position state for a key
-         * @param {number} key 
+         * @param {number} key
          * @returns {{element: HTMLElement, index: number, position: {top: number, bottom: number, left: number, right: number}} | undefined}
          */
         getPosition(key) {
-            return positions.get(key);
+            return positions.get(key)
         },
 
         /**
@@ -2245,18 +2315,18 @@ function createElementPositionState() {
          * @returns {Map<number, {element: HTMLElement, index: number, position: {top: number, bottom: number, left: number, right: number}}>}
          */
         getAllPositions() {
-            return positions;
+            return positions
         },
 
         /**
          * Remove position state for a key
-         * @param {number} key 
+         * @param {number} key
          */
         removePosition(key) {
-            const previousState = positions.get(key);
+            const previousState = positions.get(key)
             if (previousState) {
-                positions.delete(key);
-                emitter.emit('positionRemoved', key, previousState);
+                positions.delete(key)
+                emitter.emit('positionRemoved', key, previousState)
             }
         },
 
@@ -2264,8 +2334,8 @@ function createElementPositionState() {
          * Clear all position states
          */
         clear() {
-            positions.clear();
-            emitter.emit('cleared');
+            positions.clear()
+            emitter.emit('cleared')
         },
 
         /**
@@ -2274,7 +2344,7 @@ function createElementPositionState() {
          * @param {Function} callback - Event handler
          */
         on(event, callback) {
-            emitter.on(event, callback);
+            emitter.on(event, callback)
         },
 
         /**
@@ -2285,11 +2355,10 @@ function createElementPositionState() {
          */
         onKey(event, key, callback) {
             emitter.on(event, (...args) => {
-                // For events that pass key as first argument (positionChanged, positionRemoved)
                 if (args[0] === key) {
-                    callback(...args);
+                    callback(...args)
                 }
-            });
+            })
         },
 
         /**
@@ -2298,9 +2367,9 @@ function createElementPositionState() {
          * @param {Function} callback - Event handler to remove
          */
         off(event, callback) {
-            emitter.off(event, callback);
-        }
-    };
+            emitter.off(event, callback)
+        },
+    }
 }
 
 
@@ -2359,7 +2428,7 @@ const createStoryImageState = () => {
         }
 
         const currentMeta = storyImageMap.get(storyId)
-        const existingImageIndex = currentMeta.images.findIndex(img => img.id === imageId)
+        const existingImageIndex = currentMeta.images.findIndex((img) => img.id === imageId)
 
         if (existingImageIndex === -1) {
             // Image doesn't exist, add it
@@ -2372,6 +2441,14 @@ const createStoryImageState = () => {
         }
     }
 
+    const getImageState = (storyId, imageId) => {
+        const currentMeta = storyImageMap.get(storyId)
+        if (!currentMeta) {
+            return null
+        }
+        return currentMeta.images.find((img) => img.id === imageId)
+    }
+
     return {
         getMap,
         getStoryImages,
@@ -2380,6 +2457,7 @@ const createStoryImageState = () => {
         addImageToStory,
         removeImageFromStory,
         upsertImageInStory,
+        getImageState,
     }
 }
 
