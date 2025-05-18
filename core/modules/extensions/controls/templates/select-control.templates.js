@@ -3,6 +3,8 @@ let selectControlTemplate = null
 const controls_initSelectTemplate = async () => {
     LOGGING_UTILS.getLogger().debug('controls_initSelectTemplate')
     try {
+        // waiting for this lets us know that the page is loaded
+        await DOM_UTILS.waitForElement(settingsButtonSelector)
         // Use the custom template instead of cloning from settings
         selectControlTemplate = controls_createCustomSelectTemplate()
 
