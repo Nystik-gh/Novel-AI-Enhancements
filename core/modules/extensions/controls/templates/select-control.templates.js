@@ -20,31 +20,38 @@ const controls_initSelectTemplate = async () => {
     }
 }
 
+const controls_getTemplate = () => {
+    if (!selectControlTemplate) {
+        throw new Error('Select control template not initialized')
+    }
+    return selectControlTemplate.cloneNode(true)
+}
+
 function controls_createCustomSelectTemplate() {
-    injectNaieControlStyles()
+    injectNaieSelectStyles()
     // Create main container
     const container = document.createElement('div')
-    container.className = 'naie-control-select'
+    container.className = 'naie-select-select'
 
     // Create control container
     const control = document.createElement('div')
-    control.className = 'naie-control-control'
+    control.className = 'naie-select-control'
 
     // Create value container
     const valueContainer = document.createElement('div')
-    valueContainer.className = 'naie-control-input-wrapper'
+    valueContainer.className = 'naie-select-input-wrapper'
 
     // Create single value display
     const singleValue = document.createElement('div')
     const valueSpan = document.createElement('span')
-    valueSpan.className = 'naie-control-value'
+    valueSpan.className = 'naie-select-value'
     valueSpan.textContent = ''
     singleValue.appendChild(valueSpan)
 
     // Create input container
     const inputContainer = document.createElement('div')
     const input = document.createElement('input')
-    input.className = 'naie-control-input'
+    input.className = 'naie-select-input'
     Object.assign(input.style, {}) // All styles are now in CSS class
     input.setAttribute('autocapitalize', 'none')
     input.setAttribute('autocomplete', 'off')
@@ -60,15 +67,15 @@ function controls_createCustomSelectTemplate() {
 
     // Create indicators container
     const indicatorsContainer = document.createElement('div')
-    indicatorsContainer.className = 'naie-control-indicators'
+    indicatorsContainer.className = 'naie-select-indicators'
 
     // Create separator
     const separator = document.createElement('span')
-    separator.className = 'naie-control-separator'
+    separator.className = 'naie-select-separator'
 
     // Create dropdown indicator
     const dropdownIndicator = document.createElement('div')
-    dropdownIndicator.className = 'naie-control-dropdown-indicator'
+    dropdownIndicator.className = 'naie-select-dropdown-indicator'
     dropdownIndicator.setAttribute('aria-hidden', 'true')
 
     // Create dropdown arrow SVG
@@ -98,101 +105,94 @@ function controls_createCustomSelectTemplate() {
     return container
 }
 
-const controls_getTemplate = () => {
-    if (!selectControlTemplate) {
-        throw new Error('Select control template not initialized')
-    }
-    return selectControlTemplate.cloneNode(true)
-}
-
-function injectNaieControlStyles() {
-    if (document.getElementById('naie-control-style')) return
+function injectNaieSelectStyles() {
+    if (document.getElementById('naie-select-style')) return
     const style = document.createElement('style')
-    style.id = 'naie-control-style'
+    style.id = 'naie-select-style'
     style.innerHTML = `
-.naie-control-select {
-  position: relative;
-  box-sizing: border-box;
-  flex: 1 1 auto;
-  overflow: visible;
-  box-shadow: 0 0 1px 0 rgba(255,255,255,0.6);
-  background: none;
-  font-family: inherit;
+.naie-select-select {
+position: relative;
+box-sizing: border-box;
+flex: 1 1 auto;
+overflow: visible;
+box-shadow: 0 0 1px 0 rgba(255,255,255,0.6);
+background: none;
+font-family: inherit;
 }
-.naie-control-control {
-  align-items: center;
-  cursor: pointer;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  min-height: 24px;
-  outline: none;
-  position: relative;
-  transition: all 100ms;
-  background-color: transparent;
-  border-radius: 0;
-  border: none;
-  box-shadow: none;
-  box-sizing: border-box;
+.naie-select-control {
+align-items: center;
+cursor: pointer;
+display: flex;
+flex-wrap: wrap;
+justify-content: space-between;
+min-height: 24px;
+outline: none;
+position: relative;
+transition: all 100ms;
+background-color: transparent;
+border-radius: 0;
+border: none;
+box-shadow: none;
+box-sizing: border-box;
 }
-.naie-control-input-wrapper {
-  align-items: center;
-  display: flex;
-  flex: 1;
-  flex-wrap: wrap;
-  padding: 0 8px 0 10px;
-  box-sizing: border-box;
-  height: 24px;
+.naie-select-input-wrapper {
+align-items: center;
+display: flex;
+flex: 1;
+flex-wrap: wrap;
+padding: 0 8px 0 10px;
+box-sizing: border-box;
+height: 24px;
 }
-.naie-control-value {
-  color: rgb(255,255,255);
-  width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: inline-block;
+.naie-select-value {
+color: rgb(255,255,255);
+width: 100%;
+white-space: nowrap;
+overflow: hidden;
+text-overflow: ellipsis;
+display: inline-block;
 }
-.naie-control-input {
-  color: inherit;
-  background: 0;
-  opacity: 1;
-  width: 100%;
-  font: inherit;
-  min-width: 2px;
-  border: 0;
-  margin: 0;
-  outline: 0;
-  padding: 0;
-  box-sizing: border-box;
+.naie-select-input {
+color: inherit;
+background: 0;
+opacity: 1;
+width: 100%;
+font: inherit;
+min-width: 2px;
+border: 0;
+margin: 0;
+outline: 0;
+padding: 0;
+box-sizing: border-box;
 }
-.naie-control-indicators {
-  align-items: center;
-  align-self: stretch;
-  display: flex;
-  flex-shrink: 0;
-  box-sizing: border-box;
-  padding: 0;
-  height: 22px;
+.naie-select-indicators {
+align-items: center;
+align-self: stretch;
+display: flex;
+flex-shrink: 0;
+box-sizing: border-box;
+padding: 0;
+height: 22px;
 }
-.naie-control-separator {
-  align-self: stretch;
-  width: 1px;
-  background-color: #13152C;
-  margin-bottom: 8px;
-  margin-top: 8px;
-  box-sizing: border-box;
+.naie-select-separator {
+align-self: stretch;
+width: 1px;
+background-color: #13152C;
+margin-bottom: 8px;
+margin-top: 8px;
+box-sizing: border-box;
 }
-.naie-control-dropdown-indicator {
-  display: flex;
-  transition: color 150ms;
-  color: #FFFFFF;
-  padding: 8px;
-  box-sizing: border-box;
+.naie-select-dropdown-indicator {
+display: flex;
+transition: color 150ms;
+color: #FFFFFF;
+padding: 8px;
+box-sizing: border-box;
 }
-.naie-control-dropdown-indicator svg {
-  fill: currentcolor;
-  stroke: currentcolor;
-  stroke-width: 0;
+.naie-select-dropdown-indicator svg {
+fill: currentcolor;
+stroke: currentcolor;
+stroke-width: 0;
 }
 `
     document.head.appendChild(style)
