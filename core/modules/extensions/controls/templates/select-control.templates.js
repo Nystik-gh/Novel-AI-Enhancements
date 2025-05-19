@@ -54,6 +54,7 @@ const controls_createCustomSelectTemplate = () => {
         boxShadow: 'none',
         boxSizing: 'border-box',
         border: 'none',
+        height: '2.2rem',
     })
 
     // Create value container
