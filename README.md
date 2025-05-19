@@ -27,6 +27,7 @@ NAIE is a suite of userscripts designed to enhance the functionality of the Nove
 This repository includes the following feature scripts:
 
 -   **[NAIE Subshelves](subshelves/README.md)** - Adds the ability to organize stories using nested shelves. Refer to its README for details on functionality, installation, and usage.
+-   **[NAIE Inline Images](inline-images/README.md)** - Adds the ability to insert images into stories. Refer to its README for details on functionality, installation, and usage.
 
 More feature scripts may be added over time.
 

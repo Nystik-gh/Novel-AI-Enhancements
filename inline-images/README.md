@@ -10,7 +10,7 @@ A feature script for Novel AI Enhancements that adds experimental inline image s
 
 ## Installation
 
-[Click here to install]() after setting up a userscript manager. For detailed installation instructions, including mobile setup, see the [main README](../README.md#how-to-install).
+[Click here to install](https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/main/inline-images/dist/naie-inline-images.user.js) after setting up a userscript manager. For detailed installation instructions, including mobile setup, see the [main README](../README.md#how-to-install).
 
 ## Usage
 

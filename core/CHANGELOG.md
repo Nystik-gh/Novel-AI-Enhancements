@@ -21,7 +21,7 @@ and follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 -   Minor: Ensure use of `wRef` instead of `window` for all window references to improve compatibility and avoid global scope issues.
 
-[v1.1.0]: https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/<placeholder>/core/dist/naie-core.user.js
+[v1.1.0]: https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/35c03bda9294d7ccd1e4ae66d8131b0a753fbba4/core/dist/naie-core.user.js
 
 ## [v1.0.4] - 2025-01-15
 
