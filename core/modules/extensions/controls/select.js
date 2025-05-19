@@ -50,6 +50,7 @@ const controls_createSelectDropdown = (options, selectedValue) => {
         const optionElement = NAIE.DOM.createElement('div', {
             ...DROPDOWN_OPTION_STYLES,
             backgroundColor: value === selectedValue ? 'rgb(16, 18, 36)' : 'transparent',
+            fontStyle: title && title.toLowerCase().includes('no shelf') ? 'italic' : '',
         })
 
         optionElement.setAttribute('aria-disabled', 'false')
@@ -58,6 +59,10 @@ const controls_createSelectDropdown = (options, selectedValue) => {
 
         const optionText = NAIE.DOM.createElement('span')
         optionText.textContent = title
+        // Also apply italic to the span for extra robustness
+        if (title && title.toLowerCase().includes('no shelf')) {
+            optionText.style.fontStyle = 'italic'
+        }
         optionElement.appendChild(optionText)
 
         optionsList.appendChild(optionElement)
@@ -81,6 +86,12 @@ const controls_constructSelectControl = (options, selectedValue, onChange) => {
     const selectedOption = options.find((option) => option.value === selectedValue)
     if (selectedOption) {
         singleValueElement.textContent = selectedOption.title
+        // Italicize if 'no shelf' is selected
+        if (selectedOption.title && selectedOption.title.toLowerCase().includes('no shelf')) {
+            singleValueElement.style.fontStyle = 'italic'
+        } else {
+            singleValueElement.style.fontStyle = ''
+        }
     }
 
     const dropdown = controls_createSelectDropdown(options, selectedValue)
@@ -119,7 +130,7 @@ const controls_constructSelectControl = (options, selectedValue, onChange) => {
         //singleValueElement.style.display = 'none'
         inputElement.focus()
 
-        outsideClickHandle = OnClickOutside(
+        outsideClickHandle = dom_OnClickOutside(
             template,
             () => {
                 hideDropdown()
@@ -162,6 +173,12 @@ const controls_constructSelectControl = (options, selectedValue, onChange) => {
             const newValue = optionElement.getAttribute('data-option-value')
             const newTitle = optionElement.textContent
             singleValueElement.textContent = newTitle
+            // Italicize if 'no shelf' is selected
+            if (newTitle && newTitle.toLowerCase().includes('no shelf')) {
+                singleValueElement.style.fontStyle = 'italic'
+            } else {
+                singleValueElement.style.fontStyle = ''
+            }
             hideDropdown()
 
             optionElements.forEach((el) => {

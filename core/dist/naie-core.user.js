@@ -831,39 +831,92 @@ const controls_initSelectTemplate = async () => {
     }
 }
 
-const controls_getTemplate = () => {
-    if (!selectControlTemplate) {
-        throw new Error('Select control template not initialized')
-    }
-    return selectControlTemplate.cloneNode(true)
-}
-
-function controls_createCustomSelectTemplate() {
-    injectNaieSelectStyles()
+// New custom template creation
+const controls_createCustomSelectTemplate = () => {
     // Create main container
     const container = document.createElement('div')
-    container.className = 'naie-select-select'
+    container.className = 'custom-select select naie-select-box'
+    Object.assign(container.style, {
+        position: 'relative',
+        boxSizing: 'border-box',
+        flex: '1 1 auto',
+        overflow: 'visible',
+        boxShadow: '0 0 1px 0 rgba(255, 255, 255, 0.6)',
+    })
 
     // Create control container
     const control = document.createElement('div')
     control.className = 'naie-select-control'
+    Object.assign(control.style, {
+        alignItems: 'center',
+        cursor: 'pointer',
+        display: 'flex',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        minHeight: '24px',
+        outline: 'none',
+        position: 'relative',
+        transition: 'all 100ms',
+        backgroundColor: 'transparent',
+        borderColor: '#13152C',
+        borderRadius: '0',
+        borderStyle: 'solid',
+        borderWidth: '0',
+        boxShadow: 'none',
+        boxSizing: 'border-box',
+        border: 'none',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+    })
 
     // Create value container
     const valueContainer = document.createElement('div')
     valueContainer.className = 'naie-select-input-wrapper'
+    Object.assign(valueContainer.style, {
+        alignItems: 'center',
+        display: 'flex',
+        flex: '1',
+        flexWrap: 'wrap',
+        padding: '0px 8px 0 10px',
+        boxSizing: 'border-box',
+        height: '24px',
+    })
 
     // Create single value display
     const singleValue = document.createElement('div')
     const valueSpan = document.createElement('span')
     valueSpan.className = 'naie-select-value'
     valueSpan.textContent = ''
+    Object.assign(valueSpan.style, {
+        color: 'rgb(255, 255, 255)',
+        width: '100%',
+        transition: 'opacity 0.2s',
+    })
     singleValue.appendChild(valueSpan)
+    Object.assign(singleValue.style, {
+        position: 'absolute',
+        left: '0.7rem',
+        right: '0.7rem',
+    })
 
     // Create input container
     const inputContainer = document.createElement('div')
     const input = document.createElement('input')
     input.className = 'naie-select-input'
-    Object.assign(input.style, {}) // All styles are now in CSS class
+    Object.assign(input.style, {
+        color: 'inherit',
+        background: '0',
+        opacity: '1',
+        width: '100%',
+        grid: '1 / 2',
+        font: 'inherit',
+        minWidth: '2px',
+        border: '0',
+        margin: '0',
+        outline: '0',
+        padding: '0',
+    })
     input.setAttribute('autocapitalize', 'none')
     input.setAttribute('autocomplete', 'off')
     input.setAttribute('autocorrect', 'off')
@@ -878,16 +931,37 @@ function controls_createCustomSelectTemplate() {
 
     // Create indicators container
     const indicatorsContainer = document.createElement('div')
-    indicatorsContainer.className = 'naie-select-indicators'
+    Object.assign(indicatorsContainer.style, {
+        alignItems: 'center',
+        alignSelf: 'stretch',
+        display: 'flex',
+        flexShrink: '0',
+        boxSizing: 'border-box',
+        padding: '0',
+        height: '22px',
+    })
 
     // Create separator
     const separator = document.createElement('span')
-    separator.className = 'naie-select-separator'
+    Object.assign(separator.style, {
+        alignSelf: 'stretch',
+        width: '1px',
+        backgroundColor: '#13152C',
+        marginBottom: '8px',
+        marginTop: '8px',
+        boxSizing: 'border-box',
+    })
 
     // Create dropdown indicator
     const dropdownIndicator = document.createElement('div')
-    dropdownIndicator.className = 'naie-select-dropdown-indicator'
     dropdownIndicator.setAttribute('aria-hidden', 'true')
+    Object.assign(dropdownIndicator.style, {
+        display: 'flex',
+        transition: 'color 150ms',
+        color: '#FFFFFF',
+        padding: '8px',
+        boxSizing: 'border-box',
+    })
 
     // Create dropdown arrow SVG
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
@@ -913,100 +987,50 @@ function controls_createCustomSelectTemplate() {
     control.appendChild(indicatorsContainer)
     container.appendChild(control)
 
+    // Add event listeners for focus and blur
+    input.addEventListener('focus', () => {
+        valueSpan.style.opacity = '0.6'
+    })
+    input.addEventListener('blur', () => {
+        valueSpan.style.opacity = '1'
+    })
+
+    // Add a helper to set italic if 'no shelf' is selected
+    function updateSingleValueStyle(selectedText) {
+        if (selectedText && selectedText.toLowerCase().includes('no shelf')) {
+            valueSpan.style.fontStyle = 'italic'
+        } else {
+            valueSpan.style.fontStyle = ''
+        }
+    }
+    // Call this whenever valueSpan.textContent is set
+    // When setting valueSpan.textContent, also update style
+    valueSpan.textContent = ''
+    updateSingleValueStyle(valueSpan.textContent)
+
+    // When option is selected in dropdown, also update style
+    // (Assume you have a dropdown logic elsewhere, but add a sample handler)
+    // Example:
+    // optionElement.addEventListener('click', () => {
+    //     valueSpan.textContent = optionText
+    //     updateSingleValueStyle(optionText)
+    // })
+
+    // In dropdown, make 'no shelf' option italic
+    // (Assume you have a dropdown creation loop elsewhere, but add a sample)
+    // Example:
+    // if (option.title && option.title.toLowerCase().includes('no shelf')) {
+    //     optionElement.style.fontStyle = 'italic'
+    // }
+
     return container
 }
 
-function injectNaieSelectStyles() {
-    if (document.getElementById('naie-select-style')) return
-    const style = document.createElement('style')
-    style.id = 'naie-select-style'
-    style.innerHTML = `
-.naie-select-select {
-position: relative;
-box-sizing: border-box;
-flex: 1 1 auto;
-overflow: visible;
-box-shadow: 0 0 1px 0 rgba(255,255,255,0.6);
-background: none;
-font-family: inherit;
-}
-.naie-select-control {
-align-items: center;
-cursor: pointer;
-display: flex;
-flex-wrap: wrap;
-justify-content: space-between;
-min-height: 24px;
-outline: none;
-position: relative;
-transition: all 100ms;
-background-color: transparent;
-border-radius: 0;
-border: none;
-box-shadow: none;
-box-sizing: border-box;
-}
-.naie-select-input-wrapper {
-align-items: center;
-display: flex;
-flex: 1;
-flex-wrap: wrap;
-padding: 0 8px 0 10px;
-box-sizing: border-box;
-height: 24px;
-}
-.naie-select-value {
-color: rgb(255,255,255);
-width: 100%;
-white-space: nowrap;
-overflow: hidden;
-text-overflow: ellipsis;
-display: inline-block;
-}
-.naie-select-input {
-color: inherit;
-background: 0;
-opacity: 1;
-width: 100%;
-font: inherit;
-min-width: 2px;
-border: 0;
-margin: 0;
-outline: 0;
-padding: 0;
-box-sizing: border-box;
-}
-.naie-select-indicators {
-align-items: center;
-align-self: stretch;
-display: flex;
-flex-shrink: 0;
-box-sizing: border-box;
-padding: 0;
-height: 22px;
-}
-.naie-select-separator {
-align-self: stretch;
-width: 1px;
-background-color: #13152C;
-margin-bottom: 8px;
-margin-top: 8px;
-box-sizing: border-box;
-}
-.naie-select-dropdown-indicator {
-display: flex;
-transition: color 150ms;
-color: #FFFFFF;
-padding: 8px;
-box-sizing: border-box;
-}
-.naie-select-dropdown-indicator svg {
-fill: currentcolor;
-stroke: currentcolor;
-stroke-width: 0;
-}
-`
-    document.head.appendChild(style)
+const controls_getTemplate = () => {
+    if (!selectControlTemplate) {
+        throw new Error('Select control template not initialized')
+    }
+    return selectControlTemplate.cloneNode(true)
 }
 
 
@@ -1093,6 +1117,7 @@ const controls_createSelectDropdown = (options, selectedValue) => {
         const optionElement = NAIE.DOM.createElement('div', {
             ...DROPDOWN_OPTION_STYLES,
             backgroundColor: value === selectedValue ? 'rgb(16, 18, 36)' : 'transparent',
+            fontStyle: title && title.toLowerCase().includes('no shelf') ? 'italic' : '',
         })
 
         optionElement.setAttribute('aria-disabled', 'false')
@@ -1101,6 +1126,10 @@ const controls_createSelectDropdown = (options, selectedValue) => {
 
         const optionText = NAIE.DOM.createElement('span')
         optionText.textContent = title
+        // Also apply italic to the span for extra robustness
+        if (title && title.toLowerCase().includes('no shelf')) {
+            optionText.style.fontStyle = 'italic'
+        }
         optionElement.appendChild(optionText)
 
         optionsList.appendChild(optionElement)
@@ -1124,6 +1153,12 @@ const controls_constructSelectControl = (options, selectedValue, onChange) => {
     const selectedOption = options.find((option) => option.value === selectedValue)
     if (selectedOption) {
         singleValueElement.textContent = selectedOption.title
+        // Italicize if 'no shelf' is selected
+        if (selectedOption.title && selectedOption.title.toLowerCase().includes('no shelf')) {
+            singleValueElement.style.fontStyle = 'italic'
+        } else {
+            singleValueElement.style.fontStyle = ''
+        }
     }
 
     const dropdown = controls_createSelectDropdown(options, selectedValue)
@@ -1162,7 +1197,7 @@ const controls_constructSelectControl = (options, selectedValue, onChange) => {
         //singleValueElement.style.display = 'none'
         inputElement.focus()
 
-        outsideClickHandle = OnClickOutside(
+        outsideClickHandle = dom_OnClickOutside(
             template,
             () => {
                 hideDropdown()
@@ -1205,6 +1240,12 @@ const controls_constructSelectControl = (options, selectedValue, onChange) => {
             const newValue = optionElement.getAttribute('data-option-value')
             const newTitle = optionElement.textContent
             singleValueElement.textContent = newTitle
+            // Italicize if 'no shelf' is selected
+            if (newTitle && newTitle.toLowerCase().includes('no shelf')) {
+                singleValueElement.style.fontStyle = 'italic'
+            } else {
+                singleValueElement.style.fontStyle = ''
+            }
             hideDropdown()
 
             optionElements.forEach((el) => {
