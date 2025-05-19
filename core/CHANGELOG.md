@@ -11,6 +11,18 @@ and follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 > -   **MINOR** version increments when adding functionality in a backwards compatible manner
 > -   **PATCH** version increments when making backwards compatible bug fixes
 
+## [v1.1.0] - 2025-05-19
+
+### Changed
+
+-   Major: Switched to a fully custom select control template instead of cloning from settings, improving initialization robustness and future-proofing against UI changes.
+
+### Fixed
+
+-   Minor: Ensure use of `wRef` instead of `window` for all window references to improve compatibility and avoid global scope issues.
+
+[v1.1.0]: https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/<placeholder>/core/dist/naie-core.user.js
+
 ## [v1.0.4] - 2025-01-15
 
 ### Added

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         NAIE Crypto
 // @namespace    https://github.com/Nystik-gh/Novel-AI-Enhancements
-// @version      1.0.0
+// @version      1.0.1
 // @description  Cryptography functions
 // @author       Nystik
 // @require      ./lib/*

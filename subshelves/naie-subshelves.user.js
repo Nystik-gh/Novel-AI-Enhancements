@@ -7,7 +7,7 @@
 // @grant        none
 // @run-at       document-start
 // @require      ./modules/*
-// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/core/dist/naie-core.user.js?version=18
+// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/refs/heads/inline-images/core/dist/naie-core.user.js?version=1.1.0
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=novelai.net
 // @author       Nystik (https://gitlab.com/Nystik)
 // @downloadUrl  https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/main/subshelves/dist/naie-subshelves.user.js

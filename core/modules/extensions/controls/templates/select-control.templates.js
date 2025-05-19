@@ -178,14 +178,6 @@ const controls_createCustomSelectTemplate = () => {
     control.appendChild(indicatorsContainer)
     container.appendChild(control)
 
-    // Add event listeners for focus and blur
-    input.addEventListener('focus', () => {
-        valueSpan.style.opacity = '0.6'
-    })
-    input.addEventListener('blur', () => {
-        valueSpan.style.opacity = '1'
-    })
-
     // Add a helper to set italic if 'no shelf' is selected
     function updateSingleValueStyle(selectedText) {
         if (selectedText && selectedText.toLowerCase().includes('no shelf')) {

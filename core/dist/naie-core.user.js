@@ -2,7 +2,7 @@
 // THIS IS NOT A STANDALONE USER SCRIPT! DO NO INSTALL THIS SCRIPT DIRECTLY.
 // @name         Novel AI Enhanced: Core
 // @namespace    github.nystik-hg
-// @version      1.0.4
+// @version      1.1.0
 // @description  Core library
 // @author       Nystik (https://gitlab.com/Nystik)
 // ==/UserScript==
@@ -988,14 +988,6 @@ const controls_createCustomSelectTemplate = () => {
     control.appendChild(valueContainer)
     control.appendChild(indicatorsContainer)
     container.appendChild(control)
-
-    // Add event listeners for focus and blur
-    input.addEventListener('focus', () => {
-        valueSpan.style.opacity = '0.6'
-    })
-    input.addEventListener('blur', () => {
-        valueSpan.style.opacity = '1'
-    })
 
     // Add a helper to set italic if 'no shelf' is selected
     function updateSingleValueStyle(selectedText) {
