@@ -2,7 +2,7 @@
 // THIS IS NOT A STANDALONE USER SCRIPT! DO NO INSTALL THIS SCRIPT DIRECTLY.
 // @name         Novel AI Enhanced: Core
 // @namespace    github.nystik-hg
-// @version      1.0.4
+// @version      1.1.0
 // @description  Core library
 // @author       Nystik (https://gitlab.com/Nystik)
 // ==/UserScript==
@@ -48,8 +48,8 @@ const xhook = (function () {
         result = self
     } else if (typeof global !== 'undefined') {
         result = global
-    } else if (window) {
-        result = window
+    } else if (wRef) {
+        result = wRef
     }
 
     const windowRef = result
@@ -700,7 +700,7 @@ const dom_findElementWithMaskImage = (elements, urlSubstrings) => {
     return [...elements].filter((element) => {
         if (!element) return false
 
-        const computedStyle = window.getComputedStyle(element)
+        const computedStyle = wRef.getComputedStyle(element)
         const maskImageValue = computedStyle.getPropertyValue('mask-image') || computedStyle.getPropertyValue('-webkit-mask-image')
 
         return maskImageValue && urlSubstrings.every((sub) => maskImageValue.includes(sub))
@@ -814,13 +814,10 @@ let selectControlTemplate = null
 const controls_initSelectTemplate = async () => {
     LOGGING_UTILS.getLogger().debug('controls_initSelectTemplate')
     try {
+        // waiting for this lets us know that the page is loaded
         await DOM_UTILS.waitForElement(settingsButtonSelector)
-
-        DOM_UTILS.simulateClick(getSettingsButton())
-
-        const settingsModal = await waitForSettingsModal()
-        const { fontSelect } = await settingsModal.panels.getThemePanel()
-        selectControlTemplate = controls_createClonedSelectTemplate(fontSelect)
+        // Use the custom template instead of cloning from settings
+        selectControlTemplate = controls_createCustomSelectTemplate()
 
         // Add global style for focus override
         MISC_UTILS.addGlobalStyle(`
@@ -828,65 +825,28 @@ const controls_initSelectTemplate = async () => {
                 opacity: 1 !important;
             }
         `)
-
-        DOM_UTILS.simulateClick(settingsModal.closeButton)
     } catch (e) {
-        LOGGING_UTILS.getLogger().error('Failed to clone select element:', e)
-        throw new Error('Failed to clone select element')
+        LOGGING_UTILS.getLogger().error('Failed to create custom select element:', e)
+        throw new Error('Failed to create custom select element')
     }
-}
-
-// Original clone-based template creation
-const controls_createClonedSelectTemplate = (fontSelect) => {
-    const clone = fontSelect.cloneNode(true)
-    const control = clone.children[2]
-
-    if (!Array.from(control.classList).some((cls) => cls.endsWith('-control'))) {
-        throw new Error('unable to identify select control')
-    }
-
-    // remove aria live region spans since we're not implementing them currently
-    const span1 = clone.children[0]
-    const span2 = clone.children[1]
-
-    clone.removeChild(span1)
-    clone.removeChild(span2)
-
-    // tag wrapper for focus override fix
-    const inputWrapper = control.firstChild
-    inputWrapper.classList.add('naie-select-input-wrapper')
-
-    const selectedValueText = control.firstChild.querySelector('span')
-    const inputElement = control.firstChild.querySelector('input')
-
-    inputElement.id = ''
-
-    clone.classList.add('naie-select-box')
-    control.classList.add('naie-select-control')
-    selectedValueText.classList.add('naie-select-value')
-    inputElement.classList.add('naie-select-input')
-
-    selectedValueText.textContent = ''
-
-    return clone
 }
 
 // New custom template creation
 const controls_createCustomSelectTemplate = () => {
     // Create main container
-    const container = document.createElement('div');
-    container.className = 'custom-select select naie-select-box';
+    const container = document.createElement('div')
+    container.className = 'custom-select select naie-select-box'
     Object.assign(container.style, {
         position: 'relative',
         boxSizing: 'border-box',
         flex: '1 1 auto',
         overflow: 'visible',
-        boxShadow: '0 0 1px 0 rgba(255, 255, 255, 0.6)'
-    });
+        boxShadow: '0 0 1px 0 rgba(255, 255, 255, 0.6)',
+    })
 
     // Create control container
-    const control = document.createElement('div');
-    control.className = 'naie-select-control';
+    const control = document.createElement('div')
+    control.className = 'naie-select-control'
     Object.assign(control.style, {
         alignItems: 'center',
         cursor: 'pointer',
@@ -904,12 +864,13 @@ const controls_createCustomSelectTemplate = () => {
         borderWidth: '0',
         boxShadow: 'none',
         boxSizing: 'border-box',
-        border: 'none'
-    });
+        border: 'none',
+        height: '2.2rem',
+    })
 
     // Create value container
-    const valueContainer = document.createElement('div');
-    valueContainer.className = 'naie-select-input-wrapper';
+    const valueContainer = document.createElement('div')
+    valueContainer.className = 'naie-select-input-wrapper'
     Object.assign(valueContainer.style, {
         alignItems: 'center',
         display: 'flex',
@@ -917,24 +878,30 @@ const controls_createCustomSelectTemplate = () => {
         flexWrap: 'wrap',
         padding: '0px 8px 0 10px',
         boxSizing: 'border-box',
-        height: '24px'
-    });
+        height: '24px',
+    })
 
     // Create single value display
-    const singleValue = document.createElement('div');
-    const valueSpan = document.createElement('span');
-    valueSpan.className = 'naie-select-value';
-    valueSpan.textContent = '';
+    const singleValue = document.createElement('div')
+    const valueSpan = document.createElement('span')
+    valueSpan.className = 'naie-select-value'
+    valueSpan.textContent = ''
     Object.assign(valueSpan.style, {
         color: 'rgb(255, 255, 255)',
-        width: '100%'
-    });
-    singleValue.appendChild(valueSpan);
+        width: '100%',
+        transition: 'opacity 0.2s',
+    })
+    singleValue.appendChild(valueSpan)
+    Object.assign(singleValue.style, {
+        position: 'absolute',
+        left: '0.7rem',
+        right: '0.7rem',
+    })
 
     // Create input container
-    const inputContainer = document.createElement('div');
-    const input = document.createElement('input');
-    input.className = 'naie-select-input';
+    const inputContainer = document.createElement('div')
+    const input = document.createElement('input')
+    input.className = 'naie-select-input'
     Object.assign(input.style, {
         color: 'inherit',
         background: '0',
@@ -946,76 +913,111 @@ const controls_createCustomSelectTemplate = () => {
         border: '0',
         margin: '0',
         outline: '0',
-        padding: '0'
-    });
-    input.setAttribute('autocapitalize', 'none');
-    input.setAttribute('autocomplete', 'off');
-    input.setAttribute('autocorrect', 'off');
-    input.setAttribute('spellcheck', 'false');
-    input.setAttribute('tabindex', '0');
-    input.setAttribute('type', 'text');
-    input.setAttribute('aria-autocomplete', 'list');
-    input.setAttribute('aria-expanded', 'false');
-    input.setAttribute('aria-haspopup', 'true');
-    input.setAttribute('role', 'combobox');
-    inputContainer.appendChild(input);
+        padding: '0',
+    })
+    input.setAttribute('autocapitalize', 'none')
+    input.setAttribute('autocomplete', 'off')
+    input.setAttribute('autocorrect', 'off')
+    input.setAttribute('spellcheck', 'false')
+    input.setAttribute('tabindex', '0')
+    input.setAttribute('type', 'text')
+    input.setAttribute('aria-autocomplete', 'list')
+    input.setAttribute('aria-expanded', 'false')
+    input.setAttribute('aria-haspopup', 'true')
+    input.setAttribute('role', 'combobox')
+    inputContainer.appendChild(input)
 
     // Create indicators container
-    const indicatorsContainer = document.createElement('div');
+    const indicatorsContainer = document.createElement('div')
     Object.assign(indicatorsContainer.style, {
         alignItems: 'center',
-        alignSelf: 'stretch',
+        //alignSelf: 'stretch',
         display: 'flex',
         flexShrink: '0',
         boxSizing: 'border-box',
         padding: '0',
-        height: '22px'
-    });
+        height: '22px',
+    })
 
     // Create separator
-    const separator = document.createElement('span');
+    const separator = document.createElement('span')
     Object.assign(separator.style, {
         alignSelf: 'stretch',
         width: '1px',
         backgroundColor: '#13152C',
         marginBottom: '8px',
         marginTop: '8px',
-        boxSizing: 'border-box'
-    });
+        boxSizing: 'border-box',
+    })
 
     // Create dropdown indicator
-    const dropdownIndicator = document.createElement('div');
-    dropdownIndicator.setAttribute('aria-hidden', 'true');
+    const dropdownIndicator = document.createElement('div')
+    dropdownIndicator.setAttribute('aria-hidden', 'true')
     Object.assign(dropdownIndicator.style, {
         display: 'flex',
         transition: 'color 150ms',
         color: '#FFFFFF',
         padding: '8px',
-        boxSizing: 'border-box'
-    });
+        boxSizing: 'border-box',
+    })
 
     // Create dropdown arrow SVG
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('height', '20');
-    svg.setAttribute('width', '20');
-    svg.setAttribute('viewBox', '0 0 20 20');
-    svg.setAttribute('aria-hidden', 'true');
-    svg.setAttribute('focusable', 'false');
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', 'M4.516 7.548c0.436-0.446 1.043-0.481 1.576 0l3.908 3.747 3.908-3.747c0.533-0.481 1.141-0.446 1.574 0 0.436 0.445 0.408 1.197 0 1.615-0.406 0.418-4.695 4.502-4.695 4.502-0.217 0.223-0.502 0.335-0.787 0.335s-0.57-0.112-0.789-0.335c0 0-4.287-4.084-4.695-4.502s-0.436-1.17 0-1.615z');
-    svg.appendChild(path);
-    dropdownIndicator.appendChild(svg);
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    svg.setAttribute('height', '20')
+    svg.setAttribute('width', '20')
+    svg.setAttribute('viewBox', '0 0 20 20')
+    svg.setAttribute('aria-hidden', 'true')
+    svg.setAttribute('focusable', 'false')
+    // Ensure SVG itself has no fill, so path color is used
+    svg.setAttribute('fill', 'none')
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+    path.setAttribute(
+        'd',
+        'M4.516 7.548c0.436-0.446 1.043-0.481 1.576 0l3.908 3.747 3.908-3.747c0.533-0.481 1.141-0.446 1.574 0 0.436 0.445 0.408 1.197 0 1.615-0.406 0.418-4.695 4.502-4.695 4.502-0.217 0.223-0.502 0.335-0.787 0.335s-0.57-0.112-0.789-0.335c0 0-4.287-4.084-4.695-4.502s-0.436-1.17 0-1.615z',
+    )
+    path.setAttribute('fill', '#fff') // Set path fill to white
+    svg.appendChild(path)
+    dropdownIndicator.appendChild(svg)
 
     // Assemble the component
-    indicatorsContainer.appendChild(separator);
-    indicatorsContainer.appendChild(dropdownIndicator);
-    valueContainer.appendChild(singleValue);
-    valueContainer.appendChild(inputContainer);
-    control.appendChild(valueContainer);
-    control.appendChild(indicatorsContainer);
-    container.appendChild(control);
+    indicatorsContainer.appendChild(separator)
+    indicatorsContainer.appendChild(dropdownIndicator)
+    valueContainer.appendChild(singleValue)
+    valueContainer.appendChild(inputContainer)
+    control.appendChild(valueContainer)
+    control.appendChild(indicatorsContainer)
+    container.appendChild(control)
 
-    return container;
+    // Add a helper to set italic if 'no shelf' is selected
+    function updateSingleValueStyle(selectedText) {
+        if (selectedText && selectedText.toLowerCase().includes('no shelf')) {
+            valueSpan.style.fontStyle = 'italic'
+        } else {
+            valueSpan.style.fontStyle = ''
+        }
+    }
+    // Call this whenever valueSpan.textContent is set
+    // When setting valueSpan.textContent, also update style
+    valueSpan.textContent = ''
+    updateSingleValueStyle(valueSpan.textContent)
+
+    // When option is selected in dropdown, also update style
+    // (Assume you have a dropdown logic elsewhere, but add a sample handler)
+    // Example:
+    // optionElement.addEventListener('click', () => {
+    //     valueSpan.textContent = optionText
+    //     updateSingleValueStyle(optionText)
+    // })
+
+    // In dropdown, make 'no shelf' option italic
+    // (Assume you have a dropdown creation loop elsewhere, but add a sample)
+    // Example:
+    // if (option.title && option.title.toLowerCase().includes('no shelf')) {
+    //     optionElement.style.fontStyle = 'italic'
+    // }
+
+    return container
 }
 
 const controls_getTemplate = () => {
@@ -1024,6 +1026,7 @@ const controls_getTemplate = () => {
     }
     return selectControlTemplate.cloneNode(true)
 }
+
 
 /* - end of select-control.templates.js  */
 
@@ -1108,6 +1111,7 @@ const controls_createSelectDropdown = (options, selectedValue) => {
         const optionElement = NAIE.DOM.createElement('div', {
             ...DROPDOWN_OPTION_STYLES,
             backgroundColor: value === selectedValue ? 'rgb(16, 18, 36)' : 'transparent',
+            fontStyle: title && title.toLowerCase().includes('no shelf') ? 'italic' : '',
         })
 
         optionElement.setAttribute('aria-disabled', 'false')
@@ -1116,6 +1120,10 @@ const controls_createSelectDropdown = (options, selectedValue) => {
 
         const optionText = NAIE.DOM.createElement('span')
         optionText.textContent = title
+        // Also apply italic to the span for extra robustness
+        if (title && title.toLowerCase().includes('no shelf')) {
+            optionText.style.fontStyle = 'italic'
+        }
         optionElement.appendChild(optionText)
 
         optionsList.appendChild(optionElement)
@@ -1139,6 +1147,12 @@ const controls_constructSelectControl = (options, selectedValue, onChange) => {
     const selectedOption = options.find((option) => option.value === selectedValue)
     if (selectedOption) {
         singleValueElement.textContent = selectedOption.title
+        // Italicize if 'no shelf' is selected
+        if (selectedOption.title && selectedOption.title.toLowerCase().includes('no shelf')) {
+            singleValueElement.style.fontStyle = 'italic'
+        } else {
+            singleValueElement.style.fontStyle = ''
+        }
     }
 
     const dropdown = controls_createSelectDropdown(options, selectedValue)
@@ -1177,7 +1191,7 @@ const controls_constructSelectControl = (options, selectedValue, onChange) => {
         //singleValueElement.style.display = 'none'
         inputElement.focus()
 
-        outsideClickHandle = OnClickOutside(
+        outsideClickHandle = dom_OnClickOutside(
             template,
             () => {
                 hideDropdown()
@@ -1220,6 +1234,12 @@ const controls_constructSelectControl = (options, selectedValue, onChange) => {
             const newValue = optionElement.getAttribute('data-option-value')
             const newTitle = optionElement.textContent
             singleValueElement.textContent = newTitle
+            // Italicize if 'no shelf' is selected
+            if (newTitle && newTitle.toLowerCase().includes('no shelf')) {
+                singleValueElement.style.fontStyle = 'italic'
+            } else {
+                singleValueElement.style.fontStyle = ''
+            }
             hideDropdown()
 
             optionElements.forEach((el) => {
@@ -1260,7 +1280,7 @@ const extensions_createNAIEindicatorElement = () => {
     `
 
     // Copy relevant styles from save indicator
-    const saveStyles = window.getComputedStyle(saveIndicator)
+    const saveStyles = wRef.getComputedStyle(saveIndicator)
     container.style.font = saveStyles.font
     container.style.color = saveStyles.color
 
@@ -1307,19 +1327,19 @@ const extensions_createIndicatorManager = (logContainer, maxRows, duration = 200
 
         isInserting = true
         const message = messageManager.popMessage()
-        
+
         const messageElement = document.createElement('div')
         messageElement.className = 'notification'
         messageElement.textContent = message
-        
+
         // Calculate time since last insert
         const now = Date.now()
         const timeSinceLastInsert = now - lastInsertTime
         const delayNeeded = Math.max(0, staggerDelay - timeSinceLastInsert)
-        
+
         // Only wait if we need to
         if (delayNeeded > 0) {
-            await new Promise(r => setTimeout(r, delayNeeded))
+            await new Promise((r) => setTimeout(r, delayNeeded))
         }
 
         logContainer.appendChild(messageElement)
@@ -1492,7 +1512,7 @@ const API_BASE_URL = 'https://api.novelai.net'
  */
 const network_createNetworkManager = () => {
     const hooks = []
-    const nativeFetch = xhook.fetch.bind(window)
+    const nativeFetch = xhook.fetch.bind(wRef)
 
     /**
      * Gets the matching hooks for a given URL and method
@@ -2262,15 +2282,15 @@ const createNAIEInstance = () => {
     // Force a reload when the app navigates to or from /stories
     // This is to make sure we only load the script when we access /stories
 
-    let previousPath = window.location.pathname
+    let previousPath = wRef.location.pathname
     const handleUrlChange = () => {
-        const currentPath = window.location.pathname
+        const currentPath = wRef.location.pathname
 
         if (
             (previousPath.startsWith('/stories') && !currentPath.startsWith('/stories')) ||
             (!previousPath.startsWith('/stories') && currentPath.startsWith('/stories'))
         ) {
-            window.location.reload()
+            wRef.location.reload()
         }
 
         previousPath = currentPath
@@ -2283,7 +2303,7 @@ const createNAIEInstance = () => {
     handleUrlChange() // Initial check
 
     // Check if the current path is /stories before initializing
-    if (window.location.pathname.startsWith('/stories')) {
+    if (wRef.location.pathname.startsWith('/stories')) {
         coreInit()
     }
 })()

@@ -10,7 +10,7 @@ const API_BASE_URL = 'https://api.novelai.net'
  */
 const network_createNetworkManager = () => {
     const hooks = []
-    const nativeFetch = xhook.fetch.bind(window)
+    const nativeFetch = xhook.fetch.bind(wRef)
 
     /**
      * Gets the matching hooks for a given URL and method

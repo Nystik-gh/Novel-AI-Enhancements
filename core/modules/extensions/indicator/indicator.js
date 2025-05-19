@@ -19,7 +19,7 @@ const extensions_createNAIEindicatorElement = () => {
     `
 
     // Copy relevant styles from save indicator
-    const saveStyles = window.getComputedStyle(saveIndicator)
+    const saveStyles = wRef.getComputedStyle(saveIndicator)
     container.style.font = saveStyles.font
     container.style.color = saveStyles.color
 
@@ -66,19 +66,19 @@ const extensions_createIndicatorManager = (logContainer, maxRows, duration = 200
 
         isInserting = true
         const message = messageManager.popMessage()
-        
+
         const messageElement = document.createElement('div')
         messageElement.className = 'notification'
         messageElement.textContent = message
-        
+
         // Calculate time since last insert
         const now = Date.now()
         const timeSinceLastInsert = now - lastInsertTime
         const delayNeeded = Math.max(0, staggerDelay - timeSinceLastInsert)
-        
+
         // Only wait if we need to
         if (delayNeeded > 0) {
-            await new Promise(r => setTimeout(r, delayNeeded))
+            await new Promise((r) => setTimeout(r, delayNeeded))
         }
 
         logContainer.appendChild(messageElement)
