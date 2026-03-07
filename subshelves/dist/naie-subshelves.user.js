@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name         Novel AI Enhanced: Sub-shelves
 // @namespace    github.nystik-gh
-// @version      2.0.6
+// @version      2.0.7
 // @description  Adds nested shelves functionality
 // @match        https://novelai.net/*
 // @grant        UnsafeWindow
 // @run-at       document-start
-// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/main/core/dist/naie-core.user.js?version=1.1.2
+// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/main/core/dist/naie-core.user.js?version=1.1.3
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=novelai.net
 // @author       Nystik (https://gitlab.com/Nystik)
 // @downloadUrl  https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/main/subshelves/dist/naie-subshelves.user.js
@@ -1802,25 +1802,28 @@ const registerShelfDeleteHooks = () => {
  */
 
 const registerShelfGetHooks = () => {
+    console.log('[NAIE] Registering shelf-get-all hook for /user/objects/shelf')
     NAIE.NETWORK.manager.registerHook({
         id: 'shelf-get-all',
         priority: 10,
         urlPattern: '/user/objects/shelf',
         methods: ['GET'],
         modifyResponse: async (response, request) => {
-            const copy = response.clone();
-            let data = await copy.json();
-            shelfState = createShelfState(buildShelfMap(data.objects));
-            const modifiedData = { objects: InjectShelfTransientMeta(data.objects) };
-            
+            console.log('[NAIE] shelf-get-all hook fired, intercepted:', request.url)
+            const copy = response.clone()
+            let data = await copy.json()
+            console.log('[NAIE] shelf data received, objects:', data.objects?.length)
+            shelfState = createShelfState(buildShelfMap(data.objects))
+            const modifiedData = { objects: InjectShelfTransientMeta(data.objects) }
+
             return new Response(JSON.stringify(modifiedData), {
                 status: response.status,
                 statusText: response.statusText,
                 headers: response.headers,
-            });
-        }
-    });
-};
+            })
+        },
+    })
+}
 
 
 /* -------- end of get.hooks.js -------- */

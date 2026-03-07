@@ -81,7 +81,11 @@ const network_createNetworkManager = () => {
      * Initializes the network manager by setting up the xhook
      */
     const initialize = () => {
+        console.log('[NAIE] Network manager: xhook interceptor initialized')
         xhook.before((request, callback) => {
+            if (request.url.includes('/user/objects/shelf')) {
+                console.log('[NAIE] xhook intercepted shelf request:', request.method, request.url)
+            }
             processRequest(
                 hooks,
                 nativeFetch,

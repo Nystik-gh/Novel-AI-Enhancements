@@ -2,7 +2,7 @@
 // THIS IS NOT A STANDALONE USER SCRIPT! DO NO INSTALL THIS SCRIPT DIRECTLY.
 // @name         Novel AI Enhanced: Core
 // @namespace    github.nystik-hg
-// @version      1.1.2
+// @version      1.1.3
 // @description  Core library
 // @author       Nystik (https://gitlab.com/Nystik)
 // ==/UserScript==
@@ -1584,7 +1584,11 @@ const network_createNetworkManager = () => {
      * Initializes the network manager by setting up the xhook
      */
     const initialize = () => {
+        console.log('[NAIE] Network manager: xhook interceptor initialized')
         xhook.before((request, callback) => {
+            if (request.url.includes('/user/objects/shelf')) {
+                console.log('[NAIE] xhook intercepted shelf request:', request.method, request.url)
+            }
             processRequest(
                 hooks,
                 nativeFetch,
