@@ -180,6 +180,11 @@ const mapShelfMetadata = async () => {
         return Promise.reject()
     }
 
+    if (!shelfState) {
+        console.warn('[NAIE] shelfState is null in mapShelfMetadata — network hook may not have fired yet')
+        return
+    }
+
     // shelves do not have a role
     const childDivs = storyListDiv.querySelectorAll(`${storyListSelector} > div:not([role])`)
 
@@ -504,7 +509,9 @@ const processNewShelf = async (shelf_id) => {
 
     const contextMenuPromise = waitForNewContextMenu(false, 1000)
 
-    let newShelf = await NAIE.DOM.waitForElement(`${storyListSelector} > div:not([data-metadata-processed]):not([role]):not([data-locked-shelf])`)
+    let newShelf = await NAIE.DOM.waitForElement(
+        `${storyListSelector} > div:not([data-metadata-processed]):not([role]):not([data-locked-shelf])`,
+    )
 
     let ctx = await contextMenuPromise
 

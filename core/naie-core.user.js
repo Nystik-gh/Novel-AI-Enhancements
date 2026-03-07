@@ -2,7 +2,7 @@
 // THIS IS NOT A STANDALONE USER SCRIPT! DO NO INSTALL THIS SCRIPT DIRECTLY.
 // @name         Novel AI Enhanced: Core
 // @namespace    github.nystik-hg
-// @version      1.1.1
+// @version      1.1.2
 // @description  Core library
 // @require      ./lib/*
 // @require      ./modules/misc/*
@@ -29,6 +29,7 @@
         const logger = LOGGING_UTILS.getLogger()
         if (!wRef.NAIE_INSTANCE) {
             logger.info('creating NAIE instance')
+            NERWORK_UTILS.manager.initialize()
             wRef.NAIE_INSTANCE = createNAIEInstance()
 
             // Start waiting for scripts to register and become ready

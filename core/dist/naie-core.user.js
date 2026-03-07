@@ -2,7 +2,7 @@
 // THIS IS NOT A STANDALONE USER SCRIPT! DO NO INSTALL THIS SCRIPT DIRECTLY.
 // @name         Novel AI Enhanced: Core
 // @namespace    github.nystik-hg
-// @version      1.1.1
+// @version      1.1.2
 // @description  Core library
 // @author       Nystik (https://gitlab.com/Nystik)
 // ==/UserScript==
@@ -19,6 +19,7 @@
         const logger = LOGGING_UTILS.getLogger()
         if (!wRef.NAIE_INSTANCE) {
             logger.info('creating NAIE instance')
+            NERWORK_UTILS.manager.initialize()
             wRef.NAIE_INSTANCE = createNAIEInstance()
 
             // Start waiting for scripts to register and become ready
@@ -2055,7 +2056,6 @@ const registerCoreInit = () => {
         async () => {
             const logger = LOGGING_UTILS.getLogger()
             logger.debug('core-initialization')
-            NERWORK_UTILS.manager.initialize()
             NAIE_SERVICES.modalObserver = naie_initModalObserver()
             await controls_initializeTemplates()
             NAIE_SERVICES.statusIndicator = INDICATOR_UTILS.createNAIEIndicator()

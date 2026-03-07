@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name         Novel AI Enhanced: Sub-shelves
 // @namespace    github.nystik-gh
-// @version      2.0.5
+// @version      2.0.6
 // @description  Adds nested shelves functionality
 // @match        https://novelai.net/*
 // @grant        UnsafeWindow
 // @run-at       document-start
-// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/main/core/dist/naie-core.user.js?version=1.1.1
+// @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/main/core/dist/naie-core.user.js?version=1.1.2
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=novelai.net
 // @author       Nystik (https://gitlab.com/Nystik)
 // @downloadUrl  https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/main/subshelves/dist/naie-subshelves.user.js
@@ -1135,6 +1135,11 @@ const mapShelfMetadata = async () => {
         return Promise.reject()
     }
 
+    if (!shelfState) {
+        console.warn('[NAIE] shelfState is null in mapShelfMetadata — network hook may not have fired yet')
+        return
+    }
+
     // shelves do not have a role
     const childDivs = storyListDiv.querySelectorAll(`${storyListSelector} > div:not([role])`)
 
@@ -1459,7 +1464,9 @@ const processNewShelf = async (shelf_id) => {
 
     const contextMenuPromise = waitForNewContextMenu(false, 1000)
 
-    let newShelf = await NAIE.DOM.waitForElement(`${storyListSelector} > div:not([data-metadata-processed]):not([role]):not([data-locked-shelf])`)
+    let newShelf = await NAIE.DOM.waitForElement(
+        `${storyListSelector} > div:not([data-metadata-processed]):not([role]):not([data-locked-shelf])`,
+    )
 
     let ctx = await contextMenuPromise
 
