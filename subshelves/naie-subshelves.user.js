@@ -4,7 +4,7 @@
 // @version      2.0.4
 // @description  Adds nested shelves functionality
 // @match        https://novelai.net/*
-// @grant        none
+// @grant        UnsafeWindow
 // @run-at       document-start
 // @require      ./modules/*
 // @require      https://github.com/Nystik-gh/Novel-AI-Enhancements/raw/main/core/dist/naie-core.user.js?version=1.1.0

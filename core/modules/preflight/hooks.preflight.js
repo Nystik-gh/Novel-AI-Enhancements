@@ -1,13 +1,13 @@
 // Internal stages not exposed to external scripts
 const INTERNAL_STAGES = {
-    INTERNAL: 'internal'
+    INTERNAL: 'internal',
 }
 
 // Public stages that can be used by external scripts
 const STAGES = {
     EARLY: 'early',
     MAIN: 'main',
-    LATE: 'late'
+    LATE: 'late',
 }
 
 const ALL_STAGES = { ...INTERNAL_STAGES, ...STAGES }
@@ -29,7 +29,7 @@ const runHookWithTimeout = async (hook) => {
                 setTimeout(() => {
                     reject(new Error(`Hook ${hook.id} timed out after ${hook.timeout}ms`))
                 }, hook.timeout)
-            })
+            }),
         ])
         return null
     } catch (error) {
@@ -37,8 +37,9 @@ const runHookWithTimeout = async (hook) => {
             hookId: hook.id,
             error,
             stage: currentStage,
-            timeoutError: error.message.includes('timed out')
+            timeoutError: error.message.includes('timed out'),
         }
+        console.error(`[NAIE] Hook '${hook.id}' failed in stage '${currentStage}':`, error)
         return hookError
     }
 }
@@ -85,11 +86,11 @@ const preflight_registerHook = (stage, id, priority, callback, timeout = DEFAULT
         id,
         priority: priority || 0,
         callback,
-        timeout
+        timeout,
     }
 
     // Insert hook in priority order (higher priority first)
-    const index = stageHooks.findIndex(h => (h.priority || 0) < (hook.priority || 0))
+    const index = stageHooks.findIndex((h) => (h.priority || 0) < (hook.priority || 0))
     if (index === -1) {
         stageHooks.push(hook)
     } else {
