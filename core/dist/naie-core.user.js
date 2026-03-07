@@ -2,7 +2,7 @@
 // THIS IS NOT A STANDALONE USER SCRIPT! DO NO INSTALL THIS SCRIPT DIRECTLY.
 // @name         Novel AI Enhanced: Core
 // @namespace    github.nystik-hg
-// @version      1.1.3
+// @version      1.1.4
 // @description  Core library
 // @author       Nystik (https://gitlab.com/Nystik)
 // ==/UserScript==
@@ -1529,11 +1529,13 @@ const network_createNetworkManager = () => {
             return []
         }
 
+        const urlPath = new URL(url).pathname
+
         return hooks.filter(
             (hook) =>
                 hook.enabled &&
                 (hook.methods.length === 0 || hook.methods.includes(method.toUpperCase())) &&
-                (typeof hook.urlPattern === 'string' ? url.startsWith(API_BASE_URL + hook.urlPattern) : hook.urlPattern.test(url)),
+                (typeof hook.urlPattern === 'string' ? urlPath.startsWith(hook.urlPattern) : hook.urlPattern.test(url)),
         )
     }
 

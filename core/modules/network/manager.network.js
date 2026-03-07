@@ -26,11 +26,13 @@ const network_createNetworkManager = () => {
             return []
         }
 
+        const urlPath = new URL(url).pathname
+
         return hooks.filter(
             (hook) =>
                 hook.enabled &&
                 (hook.methods.length === 0 || hook.methods.includes(method.toUpperCase())) &&
-                (typeof hook.urlPattern === 'string' ? url.startsWith(API_BASE_URL + hook.urlPattern) : hook.urlPattern.test(url)),
+                (typeof hook.urlPattern === 'string' ? urlPath.startsWith(hook.urlPattern) : hook.urlPattern.test(url)),
         )
     }
 
